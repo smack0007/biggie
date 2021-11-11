@@ -24,14 +24,21 @@ function write(data: string) {
 
 function outputPreamble() {
   write("#include <stdio.h>\n");
+  write("#include <stdint.h>\n");
   write("\n");
-  write("typedef signed int i32;");
+  write("typedef int32_t i32;\n");
   write("\n");
 }
 
 function logNode(sourceFile: ts.SourceFile, node: ts.Node, message: string = "") {
   const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
   write(`${sourceFile.fileName} (${line + 1},${character + 1}) ${ts.SyntaxKind[node.kind]} ${message}`);
+}
+
+function parseUnexpectedNode(functionName: string, sourceFile: ts.SourceFile, node: ts.Node) {
+  write(`/* Unexpected node in ${functionName}:\n`);
+  logNode(sourceFile, node);
+  write("*/\n");
 }
 
 function parseTopLevelStatement(sourceFile: ts.SourceFile, node: ts.Node) {
@@ -41,9 +48,7 @@ function parseTopLevelStatement(sourceFile: ts.SourceFile, node: ts.Node) {
       break;
 
     default:
-      write(`/* Unexpected node in ${parseTopLevelStatement.name}:\n`);
-      logNode(sourceFile, node);
-      write("*/\n");
+      parseUnexpectedNode(parseTopLevelStatement.name, sourceFile, node);
       break;
   }
 }
@@ -74,9 +79,7 @@ function parseFunctionStatement(sourceFile: ts.SourceFile, node: ts.Node) {
       break;
 
     default:
-      write(`/* Unexpected node in ${parseFunctionStatement.name}:\n`);
-      logNode(sourceFile, node);
-      write("*/\n");
+      parseUnexpectedNode(parseFunctionStatement.name, sourceFile, node);
       break;
   }
 
@@ -94,7 +97,7 @@ function parseReturnStatement(sourceFile: ts.SourceFile, returnStatement: ts.Ret
 function parseExpression(sourceFile: ts.SourceFile, expression: ts.Expression) {
   switch (expression.kind) {
     case ts.SyntaxKind.CallExpression:
-      write(expression.getText());
+      parseCallExpression(sourceFile, expression as ts.CallExpression);
       break;
 
     case ts.SyntaxKind.NumericLiteral:
@@ -102,11 +105,13 @@ function parseExpression(sourceFile: ts.SourceFile, expression: ts.Expression) {
       break;
 
     default:
-      write(`/* Unexpected node in ${parseExpression.name}:\n`);
-      logNode(sourceFile, expression);
-      write("*/\n");
+      parseUnexpectedNode(parseExpression.name, sourceFile, expression);
       break;
   }
+}
+
+function parseCallExpression(sourceFile: ts.SourceFile, callExpression: ts.CallExpression) {
+  write(callExpression.getText());
 }
 
 function parseNumericLiteral(sourceFile: ts.SourceFile, numericLiteral: ts.NumericLiteral) {
