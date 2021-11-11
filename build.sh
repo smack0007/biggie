@@ -1,1 +1,0 @@
-ts-node ./compile.ts program.ts > program.c
