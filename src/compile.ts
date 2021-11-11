@@ -23,10 +23,10 @@ function write(data: string) {
 }
 
 function outputPreamble() {
-  write("#include <stdio.h>\n");
   write("#include <stdint.h>\n");
-  write("\n");
   write("typedef int32_t i32;\n");
+  write("\n");
+  write("int printf(const char *format, ...);\n");
   write("\n");
 }
 
