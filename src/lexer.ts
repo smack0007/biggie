@@ -95,10 +95,10 @@ export enum LexemeType {
   Colon,
 
   // =
-  Gets,
+  Assignment,
 
   // !
-  Not,
+  LogicalNot,
 
   // ==
   EqualTo,
@@ -143,10 +143,10 @@ export enum LexemeType {
   DivideGets,
 
   // &&
-  ConditionalAnd,
+  LogicalAnd,
 
   // ||
-  ConditionalOr,
+  LogicalOr,
 
   // Used to indicate the end of a list of Lexemes.
   EOF,
@@ -159,7 +159,7 @@ export interface Lexeme {
   column: int;
 }
 
-function isNumber(ch: char) {
+function isNumber(ch: char): boolean {
   return (
     ch == "0" ||
     ch == "1" ||
@@ -174,11 +174,11 @@ function isNumber(ch: char) {
   );
 }
 
-function isWhitespace(ch: char) {
+function isWhitespace(ch: char): boolean {
   return ch == " " || ch == "\t" || ch == "\r" || ch == "\n";
 }
 
-function isLetter(ch: char) {
+function isLetter(ch: char): boolean {
   return ch.toUpperCase() != ch.toLowerCase() || <number>ch.codePointAt(0) > 127;
 }
 
@@ -203,22 +203,19 @@ export function lex(text: string): Array<Lexeme> {
       curColumn = 1;
     }
 
-    if (type == LexemeType.Unknown) {
+    if (type == LexemeType.Unknown) { 
       // We're looking for a lexeme
+      line = curLine;
+      column = curColumn;
+
       if (isWhitespace(text[i])) {
         // Skip over white space
         continue;
       } else if (text[i] == "'") {
         // Start of a string
-        line = curLine;
-        column = curColumn;
-
         type = LexemeType.Char;
       } else if (text[i] == '"') {
         // Start of a magic string
-        line = curLine;
-        column = curColumn;
-
         type = LexemeType.String;
       } else if (text[i] == ";") {
         // End Statement
@@ -255,7 +252,7 @@ export function lex(text: string): Array<Lexeme> {
           lexemes.push({ type: LexemeType.EqualTo, text: null, line: curLine, column: curColumn });
           i++;
         } else {
-          lexemes.push({ type: LexemeType.Gets, text: null, line: curLine, column: curColumn });
+          lexemes.push({ type: LexemeType.Assignment, text: null, line: curLine, column: curColumn });
         }
       } else if (text[i] == "!") {
         // Not or NotEqualTo
@@ -263,7 +260,7 @@ export function lex(text: string): Array<Lexeme> {
           lexemes.push({ type: LexemeType.NotEqualTo, text: null, line: curLine, column: curColumn });
           i++;
         } else {
-          lexemes.push({ type: LexemeType.Not, text: null, line: curLine, column: curColumn });
+          lexemes.push({ type: LexemeType.LogicalNot, text: null, line: curLine, column: curColumn });
         }
       } else if (text[i] == ">") {
         if (i + 1 < text.length && text[i + 1] == "=") {
@@ -337,13 +334,13 @@ export function lex(text: string): Array<Lexeme> {
         }
       } else if (text[i] == "&" && i + 1 < text.length && text[i + 1] == "&") {
         // And
-        lexemes.push({ type: LexemeType.ConditionalAnd, text: null, line: curLine, column: curColumn });
+        lexemes.push({ type: LexemeType.LogicalAnd, text: null, line: curLine, column: curColumn });
         i++;
       } else if (text[i] == "|") {
         // ConditionalOr or ClosePipeBracket
         if (i + 1 < text.length) {
           if (text[i + 1] == "|") {
-            lexemes.push({ type: LexemeType.ConditionalOr, text: null, line: curLine, column: curColumn });
+            lexemes.push({ type: LexemeType.LogicalOr, text: null, line: curLine, column: curColumn });
             i++;
           }
         }
@@ -358,6 +355,7 @@ export function lex(text: string): Array<Lexeme> {
       }
     } else if (type == LexemeType.Char) {
       // We're inside a char
+
       if (text[i] != "'") {
         value += text[i];
       } else if (text[i - 1] == "\\") {
@@ -367,6 +365,7 @@ export function lex(text: string): Array<Lexeme> {
       }
     } else if (type == LexemeType.String) {
       // We're inside a string
+
       if (text[i] != '"') {
         value += text[i];
       } else if (text[i - 1] == "\\") {
@@ -376,6 +375,7 @@ export function lex(text: string): Array<Lexeme> {
       }
     } else if (type == LexemeType.Identifier) {
       // We're inside an identifier
+
       if (isLetter(text[i]) || isNumber(text[i]) || text[i] == "_") {
         value += text[i];
       } else {
@@ -384,6 +384,7 @@ export function lex(text: string): Array<Lexeme> {
       }
     } else if (type == LexemeType.Numeric) {
       // We're inside a numeric
+
       if (isNumber(text[i])) {
         value += text[i];
       } else if (text[i] == ".") {
@@ -400,15 +401,15 @@ export function lex(text: string): Array<Lexeme> {
       if (type == LexemeType.Identifier) {
         switch (value) {
           case "import":
-            lexemes.push({ type: LexemeType.Import, text: null, line: curLine, column: curColumn });
+            lexemes.push({ type: LexemeType.Import, text: null, line: line, column: column });
             break;
 
           case "const":
-            lexemes.push({ type: LexemeType.Const, text: null, line: curLine, column: curColumn });
+            lexemes.push({ type: LexemeType.Const, text: null, line: line, column: column });
             break;
 
           case "let":
-            lexemes.push({ type: LexemeType.Let, text: null, line: curLine, column: curColumn });
+            lexemes.push({ type: LexemeType.Let, text: null, line: line, column: column });
             break;
 
           case "func":

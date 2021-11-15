@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import { lex, LexemeType } from "./lexer";
-import { parse } from "./parser";
+import { parse, ParserErrorKind } from "./parser";
 
 process.exit(main(process.argv.slice(2)));
 
@@ -18,7 +18,7 @@ function main(argv: string[]): i32 {
   const ast = parse(fileName, lexemes);
 
   if (ast.error != null) {
-    console.error(ast.error);
+    console.error(`Error: ${ParserErrorKind[ast.error.kind]} at Line ${ast.error.line} Column ${ast.error.column}`);
   } else {
     console.info(ast.value);
   }

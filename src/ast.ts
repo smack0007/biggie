@@ -1,13 +1,15 @@
 export enum SyntaxKind {
+  Block,
+
   FunctionDeclaration,
+
+  Identifier,
 
   SourceFile,
 
   Statement,
 
-  Identifier,
-
-  TypeName
+  TypeName,
 }
 
 export interface SourceFile {
@@ -15,7 +17,7 @@ export interface SourceFile {
 
   readonly fileName: string;
 
-  statements: Array<Statement>;
+  readonly statements: Array<Statement>;
 }
 
 export interface Statement {
@@ -25,9 +27,17 @@ export interface Statement {
 export interface FunctionDeclaration extends Statement {
   readonly kind: SyntaxKind.FunctionDeclaration;
 
+  readonly body: Block;
+
   readonly name: Identifier;
 
   readonly returnType: TypeName;
+}
+
+export interface Block {
+  readonly kind: SyntaxKind.Block;
+
+  readonly statements: Array<Statement>;
 }
 
 export interface Identifier {
@@ -39,5 +49,5 @@ export interface Identifier {
 export interface TypeName {
   readonly kind: SyntaxKind.TypeName;
 
-  readonly value: string;
+  readonly name: Identifier;
 }
