@@ -20,7 +20,7 @@ function main(argv: string[]): i32 {
   if (ast.error != null) {
     console.error(`Error: ${ParserErrorKind[ast.error.kind]} at Line ${ast.error.line} Column ${ast.error.column}`);
   } else {
-    console.info(ast.value);
+    console.info(JSON.stringify(ast.value, undefined, "  "));
   }
 
   return 0;
