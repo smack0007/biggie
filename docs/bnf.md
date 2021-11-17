@@ -1,0 +1,29 @@
+<SourceFile> ::= <TopLevelStatement>* <EOF>
+
+<TopLevelStatement> ::= <FunctionDeclaration>
+
+<FunctionDeclaration> ::= "function" <Identifier> "(" ")" ":" <TypeName> <StatementBlock>
+
+<TypeName> ::= <Identifier>
+  
+<StatementBlock> ::= "{" <BlockLevelStatement>* "}"
+
+<BlockLevelStatement> ::= <ReturnStatement> |
+                          <ExpressionStatement>
+  
+<ReturnStatement> ::= "return" <Expression> ";"
+  
+<ExpressionStatement> ::= <Expression> ";"
+  
+<Expression> ::= # Not correctly implemented
+  
+<Identifier> ::= (<letter> | <identifierSymbol>) (<letter> | <digit> | <identifierSymbol>)*
+
+<identifierSymbol ::= "_"
+  
+<letter> ::= "[A-Za-z]"
+  
+<digit> ::= "[0-9]"
+  
+
+  
