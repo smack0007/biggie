@@ -18,7 +18,11 @@ export enum SyntaxKind {
   TypeName,
 }
 
-export interface SourceFile {
+export interface SyntaxNode {
+  readonly kind: SyntaxKind;
+}
+
+export interface SourceFile extends SyntaxNode {
   readonly kind: SyntaxKind.SourceFile;
 
   readonly fileName: string;
