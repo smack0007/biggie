@@ -9,9 +9,11 @@ import {
   Expression,
   ReturnStatement,
   ExpressionStatement,
+  SyntaxTrivia,
+  SyntaxNode,
 } from "./ast";
 import { Lexeme, LexemeType } from "./lexer";
-import { Either, int } from "./shims";
+import { Either, int, OrNull } from "./shims";
 
 interface ParserContext {
   fileName: string;
@@ -33,7 +35,6 @@ export interface ParserError {
 }
 
 function createParserError(lexeme: Lexeme, kind: ParserErrorKind, message?: string): ParserError {
-  console.info("createParserError", lexeme, kind, message);
   return {
     kind,
     line: lexeme.line,
@@ -78,7 +79,52 @@ function isEOF(context: ParserContext): boolean {
   return getLexeme(context).type == LexemeType.EOF;
 }
 
+function parseTrivia(context: ParserContext): OrNull<SyntaxTrivia> {
+  let lexeme = getLexeme(context);
+
+  let value = "";
+  while (lexeme.type == LexemeType.Whitespace) {
+    value += lexeme.text ?? "";
+
+    incrementLexeme(context);
+    lexeme = getLexeme(context);
+  }
+
+  if (value.length == 0) {
+    return null;
+  }
+
+  return {
+    value,
+  };
+}
+
+function mergeLeadingTriviaIntoValue(
+  result: Either<SyntaxNode, ParserError>,
+  leadingTrivia: OrNull<SyntaxTrivia>
+): Either<SyntaxNode, ParserError> {
+  if (result.value == null) {
+    return result;
+  }
+
+  return {
+    value: {
+      ...result.value,
+      leadingTrivia,
+    },
+  };
+}
+
+function mergeTrailingTriviaIntoNode(node: SyntaxNode, trailingTrivia: OrNull<SyntaxTrivia>): SyntaxNode {
+  return {
+    ...node,
+    trailingTrivia,
+  };
+}
+
 export function parse(fileName: string, lexemes: Array<Lexeme>): Either<SourceFile, ParserError> {
+  console.info(parse.name);
+
   const statements: Array<Statement> = [];
 
   const context: ParserContext = {
@@ -94,7 +140,9 @@ export function parse(fileName: string, lexemes: Array<Lexeme>): Either<SourceFi
       return { error: statement.error };
     }
 
-    statements.push(<Statement>statement.value);
+    const trailingTrivia = parseTrivia(context);
+
+    statements.push(mergeTrailingTriviaIntoNode(<Statement>statement.value, trailingTrivia));
   }
 
   const eof = expectLexeme(context, LexemeType.EOF, parse.name);
@@ -113,17 +161,32 @@ export function parse(fileName: string, lexemes: Array<Lexeme>): Either<SourceFi
 }
 
 function parseTopLevelStatement(context: ParserContext): Either<Statement, ParserError> {
+  console.info(parseTopLevelStatement.name);
+  const leadingTrivia = parseTrivia(context);
   const lexeme = getLexeme(context);
 
+  let result: Either<Statement, ParserError>;
   switch (lexeme.type) {
     case LexemeType.Func:
-      return parseFunctionDeclaration(context);
+      result = parseFunctionDeclaration(context);
+      break;
+
+    default:
+      return {
+        error: createParserError(
+          lexeme,
+          ParserErrorKind.UnknownTopLevelStatement,
+          `Lexeme type ${LexemeType[lexeme.type]} unexpected in ${parseTopLevelStatement.name}`
+        ),
+      };
   }
 
-  return { error: createParserError(lexeme, ParserErrorKind.UnknownTopLevelStatement) };
+  return mergeLeadingTriviaIntoValue(result, leadingTrivia);
 }
 
 function parseFunctionDeclaration(context: ParserContext): Either<FunctionDeclaration, ParserError> {
+  console.info(parseFunctionDeclaration.name);
+  const leadingTrivia = parseTrivia(context);
   let lexeme = expectLexeme(context, LexemeType.Func, parseFunctionDeclaration.name);
 
   if (lexeme.error != null) {
@@ -176,11 +239,14 @@ function parseFunctionDeclaration(context: ParserContext): Either<FunctionDeclar
       body: <StatementBlock>body.value,
       name: <Identifier>identifier.value,
       returnType: <TypeName>returnType.value,
+      leadingTrivia,
     },
   };
 }
 
 function parseStatementBlock(context: ParserContext): Either<StatementBlock, ParserError> {
+  console.info(parseStatementBlock.name);
+  const leadingTrivia = parseTrivia(context);
   let lexeme = expectLexeme(context, LexemeType.OpenBrace, parseStatementBlock.name);
 
   if (lexeme.error != null) {
@@ -197,7 +263,9 @@ function parseStatementBlock(context: ParserContext): Either<StatementBlock, Par
       return { error: statement.error };
     }
 
-    statements.push(<Statement>statement.value);
+    const trailingTrivia = parseTrivia(context);
+
+    statements.push(mergeTrailingTriviaIntoNode(<Statement>statement.value, trailingTrivia));
   }
 
   lexeme = expectLexeme(context, LexemeType.CloseBrace, parseStatementBlock.name);
@@ -212,22 +280,33 @@ function parseStatementBlock(context: ParserContext): Either<StatementBlock, Par
     value: {
       kind: SyntaxKind.StatementBlock,
       statements,
+      leadingTrivia,
     },
   };
 }
 
 function parseBlockLevelStatement(context: ParserContext): Either<Statement, ParserError> {
+  console.info(parseBlockLevelStatement.name);
+  const leadingTrivia = parseTrivia(context);
   const lexeme = getLexeme(context);
 
+  let result: Either<Statement, ParserError>;
   switch (lexeme.type) {
     case LexemeType.Return:
-      return parseReturnStatement(context);
+      result = parseReturnStatement(context);
+      break;
+
+    default:
+      result = parseExpressionStatement(context);
+      break;
   }
 
-  return parseExpressionStatement(context);
+  return mergeLeadingTriviaIntoValue(result, leadingTrivia);
 }
 
 function parseExpressionStatement(context: ParserContext): Either<ExpressionStatement, ParserError> {
+  console.info(parseExpressionStatement.name);
+  const leadingTrivia = parseTrivia(context);
   const expression = parseExpression(context);
 
   const lexeme = expectLexeme(context, LexemeType.EndStatement, parseExpressionStatement.name);
@@ -242,11 +321,14 @@ function parseExpressionStatement(context: ParserContext): Either<ExpressionStat
     value: {
       kind: SyntaxKind.ExpressionStatement,
       expression: <Expression>expression.value,
+      leadingTrivia,
     },
   };
 }
 
 function parseReturnStatement(context: ParserContext): Either<ReturnStatement, ParserError> {
+  console.info(parseReturnStatement.name);
+  const leadingTrivia = parseTrivia(context);
   let lexeme = expectLexeme(context, LexemeType.Return, parseReturnStatement.name);
 
   if (lexeme.error) {
@@ -272,11 +354,14 @@ function parseReturnStatement(context: ParserContext): Either<ReturnStatement, P
     value: {
       kind: SyntaxKind.ReturnStatement,
       expression: <Expression>expression.value,
+      leadingTrivia,
     },
   };
 }
 
 function parseExpression(context: ParserContext): Either<Expression, ParserError> {
+  console.info(parseExpression.name);
+  const leadingTrivia = parseTrivia(context);
   const lexeme = getLexeme(context);
 
   incrementLexeme(context);
@@ -291,11 +376,13 @@ function parseExpression(context: ParserContext): Either<Expression, ParserError
     value: {
       kind: SyntaxKind.Expression,
       value: lexeme.text ?? "",
+      leadingTrivia,
     },
   };
 }
 
 function parseIdentifier(context: ParserContext): Either<Identifier, ParserError> {
+  const leadingTrivia = parseTrivia(context);
   const lexeme = expectLexeme(context, LexemeType.Identifier, parseIdentifier.name);
 
   if (lexeme.error != null) {
@@ -306,11 +393,13 @@ function parseIdentifier(context: ParserContext): Either<Identifier, ParserError
     value: {
       kind: SyntaxKind.Identifier,
       value: <string>lexeme.value?.text,
+      leadingTrivia,
     },
   };
 }
 
 function parseTypeName(context: ParserContext): Either<TypeName, ParserError> {
+  const leadingTrivia = parseTrivia(context);
   const name = parseIdentifier(context);
 
   if (name.error != null) {
@@ -321,6 +410,7 @@ function parseTypeName(context: ParserContext): Either<TypeName, ParserError> {
     value: {
       kind: SyntaxKind.TypeName,
       name: <Identifier>name.value,
+      leadingTrivia,
     },
   };
 }

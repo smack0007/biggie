@@ -18,8 +18,16 @@ export enum SyntaxKind {
   TypeName,
 }
 
+export interface SyntaxTrivia {
+  readonly value: string;
+}
+
 export interface SyntaxNode {
   readonly kind: SyntaxKind;
+
+  readonly leadingTrivia?: SyntaxTrivia | null;
+
+  readonly trailingTrivia?: SyntaxTrivia | null;
 }
 
 export interface SourceFile extends SyntaxNode {
@@ -30,7 +38,7 @@ export interface SourceFile extends SyntaxNode {
   readonly statements: Array<Statement>;
 }
 
-export interface Statement {
+export interface Statement extends SyntaxNode {
   readonly kind: SyntaxKind;
 }
 
@@ -56,25 +64,25 @@ export interface ReturnStatement extends Statement {
   readonly expression: Expression;
 }
 
-export interface StatementBlock {
+export interface StatementBlock extends SyntaxNode {
   readonly kind: SyntaxKind.StatementBlock;
 
   readonly statements: Array<Statement>;
 }
 
-export interface Expression {
+export interface Expression extends SyntaxNode {
   readonly kind: SyntaxKind.Expression;
 
   readonly value: string;
 }
 
-export interface Identifier {
+export interface Identifier extends SyntaxNode {
   readonly kind: SyntaxKind.Identifier;
 
   readonly value: string;
 }
 
-export interface TypeName {
+export interface TypeName extends SyntaxNode {
   readonly kind: SyntaxKind.TypeName;
 
   readonly name: Identifier;

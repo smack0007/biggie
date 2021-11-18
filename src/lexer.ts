@@ -4,6 +4,9 @@ export enum LexemeType {
   // Used internally to indicate we're currently looking for a lexeme.
   Unknown = 0,
 
+  // Whitespace
+  Whitespace,
+
   // 'c'.
   Char,
 
@@ -206,12 +209,19 @@ export function lex(text: string): Array<Lexeme> {
       column = curColumn;
 
       if (isWhitespace(text[i])) {
-        // Skip over white space
-        if (text[i] == "\n") {
-          curLine += 1;
-          curColumn = 0;
+        while (i < text.length - 1 && isWhitespace(text[i + 1])) {
+          value += text[i];
+          i += 1;
+          curColumn += 1;
+
+          if (text[i] == "\n") {
+            curLine += 1;
+            curColumn = 0;
+          }
         }
 
+        lexemes.push({ type: LexemeType.Whitespace, text: value, line: line, column: column });
+        value = "";
         continue;
       } else if (text[i] == "'") {
         // Start of a char
