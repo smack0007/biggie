@@ -3,6 +3,8 @@ export enum SyntaxKind {
 
   ExpressionStatement,
 
+  IntegerLiteral,
+
   FunctionDeclaration,
 
   Identifier,
@@ -71,9 +73,12 @@ export interface StatementBlock extends SyntaxNode {
 }
 
 export interface Expression extends SyntaxNode {
-  readonly kind: SyntaxKind.Expression;
+}
 
-  readonly value: string;
+export interface TypeName extends Expression {
+  readonly kind: SyntaxKind.TypeName;
+
+  readonly name: Identifier;
 }
 
 export interface Identifier extends SyntaxNode {
@@ -82,8 +87,8 @@ export interface Identifier extends SyntaxNode {
   readonly value: string;
 }
 
-export interface TypeName extends SyntaxNode {
-  readonly kind: SyntaxKind.TypeName;
+export interface IntegerLiteral extends Expression {
+  readonly kind: SyntaxKind.IntegerLiteral;
 
-  readonly name: Identifier;
+  readonly value: string;
 }

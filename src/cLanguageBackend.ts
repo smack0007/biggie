@@ -2,6 +2,7 @@ import {
   Expression,
   ExpressionStatement,
   FunctionDeclaration,
+  IntegerLiteral,
   ReturnStatement,
   SourceFile,
   SyntaxKind,
@@ -96,27 +97,25 @@ function outputReturnStatement(context: BackendContext, sourceFile: SourceFile, 
 }
 
 function outputExpression(context: BackendContext, sourceFile: SourceFile, expression: Expression) {
-  // switch (expression.kind) {
-  //   case SyntaxKind.CallExpression:
-  //     parseCallExpression(sourceFile, expression as ts.CallExpression);
-  //     break;
+  switch (expression.kind) {
+    //   case SyntaxKind.CallExpression:
+    //     parseCallExpression(sourceFile, expression as ts.CallExpression);
+    //     break;
 
-  //   case SyntaxKind.NumericLiteral:
-  //     parseNumericLiteral(sourceFile, expression as ts.NumericLiteral);
-  //     break;
+    case SyntaxKind.IntegerLiteral:
+      outputIntegerLiteral(context, sourceFile, <IntegerLiteral>expression);
+      break;
 
-  //   default:
-  //     outputUnexpectedNode(parseExpression.name, sourceFile, expression);
-  //     break;
-  // }
-
-  context.output(expression.value);
+    default:
+      outputUnexpectedNode(context, outputExpression.name, sourceFile, expression);
+      break;
+  }
 }
 
 // function parseCallExpression(context: BackendContext, sourceFile: SourceFile, callExpression: ts.CallExpression) {
 //   context.output(callExpression.getText());
 // }
 
-// function parseNumericLiteral(context: BackendContext, sourceFile: SourceFile, numericLiteral: ts.NumericLiteral) {
-//   context.output(numericLiteral.getText());
-// }
+function outputIntegerLiteral(context: BackendContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
+  context.output(integerLiteral.value);
+}

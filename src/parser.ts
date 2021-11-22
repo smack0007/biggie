@@ -11,6 +11,7 @@ import {
   ExpressionStatement,
   SyntaxTrivia,
   SyntaxNode,
+  IntegerLiteral,
 } from "./ast";
 import { Lexeme, LexemeType } from "./lexer";
 import { Either, int, OrNull } from "./shims";
@@ -25,6 +26,7 @@ export enum ParserErrorKind {
   UnexpectedLexemeType,
   UnknownTopLevelStatement,
   UnknownBlockLevelStatement,
+  UnknownExpression,
 }
 
 export interface ParserError {
@@ -364,24 +366,45 @@ function parseExpression(context: ParserContext): Either<Expression, ParserError
   const leadingTrivia = parseTrivia(context);
   const lexeme = getLexeme(context);
 
-  incrementLexeme(context);
+  let result: Either<Expression, ParserError>;
+  switch (lexeme.type) {
+    case LexemeType.Integer:
+      result = parseIntegerLiteral(context);
+      break;
 
-  // TODO:
-  // switch (lexeme.type) {
-  //   case LexemeType.Integer:
-  //     break;
-  // }
+    default:
+      return {
+        error: createParserError(
+          lexeme,
+          ParserErrorKind.UnknownExpression,
+          `Lexeme type ${LexemeType[lexeme.type]} unexpected in ${parseExpression.name}`
+        ),
+      };
+  }
+
+  return mergeLeadingTriviaIntoValue(result, leadingTrivia);
+}
+
+function parseTypeName(context: ParserContext): Either<TypeName, ParserError> {
+  console.info(parseTypeName.name);
+  const leadingTrivia = parseTrivia(context);
+  const name = parseIdentifier(context);
+
+  if (name.error != null) {
+    return { error: name.error };
+  }
 
   return {
     value: {
-      kind: SyntaxKind.Expression,
-      value: lexeme.text ?? "",
+      kind: SyntaxKind.TypeName,
+      name: <Identifier>name.value,
       leadingTrivia,
     },
   };
 }
 
 function parseIdentifier(context: ParserContext): Either<Identifier, ParserError> {
+  console.info(parseIdentifier.name);
   const leadingTrivia = parseTrivia(context);
   const lexeme = expectLexeme(context, LexemeType.Identifier, parseIdentifier.name);
 
@@ -398,18 +421,21 @@ function parseIdentifier(context: ParserContext): Either<Identifier, ParserError
   };
 }
 
-function parseTypeName(context: ParserContext): Either<TypeName, ParserError> {
+function parseIntegerLiteral(context: ParserContext): Either<IntegerLiteral, ParserError> {
+  console.info(parseIntegerLiteral.name);
   const leadingTrivia = parseTrivia(context);
-  const name = parseIdentifier(context);
+  const integer = expectLexeme(context, LexemeType.Integer, parseIntegerLiteral.name);
 
-  if (name.error != null) {
-    return { error: name.error };
+  if (integer.error != null) {
+    return { error: integer.error };
   }
+
+  incrementLexeme(context);
 
   return {
     value: {
-      kind: SyntaxKind.TypeName,
-      name: <Identifier>name.value,
+      kind: SyntaxKind.IntegerLiteral,
+      value: <string>integer.value?.text,
       leadingTrivia,
     },
   };

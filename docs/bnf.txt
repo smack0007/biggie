@@ -15,7 +15,7 @@
   
 <ExpressionStatement> ::= <Expression> ";"
   
-<Expression> ::= # Not correctly implemented
+<Expression> ::= <IntegerLiteral>
   
 <Identifier> ::= (<letter> | <identifierSymbol>) (<letter> | <digit> | <identifierSymbol>)*
 
