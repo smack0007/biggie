@@ -15,11 +15,15 @@
   
 <ExpressionStatement> ::= <Expression> ";"
   
-<Expression> ::= <IntegerLiteral>
-  
-<Identifier> ::= (<letter> | <identifierSymbol>) (<letter> | <digit> | <identifierSymbol>)*
+<Expression> ::= <CallExpression> | <IntegerLiteral> | <StringLiteral>
+
+<CallExpression> ::= <Expression> "(" <Expression>? ("," <Expression>)* ")"
 
 <IntegerLiteral> ::= <digit>*
+
+<StringLiteral> ::= "\"" (<letter> | <digit>)* "\""
+
+<Identifier> ::= (<letter> | <identifierSymbol>) (<letter> | <digit> | <identifierSymbol>)*
 
 <identifierSymbol ::= "_"
   

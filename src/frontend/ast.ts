@@ -1,4 +1,6 @@
 export enum SyntaxKind {
+  CallExpression,
+
   Expression,
 
   ExpressionStatement,
@@ -16,6 +18,8 @@ export enum SyntaxKind {
   Statement,
 
   StatementBlock,
+
+  StringLiteral,
 
   TypeName,
 }
@@ -72,7 +76,14 @@ export interface StatementBlock extends SyntaxNode {
   readonly statements: Array<Statement>;
 }
 
-export interface Expression extends SyntaxNode {
+export interface Expression extends SyntaxNode {}
+
+export interface CallExpression extends Expression {
+  readonly kind: SyntaxKind.CallExpression;
+
+  readonly expression: Expression;
+
+  readonly arguments: Array<Expression>;
 }
 
 export interface TypeName extends Expression {
@@ -89,6 +100,12 @@ export interface Identifier extends SyntaxNode {
 
 export interface IntegerLiteral extends Expression {
   readonly kind: SyntaxKind.IntegerLiteral;
+
+  readonly value: string;
+}
+
+export interface StringLiteral extends Expression {
+  readonly kind: SyntaxKind.StringLiteral;
 
   readonly value: string;
 }

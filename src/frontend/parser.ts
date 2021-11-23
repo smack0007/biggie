@@ -12,9 +12,11 @@ import {
   SyntaxTrivia,
   SyntaxNode,
   IntegerLiteral,
+  StringLiteral,
+  CallExpression,
 } from "./ast";
 import { Lexeme, LexemeType } from "./lexer";
-import { Either, int, OrNull } from "../shims";
+import { bool, Either, int, OrNull } from "../shims";
 
 interface ParserContext {
   fileName: string;
@@ -49,6 +51,18 @@ function getLexeme(context: ParserContext): Lexeme {
   return context.lexemes[context.index];
 }
 
+function peekNonTrivialLexeme(context: ParserContext): Lexeme {
+  let index = context.index;
+  let lexeme = context.lexemes[index];
+
+  while (lexeme.type != LexemeType.EOF && isTriviaLexemeType(lexeme.type)) {
+    index += 1;
+    lexeme = context.lexemes[index];
+  }
+
+  return lexeme;
+}
+
 function expectLexeme(
   context: ParserContext,
   expectedType: LexemeType,
@@ -73,7 +87,7 @@ function incrementLexeme(context: ParserContext): void {
   context.index++;
 }
 
-function isEOF(context: ParserContext): boolean {
+function isEOF(context: ParserContext): bool {
   if (context.index >= context.lexemes.length) {
     return true;
   }
@@ -81,11 +95,15 @@ function isEOF(context: ParserContext): boolean {
   return getLexeme(context).type == LexemeType.EOF;
 }
 
+function isTriviaLexemeType(type: LexemeType): bool {
+  return type == LexemeType.Whitespace;
+}
+
 function parseTrivia(context: ParserContext): OrNull<SyntaxTrivia> {
   let lexeme = getLexeme(context);
 
   let value = "";
-  while (lexeme.type == LexemeType.Whitespace) {
+  while (isTriviaLexemeType(lexeme.type)) {
     value += lexeme.text ?? "";
 
     incrementLexeme(context);
@@ -202,7 +220,6 @@ function parseFunctionDeclaration(context: ParserContext): Either<FunctionDeclar
     return { error: identifier.error };
   }
 
-  incrementLexeme(context);
   lexeme = expectLexeme(context, LexemeType.OpenParen, parseFunctionDeclaration.name);
 
   if (lexeme.error != null) {
@@ -311,9 +328,13 @@ function parseExpressionStatement(context: ParserContext): Either<ExpressionStat
   const leadingTrivia = parseTrivia(context);
   const expression = parseExpression(context);
 
+  if (expression.error != null) {
+    return { error: expression.error };
+  }
+
   const lexeme = expectLexeme(context, LexemeType.EndStatement, parseExpressionStatement.name);
 
-  if (lexeme.error) {
+  if (lexeme.error != null) {
     return { error: lexeme.error };
   }
 
@@ -364,12 +385,20 @@ function parseReturnStatement(context: ParserContext): Either<ReturnStatement, P
 function parseExpression(context: ParserContext): Either<Expression, ParserError> {
   console.info(parseExpression.name);
   const leadingTrivia = parseTrivia(context);
-  const lexeme = getLexeme(context);
+  let lexeme = getLexeme(context);
 
   let result: Either<Expression, ParserError>;
   switch (lexeme.type) {
+    case LexemeType.Identifier:
+      result = parseIdentifier(context);
+      break;
+
     case LexemeType.Integer:
       result = parseIntegerLiteral(context);
+      break;
+
+    case LexemeType.String:
+      result = parseStringLiteral(context);
       break;
 
     default:
@@ -382,7 +411,76 @@ function parseExpression(context: ParserContext): Either<Expression, ParserError
       };
   }
 
+  if (result.error == null) {
+    lexeme = peekNonTrivialLexeme(context);
+    if (lexeme.type == LexemeType.OpenParen) {
+      result = parseCallExpression(context, <Expression>result.value);
+    }
+  }
+
   return mergeLeadingTriviaIntoValue(result, leadingTrivia);
+}
+
+function parseCallExpression(context: ParserContext, expression: Expression): Either<CallExpression, ParserError> {
+  console.info(parseCallExpression.name);
+  const leadingTrivia = parseTrivia(context);
+  let lexeme = expectLexeme(context, LexemeType.OpenParen, parseCallExpression.name);
+
+  if (lexeme.error != null) {
+    return { error: lexeme.error };
+  }
+
+  incrementLexeme(context);
+  const args = parseCallExpressionArguments(context);
+
+  if (args.error != null) {
+    return { error: lexeme.error };
+  }
+
+  lexeme = expectLexeme(context, LexemeType.CloseParen, parseCallExpression.name);
+
+  if (lexeme.error != null) {
+    return { error: lexeme.error };
+  }
+
+  incrementLexeme(context);
+
+  return {
+    value: {
+      kind: SyntaxKind.CallExpression,
+      expression,
+      arguments: <Array<Expression>>args.value,
+      leadingTrivia,
+    },
+  };
+}
+
+function parseCallExpressionArguments(context: ParserContext): Either<Array<Expression>, ParserError> {
+  console.info(parseCallExpressionArguments.name);
+  const leadingTrivia = parseTrivia(context);
+  const args: Array<Expression> = [];
+
+  let lexeme = getLexeme(context);
+  while (!isEOF(context) && lexeme.type != LexemeType.CloseParen) {
+    const expression = parseExpression(context);
+
+    if (expression.error != null) {
+      return { error: expression.error };
+    }
+
+    args.push(<Expression>expression.value);
+
+    lexeme = getLexeme(context);
+
+    if (lexeme.type == LexemeType.Comma) {
+      incrementLexeme(context);
+      lexeme = getLexeme(context);
+    }
+  }
+
+  return {
+    value: args,
+  };
 }
 
 function parseTypeName(context: ParserContext): Either<TypeName, ParserError> {
@@ -412,6 +510,8 @@ function parseIdentifier(context: ParserContext): Either<Identifier, ParserError
     return { error: lexeme.error };
   }
 
+  incrementLexeme(context);
+
   return {
     value: {
       kind: SyntaxKind.Identifier,
@@ -424,10 +524,10 @@ function parseIdentifier(context: ParserContext): Either<Identifier, ParserError
 function parseIntegerLiteral(context: ParserContext): Either<IntegerLiteral, ParserError> {
   console.info(parseIntegerLiteral.name);
   const leadingTrivia = parseTrivia(context);
-  const integer = expectLexeme(context, LexemeType.Integer, parseIntegerLiteral.name);
+  const lexeme = expectLexeme(context, LexemeType.Integer, parseIntegerLiteral.name);
 
-  if (integer.error != null) {
-    return { error: integer.error };
+  if (lexeme.error != null) {
+    return { error: lexeme.error };
   }
 
   incrementLexeme(context);
@@ -435,7 +535,27 @@ function parseIntegerLiteral(context: ParserContext): Either<IntegerLiteral, Par
   return {
     value: {
       kind: SyntaxKind.IntegerLiteral,
-      value: <string>integer.value?.text,
+      value: <string>lexeme.value?.text,
+      leadingTrivia,
+    },
+  };
+}
+
+function parseStringLiteral(context: ParserContext): Either<StringLiteral, ParserError> {
+  console.info(parseStringLiteral.name);
+  const leadingTrivia = parseTrivia(context);
+  const lexeme = expectLexeme(context, LexemeType.String, parseIntegerLiteral.name);
+
+  if (lexeme.error != null) {
+    return { error: lexeme.error };
+  }
+
+  incrementLexeme(context);
+
+  return {
+    value: {
+      kind: SyntaxKind.StringLiteral,
+      value: <string>lexeme.value?.text,
       leadingTrivia,
     },
   };

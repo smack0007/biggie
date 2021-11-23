@@ -1,10 +1,13 @@
 import {
+  CallExpression,
   Expression,
   ExpressionStatement,
   FunctionDeclaration,
+  Identifier,
   IntegerLiteral,
   ReturnStatement,
   SourceFile,
+  StringLiteral,
   SyntaxKind,
   SyntaxNode,
 } from "../frontend/ast";
@@ -73,7 +76,7 @@ function outputFunctionDeclaration(
 function outputBlockLevelStatement(context: BackendContext, sourceFile: SourceFile, node: SyntaxNode) {
   switch (node.kind) {
     case SyntaxKind.ExpressionStatement:
-      outputExpression(context, sourceFile, (<ExpressionStatement>node).expression);
+      outputExpressionStatement(context, sourceFile, <ExpressionStatement>node);
       break;
 
     case SyntaxKind.ReturnStatement:
@@ -84,6 +87,15 @@ function outputBlockLevelStatement(context: BackendContext, sourceFile: SourceFi
       outputUnexpectedNode(context, outputBlockLevelStatement.name, sourceFile, node);
       break;
   }
+}
+
+function outputExpressionStatement(
+  context: BackendContext,
+  sourceFile: SourceFile,
+  expressionStatement: ExpressionStatement
+) {
+  outputExpression(context, sourceFile, expressionStatement.expression);
+  context.output(";\n");
 }
 
 function outputReturnStatement(context: BackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
@@ -98,12 +110,20 @@ function outputReturnStatement(context: BackendContext, sourceFile: SourceFile, 
 
 function outputExpression(context: BackendContext, sourceFile: SourceFile, expression: Expression) {
   switch (expression.kind) {
-    //   case SyntaxKind.CallExpression:
-    //     parseCallExpression(sourceFile, expression as ts.CallExpression);
-    //     break;
+    case SyntaxKind.CallExpression:
+      outputCallExpression(context, sourceFile, <CallExpression>expression);
+      break;
+
+    case SyntaxKind.Identifier:
+      outputIdentifier(context, sourceFile, <Identifier>expression);
+      break;
 
     case SyntaxKind.IntegerLiteral:
       outputIntegerLiteral(context, sourceFile, <IntegerLiteral>expression);
+      break;
+
+    case SyntaxKind.StringLiteral:
+      outputStringLiteral(context, sourceFile, <StringLiteral>expression);
       break;
 
     default:
@@ -112,10 +132,29 @@ function outputExpression(context: BackendContext, sourceFile: SourceFile, expre
   }
 }
 
-// function parseCallExpression(context: BackendContext, sourceFile: SourceFile, callExpression: ts.CallExpression) {
-//   context.output(callExpression.getText());
-// }
+function outputCallExpression(context: BackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
+  outputExpression(context, sourceFile, callExpression.expression);
+  context.output("(");
+
+  for (let i = 0; i < callExpression.arguments.length; i++) {
+    if (i != 0) {
+      context.output(", ");
+    }
+
+    outputExpression(context, sourceFile, callExpression.arguments[i]);
+  }
+
+  context.output(")");
+}
+
+function outputIdentifier(context: BackendContext, sourceFile: SourceFile, identifier: Identifier) {
+  context.output(identifier.value);
+}
 
 function outputIntegerLiteral(context: BackendContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
   context.output(integerLiteral.value);
+}
+
+function outputStringLiteral(context: BackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
+  context.output(stringLiteral.value);
 }
