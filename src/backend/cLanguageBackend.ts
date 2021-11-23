@@ -7,7 +7,7 @@ import {
   SourceFile,
   SyntaxKind,
   SyntaxNode,
-} from "./ast";
+} from "../frontend/ast";
 import { BackendContext } from "./backend";
 
 export function outputCLanguage(sourceFile: SourceFile, context: BackendContext): void {

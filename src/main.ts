@@ -1,8 +1,8 @@
 import * as fs from "fs";
-import { SourceFile } from "./ast";
-import { outputCLanguage } from "./cLanguageBackend";
-import { lex, LexemeType } from "./lexer";
-import { parse, ParserErrorKind } from "./parser";
+import { SourceFile } from "./frontend/ast";
+import { outputCLanguage } from "./backend/cLanguageBackend";
+import { lex, LexemeType } from "./frontend/lexer";
+import { parse, ParserErrorKind } from "./frontend/parser";
 
 process.exit(main(process.argv.slice(2)));
 

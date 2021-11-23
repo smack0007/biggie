@@ -14,7 +14,7 @@ import {
   IntegerLiteral,
 } from "./ast";
 import { Lexeme, LexemeType } from "./lexer";
-import { Either, int, OrNull } from "./shims";
+import { Either, int, OrNull } from "../shims";
 
 interface ParserContext {
   fileName: string;

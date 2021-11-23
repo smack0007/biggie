@@ -19,6 +19,8 @@
   
 <Identifier> ::= (<letter> | <identifierSymbol>) (<letter> | <digit> | <identifierSymbol>)*
 
+<IntegerLiteral> ::= <digit>*
+
 <identifierSymbol ::= "_"
   
 <letter> ::= "[A-Za-z]"

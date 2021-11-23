@@ -1,4 +1,4 @@
-import { char, int } from "./shims";
+import { char, int } from "../shims";
 
 export enum LexemeType {
   // Used internally to indicate we're currently looking for a lexeme.
