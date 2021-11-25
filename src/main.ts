@@ -17,7 +17,9 @@ function main(argv: string[]): i32 {
     );
   }
 
-  const sourceFile = parse(fileName, lexemes);
+  const sourceFile = parse(fileName, lexemes, {
+    enter: (name: string) => console.info(name),
+  });
 
   if (sourceFile.error != null) {
     process.stderr.write(

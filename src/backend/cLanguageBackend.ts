@@ -156,5 +156,7 @@ function outputIntegerLiteral(context: BackendContext, sourceFile: SourceFile, i
 }
 
 function outputStringLiteral(context: BackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
+  context.output('"');
   context.output(stringLiteral.value);
+  context.output('"');
 }
