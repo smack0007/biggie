@@ -13,7 +13,7 @@ import {
 } from "../frontend/ast";
 import { BackendContext } from "./backend";
 
-export function outputCLanguage(sourceFile: SourceFile, context: BackendContext): void {
+export function outputC(sourceFile: SourceFile, context: BackendContext): void {
   outputPreamble(context);
 
   for (const statement of sourceFile.statements) {

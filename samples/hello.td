@@ -3,5 +3,5 @@ function main(): i32 {
     "Hello %s!",
     "World"
   );
-  return 0;
+  return 42;
 }
