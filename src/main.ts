@@ -51,7 +51,7 @@ async function compileWat(
   wat: string,
   imports: WebAssembly.Imports = {}
 ): Promise<WebAssembly.WebAssemblyInstantiatedSource> {
-  const wabt = await require("../ext/wabt/libwabt")();
+  const wabt = (await import("../ext/wabt/libwabt"))();
   const parsed = wabt.parseWat("file.wat", wat);
   parsed.resolveNames();
   parsed.validate();
