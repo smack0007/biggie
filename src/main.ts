@@ -1,4 +1,5 @@
-import * as fs from "fs";
+import { readFile } from "fs/promises";
+import { TextDecoder } from "util";
 import libwabt from "wabt";
 import { SourceFile } from "./frontend/ast";
 import { outputC } from "./backend/cBackend";
@@ -15,16 +16,17 @@ interface WasmAssembly {
 async function main(argv: string[]): Promise<i32> {
   const fileName = argv[0];
 
-  const lexemes = lex(fs.readFileSync(fileName, "utf8"));
+  const lexemes = lex(await readFile(fileName, "utf8"));
 
-  for (const lexeme of lexemes) {
-    console.info(
-      `Type: ${LexemeType[lexeme.type]}, Value: <${lexeme.text ?? ""}>, Line: ${lexeme.line}, Column: ${lexeme.column}`
-    );
-  }
+  // for (const lexeme of lexemes) {
+  //   console.info(
+  //     `Type: ${LexemeType[lexeme.type]}, Value: <${lexeme.text ?? ""}>, Line: ${lexeme.line}, Column: ${lexeme.column}`
+  //   );
+  // }
 
   const sourceFile = parse(fileName, lexemes, {
-    enter: (name: string) => console.info(name),
+    enter: (name: string) => {},
+    // enter: (name: string) => console.info(name),
   });
 
   if (sourceFile.error != null) {
@@ -40,12 +42,29 @@ async function main(argv: string[]): Promise<i32> {
     //   output: process.stdout.write.bind(process.stdout),
     // });
     outputWat(<SourceFile>sourceFile.value, {
-      output: (value: string) => {
+      append: (value: string) => {
         buffer += value;
+      },
+      prepend: (value: string) => {
+        buffer = value + buffer;
       },
     });
 
-    const wasm = await compileWat(buffer);
+    console.info(buffer);
+
+    const memory = new WebAssembly.Memory({ initial: 1 });
+
+    const wasm = await compileWat(buffer, {
+      js: {
+        memory,
+        println: (offset: number, length: number) => {
+          const bytes = new Uint8Array(memory.buffer, offset, length);
+          const string = new TextDecoder("utf-8").decode(bytes);
+          console.info(string);
+        },
+      },
+    });
+
     console.info((wasm.instance.exports as unknown as WasmAssembly).main());
   }
 

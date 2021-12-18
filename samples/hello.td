@@ -1,7 +1,6 @@
 function main(): i32 {
-  printf(
-    "Hello %s!",
-    "World"
+  println(
+    "Hello World!"
   );
   return 42;
 }

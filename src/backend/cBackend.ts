@@ -22,11 +22,11 @@ export function outputC(sourceFile: SourceFile, context: BackendContext): void {
 }
 
 function outputPreamble(context: BackendContext): void {
-  context.output("#include <stdint.h>\n");
-  context.output("typedef int32_t i32;\n");
-  context.output("\n");
-  context.output("int printf(const char *format, ...);\n");
-  context.output("\n");
+  context.append("#include <stdint.h>\n");
+  context.append("typedef int32_t i32;\n");
+  context.append("\n");
+  context.append("int printf(const char *format, ...);\n");
+  context.append("\n");
 }
 
 function outputUnexpectedNode(
@@ -35,11 +35,11 @@ function outputUnexpectedNode(
   sourceFile: SourceFile,
   node: SyntaxNode
 ): void {
-  context.output(`/* Unexpected node in ${functionName}:\n`);
+  context.append(`/* Unexpected node in ${functionName}:\n`);
   // const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
   // context.output(`${sourceFile.fileName} (${line + 1},${character + 1}) ${SyntaxKind[node.kind]} ${message}`);
-  context.output(`${sourceFile.fileName} ${SyntaxKind[node.kind]}`);
-  context.output("*/\n");
+  context.append(`${sourceFile.fileName} ${SyntaxKind[node.kind]}`);
+  context.append("*/\n");
 }
 
 function outputTopLevelStatement(context: BackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
@@ -62,7 +62,7 @@ function outputFunctionDeclaration(
   const returnType: string = functionDeclaration.returnType.name.value;
   const name: string = functionDeclaration.name.value;
 
-  context.output(`${returnType} ${name}() {\n`);
+  context.append(`${returnType} ${name}() {\n`);
 
   if (functionDeclaration.body?.statements) {
     for (const statement of functionDeclaration.body.statements) {
@@ -70,7 +70,7 @@ function outputFunctionDeclaration(
     }
   }
 
-  context.output(`}\n`);
+  context.append(`}\n`);
 }
 
 function outputBlockLevelStatement(context: BackendContext, sourceFile: SourceFile, node: SyntaxNode) {
@@ -95,17 +95,17 @@ function outputExpressionStatement(
   expressionStatement: ExpressionStatement
 ) {
   outputExpression(context, sourceFile, expressionStatement.expression);
-  context.output(";\n");
+  context.append(";\n");
 }
 
 function outputReturnStatement(context: BackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
-  context.output("return ");
+  context.append("return ");
 
   if (returnStatement.expression) {
     outputExpression(context, sourceFile, returnStatement.expression);
   }
 
-  context.output(";\n");
+  context.append(";\n");
 }
 
 function outputExpression(context: BackendContext, sourceFile: SourceFile, expression: Expression) {
@@ -134,29 +134,29 @@ function outputExpression(context: BackendContext, sourceFile: SourceFile, expre
 
 function outputCallExpression(context: BackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
   outputExpression(context, sourceFile, callExpression.expression);
-  context.output("(");
+  context.append("(");
 
   for (let i = 0; i < callExpression.arguments.length; i++) {
     if (i != 0) {
-      context.output(", ");
+      context.append(", ");
     }
 
     outputExpression(context, sourceFile, callExpression.arguments[i]);
   }
 
-  context.output(")");
+  context.append(")");
 }
 
 function outputIdentifier(context: BackendContext, sourceFile: SourceFile, identifier: Identifier) {
-  context.output(identifier.value);
+  context.append(identifier.value);
 }
 
 function outputIntegerLiteral(context: BackendContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
-  context.output(integerLiteral.value);
+  context.append(integerLiteral.value);
 }
 
 function outputStringLiteral(context: BackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
-  context.output('"');
-  context.output(stringLiteral.value);
-  context.output('"');
+  context.append('"');
+  context.append(stringLiteral.value);
+  context.append('"');
 }

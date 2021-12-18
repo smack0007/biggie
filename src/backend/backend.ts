@@ -1,3 +1,4 @@
 export interface BackendContext {
-  output: (value: string) => void;
+  append: (value: string) => void;
+  prepend: (value: string) => void;
 }
