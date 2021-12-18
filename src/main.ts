@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import libwabt from "wabt";
 import { SourceFile } from "./frontend/ast";
 import { outputC } from "./backend/cBackend";
 import { lex, LexemeType } from "./frontend/lexer";
@@ -6,6 +7,10 @@ import { parse, ParserErrorKind } from "./frontend/parser";
 import { outputWat } from "./backend/watBackend";
 
 main(process.argv.slice(2)).then(process.exit);
+
+interface WasmAssembly {
+  main(): number;
+}
 
 async function main(argv: string[]): Promise<i32> {
   const fileName = argv[0];
@@ -41,7 +46,7 @@ async function main(argv: string[]): Promise<i32> {
     });
 
     const wasm = await compileWat(buffer);
-    console.info(wasm.instance.exports.main());
+    console.info((wasm.instance.exports as unknown as WasmAssembly).main());
   }
 
   return 0;
@@ -51,7 +56,7 @@ async function compileWat(
   wat: string,
   imports: WebAssembly.Imports = {}
 ): Promise<WebAssembly.WebAssemblyInstantiatedSource> {
-  const wabt = await (await import("../ext/wabt/libwabt"))();
+  const wabt = await libwabt();
   const parsed = wabt.parseWat("file.wat", wat);
   parsed.resolveNames();
   parsed.validate();
