@@ -126,16 +126,29 @@ function outputFunctionDeclaration(
   sourceFile: SourceFile,
   functionDeclaration: FunctionDeclaration
 ): void {
-  const returnType: string = functionDeclaration.returnType.name.value;
   const name: string = functionDeclaration.name.value;
 
   context.indent();
   context.append(`(func $${name} (export "${name}")`);
 
-  // TODO: Function arguments
+  for (const arg of functionDeclaration.arguments) {
+    const argName: string = arg.name.value;
+    const argType: string = arg.type.value;
 
+    if (argType == "string") {
+      context.append(` (param $${argName}__offset i32) (param $${argName}__length i32)`);
+    } else {
+      context.append(` (param $${argName} ${argType})`);
+    }
+  }
+
+  const returnType: string = functionDeclaration.returnType.name.value;
   if (returnType !== "void") {
-    context.append(` (result ${returnType})`);
+    if (returnType === "string") {
+      context.append(` (result i32)`);
+    } else {
+      context.append(` (result ${returnType})`);
+    }
   }
 
   context.append("\n");

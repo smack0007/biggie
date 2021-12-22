@@ -7,13 +7,15 @@ export enum SyntaxKind {
 
   IntegerLiteral,
 
+  FunctionArgument,
+
   FunctionDeclaration,
 
   Identifier,
 
-  SourceFile,
-
   ReturnStatement,
+  
+  SourceFile,
 
   Statement,
 
@@ -55,7 +57,17 @@ export interface FunctionDeclaration extends Statement {
 
   readonly name: Identifier;
 
+  readonly arguments: Array<FunctionArgument>;
+
   readonly returnType: TypeName;
+}
+
+export interface FunctionArgument extends SyntaxNode {
+  readonly kind: SyntaxKind.FunctionArgument;
+  
+  readonly name: Identifier;
+
+  readonly type: Identifier;
 }
 
 export interface ExpressionStatement extends Statement {

@@ -14,6 +14,7 @@ import {
   IntegerLiteral,
   StringLiteral,
   CallExpression,
+  FunctionArgument,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
@@ -67,6 +68,13 @@ function check(context: ParserContext, type: TokenType): bool {
   return peek(context).type == type;
 }
 
+function checkNonTrivial(context: ParserContext, type: TokenType): bool {
+  if (isEOF(context)) {
+    return false;
+  }
+  return peekNonTrivial(context).type == type;
+}
+
 function isEOF(context: ParserContext): bool {
   if (context.index >= context.tokens.length) {
     return true;
@@ -75,6 +83,16 @@ function isEOF(context: ParserContext): bool {
 }
 
 function match(context: ParserContext, ...types: Array<TokenType>): bool {
+  for (const type of types) {
+    if (check(context, type)) {
+      advance(context);
+      return true;
+    }
+  }
+  return false;
+}
+
+function matchNonTrivial(context: ParserContext, ...types: Array<TokenType>): bool {
   for (const type of types) {
     if (check(context, type)) {
       advance(context);
@@ -274,9 +292,19 @@ function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclar
     return { error: token.error };
   }
 
-  // TODO: Function Args
-
   advance(context);
+
+  const args: Array<FunctionArgument> = [];
+  while (checkNonTrivial(context, TokenType.Identifier)) {
+    const arg = parseFunctionArgument(context);
+
+    if (arg.error) {
+      return { error: arg.error };
+    }
+
+    args.push(<FunctionArgument>arg.value);
+  }
+
   token = expect(context, TokenType.CloseParen, parseFunctionDeclaration.name);
 
   if (token.error != null) {
@@ -305,7 +333,42 @@ function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclar
       kind: SyntaxKind.FunctionDeclaration,
       body: <StatementBlock>body.value,
       name: <Identifier>identifier.value,
+      arguments: args,
       returnType: <TypeName>returnType.value,
+      leadingTrivia,
+    },
+  };
+}
+
+function parseFunctionArgument(context: ParserContext): Result<FunctionArgument, ParserError> {
+  context.logger.enter(parseFunctionArgument.name);
+  const leadingTrivia = parseTrivia(context);
+
+  const name = parseIdentifier(context);
+
+  if (name.error != null) {
+    return { error: name.error };
+  }
+
+  const token = expect(context, TokenType.Colon, parseFunctionArgument.name);
+
+  if (token.error != null) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  const type = parseIdentifier(context);
+
+  if (type.error != null) {
+    return { error: type.error };
+  }
+
+  return {
+    value: {
+      kind: SyntaxKind.FunctionArgument,
+      name: <Identifier>name.value,
+      type: <Identifier>type.value,
       leadingTrivia,
     },
   };
