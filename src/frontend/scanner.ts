@@ -1,7 +1,7 @@
 import { char, int } from "../shims";
 
-export enum LexemeType {
-  // Used internally to indicate we're currently looking for a lexeme.
+export enum TokenType {
+  // Used internally to indicate we're currently looking for a token.
   Unknown = 0,
 
   // Whitespace
@@ -151,12 +151,12 @@ export enum LexemeType {
   // ||
   LogicalOr,
 
-  // Used to indicate the end of a list of Lexemes.
+  // Used to indicate the end of a list of tokens.
   EOF,
 }
 
-export interface Lexeme {
-  type: LexemeType;
+export interface Token {
+  type: TokenType;
   text: string | null;
   line: int;
   column: int;
@@ -185,26 +185,26 @@ function isLetter(ch: char): boolean {
   return ch.toUpperCase() != ch.toLowerCase() || <number>ch.codePointAt(0) > 127;
 }
 
-export function lex(text: string): Array<Lexeme> {
+export function scan(text: string): Array<Token> {
   text += "\n"; // Ensure new line at EOF
 
-  const lexemes: Array<Lexeme> = [];
+  const token: Array<Token> = [];
 
-  let output = false; // If true, write the lexeme.
-  let value = ""; // The current value of the lexeme.
-  let type = LexemeType.Unknown;
+  let output = false; // If true, write the token.
+  let value = ""; // The current value of the token.
+  let type = TokenType.Unknown;
   let isFloatingPoint = false; // For parsing numbers
 
   let line = 0,
-    column = 0; // Current position of the lexeme being parsed.
+    column = 0; // Current position of the token being parsed.
   let curLine = 1,
     curColumn = 0; // Current position of parsing.
 
   for (let i = 0; i < text.length - 1; i += 1) {
     curColumn += 1;
 
-    if (type == LexemeType.Unknown) {
-      // We're looking for a lexeme
+    if (type == TokenType.Unknown) {
+      // We're looking for a token
       line = curLine;
       column = curColumn;
 
@@ -220,119 +220,119 @@ export function lex(text: string): Array<Lexeme> {
           }
         }
 
-        lexemes.push({ type: LexemeType.Whitespace, text: value, line: line, column: column });
+        token.push({ type: TokenType.Whitespace, text: value, line: line, column: column });
         value = "";
         continue;
       } else if (text[i] == "'") {
         // Start of a char
-        type = LexemeType.Char;
+        type = TokenType.Char;
       } else if (text[i] == '"') {
         // Start of a string
-        type = LexemeType.String;
+        type = TokenType.String;
       } else if (text[i] == ";") {
         // End Statement
-        lexemes.push({ type: LexemeType.EndStatement, text: null, line: line, column: column });
+        token.push({ type: TokenType.EndStatement, text: null, line: line, column: column });
       } else if (text[i] == ".") {
         // Period
-        lexemes.push({ type: LexemeType.Dot, text: null, line: line, column: column });
+        token.push({ type: TokenType.Dot, text: null, line: line, column: column });
       } else if (text[i] == ",") {
         // Period
-        lexemes.push({ type: LexemeType.Comma, text: null, line: line, column: column });
+        token.push({ type: TokenType.Comma, text: null, line: line, column: column });
       } else if (text[i] == "(") {
         // OpenParen
-        lexemes.push({ type: LexemeType.OpenParen, text: null, line: line, column: column });
+        token.push({ type: TokenType.OpenParen, text: null, line: line, column: column });
       } else if (text[i] == ")") {
         // CloseParen
-        lexemes.push({ type: LexemeType.CloseParen, text: null, line: line, column: column });
+        token.push({ type: TokenType.CloseParen, text: null, line: line, column: column });
       } else if (text[i] == "[") {
         // OpenBracket
-        lexemes.push({ type: LexemeType.OpenBracket, text: null, line: line, column: column });
+        token.push({ type: TokenType.OpenBracket, text: null, line: line, column: column });
       } else if (text[i] == "]") {
         // CloseBracket
-        lexemes.push({ type: LexemeType.CloseBracket, text: null, line: line, column: column });
+        token.push({ type: TokenType.CloseBracket, text: null, line: line, column: column });
       } else if (text[i] == "{") {
         // OpenBrace
-        lexemes.push({ type: LexemeType.OpenBrace, text: null, line: line, column: column });
+        token.push({ type: TokenType.OpenBrace, text: null, line: line, column: column });
       } else if (text[i] == "}") {
         // CloseBrace
-        lexemes.push({ type: LexemeType.CloseBrace, text: null, line: line, column: column });
+        token.push({ type: TokenType.CloseBrace, text: null, line: line, column: column });
       } else if (text[i] == ":") {
-        lexemes.push({ type: LexemeType.Colon, text: null, line: line, column: column });
+        token.push({ type: TokenType.Colon, text: null, line: line, column: column });
       } else if (text[i] == "=") {
         // Gets or EqualTo or MapsTo
         if (i + 1 < text.length && text[i + 1] == "=") {
-          lexemes.push({ type: LexemeType.EqualTo, text: null, line: line, column: column });
+          token.push({ type: TokenType.EqualTo, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
-          lexemes.push({ type: LexemeType.Assignment, text: null, line: line, column: column });
+          token.push({ type: TokenType.Assignment, text: null, line: line, column: column });
         }
       } else if (text[i] == "!") {
         // Not or NotEqualTo
         if (i + 1 < text.length && text[i + 1] == "=") {
-          lexemes.push({ type: LexemeType.NotEqualTo, text: null, line: line, column: column });
+          token.push({ type: TokenType.NotEqualTo, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
-          lexemes.push({ type: LexemeType.LogicalNot, text: null, line: line, column: column });
+          token.push({ type: TokenType.LogicalNot, text: null, line: line, column: column });
         }
       } else if (text[i] == ">") {
         if (i + 1 < text.length && text[i + 1] == "=") {
-          lexemes.push({ type: LexemeType.GreaterThanOrEqualTo, text: null, line: line, column: column });
+          token.push({ type: TokenType.GreaterThanOrEqualTo, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
-          lexemes.push({ type: LexemeType.GreaterThan, text: null, line: line, column: column });
+          token.push({ type: TokenType.GreaterThan, text: null, line: line, column: column });
         }
       } else if (text[i] == "<") {
         if (i + 1 < text.length && text[i + 1] == "=") {
-          lexemes.push({ type: LexemeType.LessThanOrEqualTo, text: null, line: line, column: column });
+          token.push({ type: TokenType.LessThanOrEqualTo, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
-          lexemes.push({ type: LexemeType.LessThan, text: null, line: line, column: column });
+          token.push({ type: TokenType.LessThan, text: null, line: line, column: column });
         }
       } else if (text[i] == "+") {
         // Plus or PlusGets
         if (i + 1 < text.length && text[i + 1] == "=") {
-          lexemes.push({ type: LexemeType.PlusGets, text: null, line: line, column: column });
+          token.push({ type: TokenType.PlusGets, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
-          lexemes.push({ type: LexemeType.Plus, text: null, line: line, column: column });
+          token.push({ type: TokenType.Plus, text: null, line: line, column: column });
         }
       } else if (text[i] == "-") {
         // Minus or MinusGets
         if (i + 1 < text.length && !isWhitespace(text[i + 1])) {
           if (text[i + 1] == "=") {
-            lexemes.push({ type: LexemeType.MinusGets, text: null, line: line, column: column });
+            token.push({ type: TokenType.MinusGets, text: null, line: line, column: column });
             i += 1;
             curColumn += 1;
           } else if (isNumber(text[i + 1])) {
-            type = LexemeType.Numeric;
+            type = TokenType.Numeric;
             value += "-";
             value += text[i + 1];
             i += 1;
             curColumn += 1;
           } else {
-            lexemes.push({ type: LexemeType.Minus, text: null, line: line, column: column });
+            token.push({ type: TokenType.Minus, text: null, line: line, column: column });
           }
         } else {
-          lexemes.push({ type: LexemeType.Minus, text: null, line: line, column: column });
+          token.push({ type: TokenType.Minus, text: null, line: line, column: column });
         }
       } else if (text[i] == "*") {
         // Multiply or MultiplyGets
         if (i + 1 < text.length && text[i + 1] != "=") {
-          lexemes.push({ type: LexemeType.Multiply, text: null, line: line, column: column });
+          token.push({ type: TokenType.Multiply, text: null, line: line, column: column });
         } else {
-          lexemes.push({ type: LexemeType.MultiplyGets, text: null, line: line, column: column });
+          token.push({ type: TokenType.MultiplyGets, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         }
       } else if (text[i] == "/") {
         // Divide or DivideGets or Comments
         if (i + 1 < text.length && text[i + 1] == "=") {
-          lexemes.push({ type: LexemeType.DivideGets, text: null, line: line, column: column });
+          token.push({ type: TokenType.DivideGets, text: null, line: line, column: column });
           i++;
         } else if (i + 1 < text.length && text[i + 1] == "/") {
           // Single line comment
@@ -353,32 +353,32 @@ export function lex(text: string): Array<Lexeme> {
             curColumn += 1;
           }
         } else {
-          lexemes.push({ type: LexemeType.Divide, text: null, line: line, column: column });
+          token.push({ type: TokenType.Divide, text: null, line: line, column: column });
         }
       } else if (text[i] == "&" && i + 1 < text.length && text[i + 1] == "&") {
         // And
-        lexemes.push({ type: LexemeType.LogicalAnd, text: null, line: line, column: column });
+        token.push({ type: TokenType.LogicalAnd, text: null, line: line, column: column });
         i += 1;
         curColumn += 1;
       } else if (text[i] == "|") {
         // LogicalOr or ClosePipeBracket
         if (i + 1 < text.length) {
           if (text[i + 1] == "|") {
-            lexemes.push({ type: LexemeType.LogicalOr, text: null, line: line, column: column });
+            token.push({ type: TokenType.LogicalOr, text: null, line: line, column: column });
             i += 1;
             curColumn += 1;
           }
         }
       } else if (isLetter(text[i]) || text[i] == "_") {
         // Identifier
-        type = LexemeType.Identifier;
+        type = TokenType.Identifier;
         value += text[i];
       } else if (isNumber(text[i])) {
         // Numeric
-        type = LexemeType.Numeric;
+        type = TokenType.Numeric;
         value += text[i];
       }
-    } else if (type == LexemeType.Char) {
+    } else if (type == TokenType.Char) {
       // We're inside a char
 
       if (text[i] != "'") {
@@ -388,7 +388,7 @@ export function lex(text: string): Array<Lexeme> {
       } else {
         output = true;
       }
-    } else if (type == LexemeType.String) {
+    } else if (type == TokenType.String) {
       // We're inside a string
 
       if (text[i] != '"') {
@@ -398,7 +398,7 @@ export function lex(text: string): Array<Lexeme> {
       } else {
         output = true;
       }
-    } else if (type == LexemeType.Identifier) {
+    } else if (type == TokenType.Identifier) {
       // We're inside an identifier
       if (isLetter(text[i]) || isNumber(text[i]) || text[i] == "_") {
         value += text[i];
@@ -407,7 +407,7 @@ export function lex(text: string): Array<Lexeme> {
         i -= 1;
         curColumn -= 1;
       }
-    } else if (type == LexemeType.Numeric) {
+    } else if (type == TokenType.Numeric) {
       // We're inside a numeric
       if (isNumber(text[i])) {
         value += text[i];
@@ -422,97 +422,97 @@ export function lex(text: string): Array<Lexeme> {
     }
 
     if (output) {
-      // We've reached the end of a long lexeme
-      if (type == LexemeType.Identifier) {
+      // We've reached the end of a long token
+      if (type == TokenType.Identifier) {
         switch (value) {
           case "import":
-            lexemes.push({ type: LexemeType.Import, text: null, line: line, column: column });
+            token.push({ type: TokenType.Import, text: null, line: line, column: column });
             break;
 
           case "const":
-            lexemes.push({ type: LexemeType.Const, text: null, line: line, column: column });
+            token.push({ type: TokenType.Const, text: null, line: line, column: column });
             break;
 
           case "let":
-            lexemes.push({ type: LexemeType.Let, text: null, line: line, column: column });
+            token.push({ type: TokenType.Let, text: null, line: line, column: column });
             break;
 
           case "func":
           case "function":
-            lexemes.push({ type: LexemeType.Func, text: null, line: line, column: column });
+            token.push({ type: TokenType.Func, text: null, line: line, column: column });
             break;
 
           case "return":
-            lexemes.push({ type: LexemeType.Return, text: null, line: line, column: column });
+            token.push({ type: TokenType.Return, text: null, line: line, column: column });
             break;
 
           case "if":
-            lexemes.push({ type: LexemeType.If, text: null, line: line, column: column });
+            token.push({ type: TokenType.If, text: null, line: line, column: column });
             break;
 
           case "else":
-            lexemes.push({ type: LexemeType.Else, text: null, line: line, column: column });
+            token.push({ type: TokenType.Else, text: null, line: line, column: column });
             break;
 
           case "while":
-            lexemes.push({ type: LexemeType.While, text: null, line: line, column: column });
+            token.push({ type: TokenType.While, text: null, line: line, column: column });
             break;
 
           case "for":
-            lexemes.push({ type: LexemeType.For, text: null, line: line, column: column });
+            token.push({ type: TokenType.For, text: null, line: line, column: column });
             break;
 
           case "of":
-            lexemes.push({ type: LexemeType.Of, text: null, line: line, column: column });
+            token.push({ type: TokenType.Of, text: null, line: line, column: column });
             break;
 
           case "null":
-            lexemes.push({ type: LexemeType.Null, text: null, line: line, column: column });
+            token.push({ type: TokenType.Null, text: null, line: line, column: column });
             break;
 
           case "true":
-            lexemes.push({ type: LexemeType.True, text: null, line: line, column: column });
+            token.push({ type: TokenType.True, text: null, line: line, column: column });
             break;
 
           case "false":
-            lexemes.push({ type: LexemeType.False, text: null, line: line, column: column });
+            token.push({ type: TokenType.False, text: null, line: line, column: column });
             break;
 
           default:
-            lexemes.push({ type: type, text: value, line: line, column: column });
+            token.push({ type: type, text: value, line: line, column: column });
             break;
         }
-      } else if (type == LexemeType.Numeric) {
+      } else if (type == TokenType.Numeric) {
         if (isFloatingPoint) {
           if (i + 1 < text.length && text[i + 1] == "f") {
-            type = LexemeType.Float;
+            type = TokenType.Float;
             i += 1;
             curColumn += 1;
           } else {
-            type = LexemeType.Double;
+            type = TokenType.Double;
           }
         } else {
-          type = LexemeType.Integer;
+          type = TokenType.Integer;
         }
 
-        lexemes.push({ type: type, text: value, line: line, column: column });
-      } else if (type == LexemeType.Char) {
-        lexemes.push({ type: type, text: value, line: line, column: column });
-      } else if (type == LexemeType.String) {
-        lexemes.push({ type: type, text: value, line: line, column: column });
+        token.push({ type: type, text: value, line: line, column: column });
+      } else if (type == TokenType.Char) {
+        token.push({ type: type, text: value, line: line, column: column });
+      } else if (type == TokenType.String) {
+        token.push({ type: type, text: value, line: line, column: column });
       }
 
       output = false;
-      type = LexemeType.Unknown;
+      type = TokenType.Unknown;
       isFloatingPoint = false;
       value = "";
     }
   }
 
-  if (type == LexemeType.Unknown) {
+  if (type == TokenType.Unknown) {
     // Add an EOF to mark the end of the script.
-    lexemes.push({ type: LexemeType.EOF, text: null, line: line, column: column });
+    token.push({ type: TokenType.EOF, text: null, line: line, column: column });
   }
 
-  return lexemes;
+  return token;
 }

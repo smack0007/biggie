@@ -3,7 +3,7 @@ import { TextDecoder } from "util";
 import libwabt from "wabt";
 import { SourceFile } from "./frontend/ast";
 import { outputC } from "./backend/cBackend";
-import { lex, LexemeType } from "./frontend/lexer";
+import { scan, TokenType } from "./frontend/scanner";
 import { parse, ParserErrorKind } from "./frontend/parser";
 import { outputWat } from "./backend/watBackend";
 
@@ -16,7 +16,7 @@ interface WasmAssembly {
 async function main(argv: string[]): Promise<i32> {
   const fileName = argv[0];
 
-  const lexemes = lex(await readFile(fileName, "utf8"));
+  const lexemes = scan(await readFile(fileName, "utf8"));
 
   // for (const lexeme of lexemes) {
   //   console.info(

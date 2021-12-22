@@ -15,7 +15,7 @@ import {
   StringLiteral,
   CallExpression,
 } from "./ast";
-import { Lexeme, LexemeType } from "./lexer";
+import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
 
 export interface ParserLogger {
@@ -24,14 +24,14 @@ export interface ParserLogger {
 
 interface ParserContext {
   fileName: string;
-  lexemes: Array<Lexeme>;
+  tokens: Array<Token>;
   logger: ParserLogger;
 
   index: int;
 }
 
 export enum ParserErrorKind {
-  UnexpectedLexemeType,
+  UnexpectedTokenType,
   UnknownTopLevelStatement,
   UnknownBlockLevelStatement,
   UnknownExpression,
@@ -44,76 +44,76 @@ export interface ParserError {
   message?: string;
 }
 
-function createParserError(lexeme: Lexeme, kind: ParserErrorKind, message?: string): ParserError {
+function createParserError(token: Token, kind: ParserErrorKind, message?: string): ParserError {
   return {
     kind,
-    line: lexeme.line,
-    column: lexeme.column,
+    line: token.line,
+    column: token.column,
     message,
   };
 }
 
-function getLexeme(context: ParserContext): Lexeme {
-  return context.lexemes[context.index];
+function getToken(context: ParserContext): Token {
+  return context.tokens[context.index];
 }
 
-function peekNonTrivialLexeme(context: ParserContext): Lexeme {
+function peekNonTrivialToken(context: ParserContext): Token {
   let index = context.index;
-  let lexeme = context.lexemes[index];
+  let token = context.tokens[index];
 
-  while (lexeme.type != LexemeType.EOF && isTriviaLexemeType(lexeme.type)) {
+  while (token.type != TokenType.EOF && isTriviaTokenType(token.type)) {
     index += 1;
-    lexeme = context.lexemes[index];
+    token = context.tokens[index];
   }
 
-  return lexeme;
+  return token;
 }
 
-function expectLexeme(
+function exepectToken(
   context: ParserContext,
-  expectedType: LexemeType,
+  expectedType: TokenType,
   functionName: string
-): Result<Lexeme, ParserError> {
-  const lexeme = getLexeme(context);
+): Result<Token, ParserError> {
+  const token = getToken(context);
 
-  if (lexeme.type != expectedType) {
+  if (token.type != expectedType) {
     return {
       error: createParserError(
-        lexeme,
-        ParserErrorKind.UnexpectedLexemeType,
-        `Expected Lexeme of Type ${LexemeType[expectedType]} but was ${LexemeType[lexeme.type]} at ${functionName}`
+        token,
+        ParserErrorKind.UnexpectedTokenType,
+        `Expected Token of Type ${TokenType[expectedType]} but was ${TokenType[token.type]} at ${functionName}`
       ),
     };
   }
 
-  return { value: lexeme };
+  return { value: token };
 }
 
-function incrementLexeme(context: ParserContext): void {
+function incrementToken(context: ParserContext): void {
   context.index++;
 }
 
 function isEOF(context: ParserContext): bool {
-  if (context.index >= context.lexemes.length) {
+  if (context.index >= context.tokens.length) {
     return true;
   }
 
-  return getLexeme(context).type == LexemeType.EOF;
+  return getToken(context).type == TokenType.EOF;
 }
 
-function isTriviaLexemeType(type: LexemeType): bool {
-  return type == LexemeType.Whitespace;
+function isTriviaTokenType(type: TokenType): bool {
+  return type == TokenType.Whitespace;
 }
 
 function parseTrivia(context: ParserContext): OrNull<SyntaxTrivia> {
-  let lexeme = getLexeme(context);
+  let token = getToken(context);
 
   let value = "";
-  while (isTriviaLexemeType(lexeme.type)) {
-    value += lexeme.text ?? "";
+  while (isTriviaTokenType(token.type)) {
+    value += token.text ?? "";
 
-    incrementLexeme(context);
-    lexeme = getLexeme(context);
+    incrementToken(context);
+    token = getToken(context);
   }
 
   if (value.length == 0) {
@@ -169,14 +169,14 @@ function mergeTrailingTriviaIntoNode(node: SyntaxNode, trailingTrivia: OrNull<Sy
 
 export function parse(
   fileName: string,
-  lexemes: Array<Lexeme>,
+  tokens: Array<Token>,
   logger?: ParserLogger
 ): Result<SourceFile, ParserError> {
   const statements: Array<Statement> = [];
 
   const context: ParserContext = {
     fileName,
-    lexemes,
+    tokens: tokens,
     logger: logger ?? {
       enter: () => {},
     },
@@ -197,7 +197,7 @@ export function parse(
     statements.push(mergeTrailingTriviaIntoNode(<Statement>statement.value, trailingTrivia));
   }
 
-  const eof = expectLexeme(context, LexemeType.EOF, parse.name);
+  const eof = exepectToken(context, TokenType.EOF, parse.name);
 
   if (eof.error != null) {
     return { error: eof.error };
@@ -215,20 +215,20 @@ export function parse(
 function parseTopLevelStatement(context: ParserContext): Result<Statement, ParserError> {
   context.logger.enter(parseTopLevelStatement.name);
   const leadingTrivia = parseTrivia(context);
-  const lexeme = getLexeme(context);
+  const token = getToken(context);
 
   let result: Result<Statement, ParserError>;
-  switch (lexeme.type) {
-    case LexemeType.Func:
+  switch (token.type) {
+    case TokenType.Func:
       result = parseFunctionDeclaration(context);
       break;
 
     default:
       return {
         error: createParserError(
-          lexeme,
+          token,
           ParserErrorKind.UnknownTopLevelStatement,
-          `Lexeme type ${LexemeType[lexeme.type]} unexpected in ${parseTopLevelStatement.name}`
+          `Token type ${TokenType[token.type]} unexpected in ${parseTopLevelStatement.name}`
         ),
       };
   }
@@ -239,45 +239,45 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclaration, ParserError> {
   context.logger.enter(parseFunctionDeclaration.name);
   const leadingTrivia = parseTrivia(context);
-  let lexeme = expectLexeme(context, LexemeType.Func, parseFunctionDeclaration.name);
+  let token = exepectToken(context, TokenType.Func, parseFunctionDeclaration.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
   const identifier = parseIdentifier(context);
 
   if (identifier.error != null) {
     return { error: identifier.error };
   }
 
-  lexeme = expectLexeme(context, LexemeType.OpenParen, parseFunctionDeclaration.name);
+  token = exepectToken(context, TokenType.OpenParen, parseFunctionDeclaration.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
   // TODO: Function Args
 
-  incrementLexeme(context);
-  lexeme = expectLexeme(context, LexemeType.CloseParen, parseFunctionDeclaration.name);
+  incrementToken(context);
+  token = exepectToken(context, TokenType.CloseParen, parseFunctionDeclaration.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
-  lexeme = expectLexeme(context, LexemeType.Colon, parseFunctionDeclaration.name);
+  incrementToken(context);
+  token = exepectToken(context, TokenType.Colon, parseFunctionDeclaration.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
   const returnType = parseTypeName(context);
 
-  incrementLexeme(context);
+  incrementToken(context);
   const body = parseStatementBlock(context);
 
   if (body.error != null) {
@@ -298,16 +298,16 @@ function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclar
 function parseStatementBlock(context: ParserContext): Result<StatementBlock, ParserError> {
   context.logger.enter(parseStatementBlock.name);
   const leadingTrivia = parseTrivia(context);
-  let lexeme = expectLexeme(context, LexemeType.OpenBrace, parseStatementBlock.name);
+  let token = exepectToken(context, TokenType.OpenBrace, parseStatementBlock.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
   const statements: Array<Statement> = [];
 
-  incrementLexeme(context);
-  while (!isEOF(context) && getLexeme(context).type != LexemeType.CloseBrace) {
+  incrementToken(context);
+  while (!isEOF(context) && getToken(context).type != TokenType.CloseBrace) {
     const statement = parseBlockLevelStatement(context);
 
     if (statement.error) {
@@ -319,13 +319,13 @@ function parseStatementBlock(context: ParserContext): Result<StatementBlock, Par
     statements.push(mergeTrailingTriviaIntoNode(<Statement>statement.value, trailingTrivia));
   }
 
-  lexeme = expectLexeme(context, LexemeType.CloseBrace, parseStatementBlock.name);
+  token = exepectToken(context, TokenType.CloseBrace, parseStatementBlock.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
 
   return {
     value: {
@@ -339,11 +339,11 @@ function parseStatementBlock(context: ParserContext): Result<StatementBlock, Par
 function parseBlockLevelStatement(context: ParserContext): Result<Statement, ParserError> {
   context.logger.enter(parseBlockLevelStatement.name);
   const leadingTrivia = parseTrivia(context);
-  const lexeme = getLexeme(context);
+  const token = getToken(context);
 
   let result: Result<Statement, ParserError>;
-  switch (lexeme.type) {
-    case LexemeType.Return:
+  switch (token.type) {
+    case TokenType.Return:
       result = parseReturnStatement(context);
       break;
 
@@ -364,13 +364,13 @@ function parseExpressionStatement(context: ParserContext): Result<ExpressionStat
     return { error: expression.error };
   }
 
-  const lexeme = expectLexeme(context, LexemeType.EndStatement, parseExpressionStatement.name);
+  const token = exepectToken(context, TokenType.EndStatement, parseExpressionStatement.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
 
   return {
     value: {
@@ -384,26 +384,26 @@ function parseExpressionStatement(context: ParserContext): Result<ExpressionStat
 function parseReturnStatement(context: ParserContext): Result<ReturnStatement, ParserError> {
   context.logger.enter(parseReturnStatement.name);
   const leadingTrivia = parseTrivia(context);
-  let lexeme = expectLexeme(context, LexemeType.Return, parseReturnStatement.name);
+  let token = exepectToken(context, TokenType.Return, parseReturnStatement.name);
 
-  if (lexeme.error) {
-    return { error: lexeme.error };
+  if (token.error) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
   const expression = parseExpression(context);
 
   if (expression.error) {
     return { error: expression.error };
   }
 
-  expectLexeme(context, LexemeType.EndStatement, parseReturnStatement.name);
+  exepectToken(context, TokenType.EndStatement, parseReturnStatement.name);
 
-  if (lexeme.error) {
-    return { error: lexeme.error };
+  if (token.error) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
 
   return {
     value: {
@@ -417,35 +417,35 @@ function parseReturnStatement(context: ParserContext): Result<ReturnStatement, P
 function parseExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseExpression.name);
   const leadingTrivia = parseTrivia(context);
-  let lexeme = getLexeme(context);
+  let token = getToken(context);
 
   let result: Result<Expression, ParserError>;
-  switch (lexeme.type) {
-    case LexemeType.Identifier:
+  switch (token.type) {
+    case TokenType.Identifier:
       result = parseIdentifier(context);
       break;
 
-    case LexemeType.Integer:
+    case TokenType.Integer:
       result = parseIntegerLiteral(context);
       break;
 
-    case LexemeType.String:
+    case TokenType.String:
       result = parseStringLiteral(context);
       break;
 
     default:
       return {
         error: createParserError(
-          lexeme,
+          token,
           ParserErrorKind.UnknownExpression,
-          `Lexeme type ${LexemeType[lexeme.type]} unexpected in ${parseExpression.name}`
+          `Token type ${TokenType[token.type]} unexpected in ${parseExpression.name}`
         ),
       };
   }
 
   if (result.error == null) {
-    lexeme = peekNonTrivialLexeme(context);
-    if (lexeme.type == LexemeType.OpenParen) {
+    token = peekNonTrivialToken(context);
+    if (token.type == TokenType.OpenParen) {
       result = parseCallExpression(context, <Expression>result.value);
     }
   }
@@ -456,26 +456,26 @@ function parseExpression(context: ParserContext): Result<Expression, ParserError
 function parseCallExpression(context: ParserContext, expression: Expression): Result<CallExpression, ParserError> {
   context.logger.enter(parseCallExpression.name);
   const leadingTrivia = parseTrivia(context);
-  let lexeme = expectLexeme(context, LexemeType.OpenParen, parseCallExpression.name);
+  let token = exepectToken(context, TokenType.OpenParen, parseCallExpression.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
   const args = parseCallExpressionArguments(context);
 
   if (args.error != null) {
-    return { error: lexeme.error };
+    return { error: token.error };
   }
 
-  lexeme = expectLexeme(context, LexemeType.CloseParen, parseCallExpression.name);
+  token = exepectToken(context, TokenType.CloseParen, parseCallExpression.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
 
   return {
     value: {
@@ -491,10 +491,10 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
   context.logger.enter(parseCallExpressionArguments.name);
   const args: Array<Expression> = [];
 
-  let lexeme = getLexeme(context);
-  while (!isEOF(context) && lexeme.type != LexemeType.CloseParen) {
+  let token = getToken(context);
+  while (!isEOF(context) && token.type != TokenType.CloseParen) {
     const leadingTrivia = parseTrivia(context);
-    lexeme = getLexeme(context);
+    token = getToken(context);
 
     const expression = parseExpression(context);
 
@@ -505,11 +505,11 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
     const trailingTrivia = parseTrivia(context);
 
     args.push(mergeTriviaIntoNode(<Expression>expression.value, leadingTrivia, trailingTrivia));
-    lexeme = getLexeme(context);
+    token = getToken(context);
 
-    if (lexeme.type == LexemeType.Comma) {
-      incrementLexeme(context);
-      lexeme = getLexeme(context);
+    if (token.type == TokenType.Comma) {
+      incrementToken(context);
+      token = getToken(context);
     }
   }
 
@@ -539,18 +539,18 @@ function parseTypeName(context: ParserContext): Result<TypeName, ParserError> {
 function parseIdentifier(context: ParserContext): Result<Identifier, ParserError> {
   context.logger.enter(parseIdentifier.name);
   const leadingTrivia = parseTrivia(context);
-  const lexeme = expectLexeme(context, LexemeType.Identifier, parseIdentifier.name);
+  const token = exepectToken(context, TokenType.Identifier, parseIdentifier.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
 
   return {
     value: {
       kind: SyntaxKind.Identifier,
-      value: <string>lexeme.value?.text,
+      value: <string>token.value?.text,
       leadingTrivia,
     },
   };
@@ -559,18 +559,18 @@ function parseIdentifier(context: ParserContext): Result<Identifier, ParserError
 function parseIntegerLiteral(context: ParserContext): Result<IntegerLiteral, ParserError> {
   context.logger.enter(parseIntegerLiteral.name);
   const leadingTrivia = parseTrivia(context);
-  const lexeme = expectLexeme(context, LexemeType.Integer, parseIntegerLiteral.name);
+  const token = exepectToken(context, TokenType.Integer, parseIntegerLiteral.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
 
   return {
     value: {
       kind: SyntaxKind.IntegerLiteral,
-      value: <string>lexeme.value?.text,
+      value: <string>token.value?.text,
       leadingTrivia,
     },
   };
@@ -579,18 +579,18 @@ function parseIntegerLiteral(context: ParserContext): Result<IntegerLiteral, Par
 function parseStringLiteral(context: ParserContext): Result<StringLiteral, ParserError> {
   context.logger.enter(parseStringLiteral.name);
   const leadingTrivia = parseTrivia(context);
-  const lexeme = expectLexeme(context, LexemeType.String, parseIntegerLiteral.name);
+  const token = exepectToken(context, TokenType.String, parseIntegerLiteral.name);
 
-  if (lexeme.error != null) {
-    return { error: lexeme.error };
+  if (token.error != null) {
+    return { error: token.error };
   }
 
-  incrementLexeme(context);
+  incrementToken(context);
 
   return {
     value: {
       kind: SyntaxKind.StringLiteral,
-      value: <string>lexeme.value?.text,
+      value: <string>token.value?.text,
       leadingTrivia,
     },
   };
