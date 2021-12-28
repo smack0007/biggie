@@ -46,22 +46,43 @@ export function outputC(sourceFile: SourceFile, baseContext: BackendContext): vo
 }
 
 function outputPreamble(context: ClangBackendContext): void {
-  context.append("#include <stdarg.h>\n");
-  context.append("#include <stdint.h>\n");
-  context.append("#include <stdio.h>\n");
-  context.append("\n");
-  context.append("typedef int32_t i32;\n");
-  context.append("typedef char* string;\n");
-  context.append("\n");
-  context.append("int println(const char* format, ...) {\n");
-  context.append("\tva_list ap;\n");
-  context.append("\tva_start(ap, format);\n");
-  context.append("\tint ret = vprintf(format, ap);\n");
-  context.append("\tva_end(ap);\n");
-  context.append('\tputs("");\n');
-  context.append("\treturn ret;\n");
-  context.append("}\n");
-  context.append("\n");
+  context.append(
+    `#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef int32_t i32;
+typedef int64_t i64;
+typedef uint32_t u32;
+typedef uint64_t u64;
+
+#define int i64
+#define uint u64
+
+typedef struct string { uint length; const char* data; } string;
+
+int println(string format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  int ret = vprintf(format.data, ap);
+  va_end(ap);
+  puts("");
+  return ret;
+}
+
+string sprintf_(string format, string arg) {
+  char* data = malloc(sizeof(char) * 1024);
+  // TODO: How to pass va_list here correctly to vsprintf_s.
+  // va_list ap;
+  // va_start(ap, format);
+  int length = sprintf_s(data, 1024, format.data, arg.data);
+  // va_end(ap);
+  return (string){length, data};
+}
+#define sprintf sprintf_
+\n`
+  );
 }
 
 function outputUnexpectedNode(
@@ -200,7 +221,5 @@ function outputIntegerLiteral(context: ClangBackendContext, sourceFile: SourceFi
 }
 
 function outputStringLiteral(context: ClangBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
-  context.append('"');
-  context.append(stringLiteral.value);
-  context.append('"');
+  context.append(`(string){${stringLiteral.value.length}, "${stringLiteral.value}"}`);
 }

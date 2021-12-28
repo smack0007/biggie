@@ -1,5 +1,5 @@
 function sayHello(name: string): string {
-  return "Hello World!";
+  return sprintf("Hello %s!", name);
 }
 
 function main(): i32 {
