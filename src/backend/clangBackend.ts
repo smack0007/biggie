@@ -11,9 +11,33 @@ import {
   SyntaxKind,
   SyntaxNode,
 } from "../frontend/ast";
+import { int } from "../shims";
 import { BackendContext } from "./backend";
 
-export function outputC(sourceFile: SourceFile, context: BackendContext): void {
+interface ClangBackendContext extends BackendContext {
+  indentLevel: int;
+  indent: () => void;
+}
+
+export function outputC(sourceFile: SourceFile, baseContext: BackendContext): void {
+  const context = <ClangBackendContext>{
+    indentLevel: 0,
+
+    indent: () => {
+      for (let i = 0; i < context.indentLevel; i++) {
+        baseContext.append("\t");
+      }
+    },
+
+    append: (value: string) => {
+      baseContext.append(value);
+    },
+
+    prepend: (value: string) => {
+      baseContext.prepend(value);
+    },
+  };
+
   outputPreamble(context);
 
   for (const statement of sourceFile.statements) {
@@ -21,7 +45,7 @@ export function outputC(sourceFile: SourceFile, context: BackendContext): void {
   }
 }
 
-function outputPreamble(context: BackendContext): void {
+function outputPreamble(context: ClangBackendContext): void {
   context.append("#include <stdarg.h>\n");
   context.append("#include <stdint.h>\n");
   context.append("#include <stdio.h>\n");
@@ -30,18 +54,18 @@ function outputPreamble(context: BackendContext): void {
   context.append("typedef char* string;\n");
   context.append("\n");
   context.append("int println(const char* format, ...) {\n");
-  context.append("va_list ap;\n");
-  context.append("va_start(ap, format);\n");
-  context.append("int ret = vprintf(format, ap);\n");
-  context.append("va_end(ap);\n");
-  context.append('puts("");\n');
-  context.append("return ret;\n");
+  context.append("\tva_list ap;\n");
+  context.append("\tva_start(ap, format);\n");
+  context.append("\tint ret = vprintf(format, ap);\n");
+  context.append("\tva_end(ap);\n");
+  context.append('\tputs("");\n');
+  context.append("\treturn ret;\n");
   context.append("}\n");
   context.append("\n");
 }
 
 function outputUnexpectedNode(
-  context: BackendContext,
+  context: ClangBackendContext,
   functionName: string,
   sourceFile: SourceFile,
   node: SyntaxNode
@@ -53,7 +77,7 @@ function outputUnexpectedNode(
   context.append("*/\n");
 }
 
-function outputTopLevelStatement(context: BackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
+function outputTopLevelStatement(context: ClangBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
     case SyntaxKind.FunctionDeclaration:
       outputFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
@@ -66,7 +90,7 @@ function outputTopLevelStatement(context: BackendContext, sourceFile: SourceFile
 }
 
 function outputFunctionDeclaration(
-  context: BackendContext,
+  context: ClangBackendContext,
   sourceFile: SourceFile,
   functionDeclaration: FunctionDeclaration
 ): void {
@@ -79,15 +103,16 @@ function outputFunctionDeclaration(
     const arg = functionDeclaration.arguments[i];
     const argType = arg.type.value;
     const argName = arg.name.value;
-    
+
     if (i != 0) {
       context.append(", ");
     }
-    
+
     context.append(`${argType} ${argName}`);
   }
 
   context.append(") {\n");
+  context.indentLevel += 1;
 
   if (functionDeclaration.body?.statements) {
     for (const statement of functionDeclaration.body.statements) {
@@ -95,13 +120,16 @@ function outputFunctionDeclaration(
     }
   }
 
-  context.append(`}\n`);
+  context.indentLevel -= 1;
+  context.append(`}\n\n`);
 }
 
-function outputBlockLevelStatement(context: BackendContext, sourceFile: SourceFile, node: SyntaxNode) {
+function outputBlockLevelStatement(context: ClangBackendContext, sourceFile: SourceFile, node: SyntaxNode) {
+  context.indent();
+
   switch (node.kind) {
     case SyntaxKind.ExpressionStatement:
-      outputExpressionStatement(context, sourceFile, <ExpressionStatement>node);
+      outputExpression(context, sourceFile, (<ExpressionStatement>node).expression);
       break;
 
     case SyntaxKind.ReturnStatement:
@@ -112,28 +140,19 @@ function outputBlockLevelStatement(context: BackendContext, sourceFile: SourceFi
       outputUnexpectedNode(context, outputBlockLevelStatement.name, sourceFile, node);
       break;
   }
-}
 
-function outputExpressionStatement(
-  context: BackendContext,
-  sourceFile: SourceFile,
-  expressionStatement: ExpressionStatement
-) {
-  outputExpression(context, sourceFile, expressionStatement.expression);
   context.append(";\n");
 }
 
-function outputReturnStatement(context: BackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
+function outputReturnStatement(context: ClangBackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
   context.append("return ");
 
   if (returnStatement.expression) {
     outputExpression(context, sourceFile, returnStatement.expression);
   }
-
-  context.append(";\n");
 }
 
-function outputExpression(context: BackendContext, sourceFile: SourceFile, expression: Expression) {
+function outputExpression(context: ClangBackendContext, sourceFile: SourceFile, expression: Expression) {
   switch (expression.kind) {
     case SyntaxKind.CallExpression:
       outputCallExpression(context, sourceFile, <CallExpression>expression);
@@ -157,7 +176,7 @@ function outputExpression(context: BackendContext, sourceFile: SourceFile, expre
   }
 }
 
-function outputCallExpression(context: BackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
+function outputCallExpression(context: ClangBackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
   outputExpression(context, sourceFile, callExpression.expression);
   context.append("(");
 
@@ -172,15 +191,15 @@ function outputCallExpression(context: BackendContext, sourceFile: SourceFile, c
   context.append(")");
 }
 
-function outputIdentifier(context: BackendContext, sourceFile: SourceFile, identifier: Identifier) {
+function outputIdentifier(context: ClangBackendContext, sourceFile: SourceFile, identifier: Identifier) {
   context.append(identifier.value);
 }
 
-function outputIntegerLiteral(context: BackendContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
+function outputIntegerLiteral(context: ClangBackendContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
   context.append(integerLiteral.value);
 }
 
-function outputStringLiteral(context: BackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
+function outputStringLiteral(context: ClangBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
   context.append('"');
   context.append(stringLiteral.value);
   context.append('"');

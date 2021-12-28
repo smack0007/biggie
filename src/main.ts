@@ -1,6 +1,6 @@
 import { readFile } from "fs/promises";
 import { SourceFile } from "./frontend/ast";
-import { outputC } from "./backend/cBackend";
+import { outputC } from "./backend/clangBackend";
 import { scan, TokenType } from "./frontend/scanner";
 import { parse, ParserErrorKind } from "./frontend/parser";
 import { outputWat } from "./backend/watBackend";
