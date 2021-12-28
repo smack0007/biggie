@@ -22,10 +22,21 @@ export function outputC(sourceFile: SourceFile, context: BackendContext): void {
 }
 
 function outputPreamble(context: BackendContext): void {
+  context.append("#include <stdarg.h>\n");
   context.append("#include <stdint.h>\n");
-  context.append("typedef int32_t i32;\n");
+  context.append("#include <stdio.h>\n");
   context.append("\n");
-  context.append("int printf(const char *format, ...);\n");
+  context.append("typedef int32_t i32;\n");
+  context.append("typedef char* string;\n");
+  context.append("\n");
+  context.append("int println(const char* format, ...) {\n");
+  context.append("va_list ap;\n");
+  context.append("va_start(ap, format);\n");
+  context.append("int ret = vprintf(format, ap);\n");
+  context.append("va_end(ap);\n");
+  context.append('puts("");\n');
+  context.append("return ret;\n");
+  context.append("}\n");
   context.append("\n");
 }
 
@@ -62,7 +73,21 @@ function outputFunctionDeclaration(
   const returnType: string = functionDeclaration.returnType.name.value;
   const name: string = functionDeclaration.name.value;
 
-  context.append(`${returnType} ${name}() {\n`);
+  context.append(`${returnType} ${name}(`);
+
+  for (let i = 0; i < functionDeclaration.arguments.length; i++) {
+    const arg = functionDeclaration.arguments[i];
+    const argType = arg.type.value;
+    const argName = arg.name.value;
+    
+    if (i != 0) {
+      context.append(", ");
+    }
+    
+    context.append(`${argType} ${argName}`);
+  }
+
+  context.append(") {\n");
 
   if (functionDeclaration.body?.statements) {
     for (const statement of functionDeclaration.body.statements) {

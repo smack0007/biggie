@@ -4,7 +4,7 @@ function sayHello(name: string): string {
 
 function main(): i32 {
   println(
-    "Hello World!"
+    sayHello("World")
   );
   return 42;
 }

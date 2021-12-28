@@ -8,6 +8,6 @@ IF NOT EXIST "bin\hello" (
   mkdir bin\hello
 )
 
-CALL ts-node --transpile-only --log-error .\src\main.ts .\samples\hello.td
-REM clang -o .\bin\hello\hello.exe .\bin\hello\hello.c
-REM .\bin\hello\hello.exe
+CALL ts-node --transpile-only --log-error .\src\main.ts .\samples\hello.td > .\bin\hello\hello.c
+clang -o .\bin\hello\hello.exe .\bin\hello\hello.c
+.\bin\hello\hello.exe
