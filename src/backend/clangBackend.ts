@@ -57,30 +57,19 @@ typedef int64_t i64;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+typedef char* string;
+
 #define int i64
 #define uint u64
 
-typedef struct string { uint length; const char* data; } string;
-
-int println(string format, ...) {
-  va_list ap;
-  va_start(ap, format);
-  int ret = vprintf(format.data, ap);
-  va_end(ap);
+int println(const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  int ret = vprintf(format, args);
+  va_end(args);
   puts("");
   return ret;
 }
-
-string sprintf_(string format, string arg) {
-  char* data = malloc(sizeof(char) * 1024);
-  // TODO: How to pass va_list here correctly to vsprintf_s.
-  // va_list ap;
-  // va_start(ap, format);
-  int length = sprintf_s(data, 1024, format.data, arg.data);
-  // va_end(ap);
-  return (string){length, data};
-}
-#define sprintf sprintf_
 \n`
   );
 }
@@ -221,5 +210,5 @@ function outputIntegerLiteral(context: ClangBackendContext, sourceFile: SourceFi
 }
 
 function outputStringLiteral(context: ClangBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
-  context.append(`(string){${stringLiteral.value.length}, "${stringLiteral.value}"}`);
+  context.append(`"${stringLiteral.value}"`);
 }

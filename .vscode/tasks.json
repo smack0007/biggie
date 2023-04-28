@@ -8,7 +8,7 @@
         "isDefault": true
       },
       "type": "shell",
-      "command": "build.cmd",
+      "command": "${workspaceFolder}/build.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },

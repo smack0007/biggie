@@ -1,9 +1,8 @@
-import { readFile } from "fs/promises";
+import { readFile } from "node:fs/promises";
 import { SourceFile } from "./frontend/ast";
 import { outputC } from "./backend/clangBackend";
 import { scan, TokenType } from "./frontend/scanner";
 import { parse, ParserErrorKind } from "./frontend/parser";
-import { outputWat } from "./backend/watBackend";
 
 main(process.argv.slice(2)).then(process.exit);
 
