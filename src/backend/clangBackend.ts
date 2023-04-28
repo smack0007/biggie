@@ -1,3 +1,5 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   CallExpression,
   Expression,
@@ -18,6 +20,8 @@ interface ClangBackendContext extends BackendContext {
   indentLevel: int;
   indent: () => void;
 }
+
+const PREAMBLE = fs.readFileSync(path.join(__dirname, "clangPreamble.c"), "utf-8");
 
 export function outputC(sourceFile: SourceFile, baseContext: BackendContext): void {
   const context = <ClangBackendContext>{
@@ -46,32 +50,8 @@ export function outputC(sourceFile: SourceFile, baseContext: BackendContext): vo
 }
 
 function outputPreamble(context: ClangBackendContext): void {
-  context.append(
-    `#include <stdarg.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-typedef int32_t i32;
-typedef int64_t i64;
-typedef uint32_t u32;
-typedef uint64_t u64;
-
-typedef char* string;
-
-#define int i64
-#define uint u64
-
-int println(const char* format, ...) {
-  va_list args;
-  va_start(args, format);
-  int ret = vprintf(format, args);
-  va_end(args);
-  puts("");
-  return ret;
-}
-\n`
-  );
+  context.append(PREAMBLE);
+  context.append("\n");
 }
 
 function outputUnexpectedNode(
