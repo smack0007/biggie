@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
-import { SourceFile } from "./frontend/ast";
-import { outputC } from "./backend/clangBackend";
-import { scan, TokenType } from "./frontend/scanner";
-import { parse, ParserErrorKind } from "./frontend/parser";
+import { SourceFile } from "./frontend/ast.ts";
+import { outputC } from "./backend/clangBackend.ts";
+import { scan, Token, TokenType } from "./frontend/scanner.ts";
+import { parse, ParserErrorKind } from "./frontend/parser.ts";
+import { lower } from "./frontend/lowering.ts";
 
 main(process.argv.slice(2)).then(process.exit);
 
@@ -13,13 +14,13 @@ async function main(argv: string[]): Promise<i32> {
 
   // for (const lexeme of lexemes) {
   //   console.info(
-  //     `Type: ${LexemeType[lexeme.type]}, Value: <${lexeme.text ?? ""}>, Line: ${lexeme.line}, Column: ${lexeme.column}`
+  //     `/* Type: ${TokenType[lexeme.type]}, Value: <${lexeme.text ?? ""}>, Line: ${lexeme.line}, Column: ${lexeme.column} */`
   //   );
   // }
 
-  const sourceFile = parse(fileName, lexemes, {
-    enter: (name: string) => {},
-    // enter: (name: string) => console.info(name),
+  let sourceFile = parse(fileName, lexemes, {
+    // enter: (name: string) => {},
+    enter: (name: string, token: Token) => console.info(`/* ${name} (${token.line}, ${token.column}) <${token.text}> */`),
   });
 
   if (sourceFile.error != null) {
@@ -31,7 +32,7 @@ async function main(argv: string[]): Promise<i32> {
   } else {
     let buffer = "";
 
-    outputC(<SourceFile>sourceFile.value, {
+    outputC(lower(sourceFile.value!), {
       append: (value: string) => {
         buffer += value;
       },

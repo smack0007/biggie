@@ -15,18 +15,21 @@ import {
   StringLiteral,
   CallExpression,
   FunctionArgument,
+  DeferStatement,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
 
 export interface ParserLogger {
-  enter: (name: string) => void;
+  enter(name: string, token: Token): void;
 }
 
 interface ParserContext {
   fileName: string;
   tokens: Array<Token>;
-  logger: ParserLogger;
+  logger: {
+    enter(name: string): void;
+  };
 
   index: int;
 }
@@ -211,8 +214,8 @@ export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLog
   const context: ParserContext = {
     fileName,
     tokens: tokens,
-    logger: logger ?? {
-      enter: () => {},
+    logger: {
+      enter(name: string) { logger?.enter(name, context.tokens[context.index]) },
     },
     index: 0,
   };
@@ -422,6 +425,10 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
 
   let result: Result<Statement, ParserError>;
   switch (token.type) {
+    case TokenType.Defer:
+      result = parseDeferStatement(context);
+      break;
+    
     case TokenType.Return:
       result = parseReturnStatement(context);
       break;
@@ -454,6 +461,39 @@ function parseExpressionStatement(context: ParserContext): Result<ExpressionStat
   return {
     value: {
       kind: SyntaxKind.ExpressionStatement,
+      expression: <Expression>expression.value,
+      leadingTrivia,
+    },
+  };
+}
+
+function parseDeferStatement(context: ParserContext): Result<DeferStatement, ParserError> {
+  context.logger.enter(parseReturnStatement.name);
+  const leadingTrivia = parseTrivia(context);
+  let token = expect(context, TokenType.Defer, parseReturnStatement.name);
+
+  if (token.error) {
+    return { error: token.error };
+  }
+
+  advance(context);
+  const expression = parseExpression(context);
+
+  if (expression.error) {
+    return { error: expression.error };
+  }
+
+  expect(context, TokenType.EndStatement, parseReturnStatement.name);
+
+  if (token.error) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  return {
+    value: {
+      kind: SyntaxKind.DeferStatement,
       expression: <Expression>expression.value,
       leadingTrivia,
     },

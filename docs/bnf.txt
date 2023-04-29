@@ -8,9 +8,12 @@
   
 <StatementBlock> ::= "{" <BlockLevelStatement>* "}"
 
-<BlockLevelStatement> ::= <ReturnStatement> |
+<BlockLevelStatement> ::= <DeferStatement> |
+                          <ReturnStatement> |
                           <ExpressionStatement>
   
+<DeferStatement> ::= "defer" <Expression> ";"
+
 <ReturnStatement> ::= "return" <Expression> ";"
   
 <ExpressionStatement> ::= <Expression> ";"

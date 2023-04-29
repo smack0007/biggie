@@ -22,6 +22,9 @@ export enum TokenType {
   // func
   Func,
 
+  // defer
+  Defer,
+
   // return
   Return,
 
@@ -438,8 +441,11 @@ export function scan(text: string): Array<Token> {
             break;
 
           case "func":
-          case "function":
             token.push({ type: TokenType.Func, text: null, line: line, column: column });
+            break;
+
+          case "defer":
+            token.push({ type: TokenType.Defer, text: null, line: line, column: column });
             break;
 
           case "return":

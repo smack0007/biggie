@@ -1,8 +1,14 @@
-function sayHello(name: string): void {
+func sayHello(name: string): void {
   println("Hello %s!", name);
 }
 
-function main(): i32 {
+func sayGoodbye(name: string): void {
+  println("Goodbye %s!", name);
+}
+
+func main(): i32 {
+  defer sayGoodbye("Lamp");
+  defer sayGoodbye("World");
   sayHello("World");
   return 42;
 }

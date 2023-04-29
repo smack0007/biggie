@@ -13,6 +13,8 @@ export enum SyntaxKind {
 
   Identifier,
 
+  DeferStatement,
+
   ReturnStatement,
   
   SourceFile,
@@ -72,6 +74,12 @@ export interface FunctionArgument extends SyntaxNode {
 
 export interface ExpressionStatement extends Statement {
   readonly kind: SyntaxKind.ExpressionStatement;
+
+  readonly expression: Expression;
+}
+
+export interface DeferStatement extends Statement {
+  readonly kind: SyntaxKind.DeferStatement;
 
   readonly expression: Expression;
 }
