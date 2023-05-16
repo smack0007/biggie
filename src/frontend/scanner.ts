@@ -118,10 +118,10 @@ export enum TokenType {
   // >=
   GreaterThanOrEqualTo,
 
-  // &lt;
+  // <
   LessThan,
 
-  // &lt;=
+  // <=
   LessThanOrEqualTo,
 
   // +

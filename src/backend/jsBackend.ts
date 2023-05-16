@@ -4,7 +4,7 @@ import {
   CallExpression,
   Expression,
   ExpressionStatement,
-  FunctionDeclaration,
+  FuncDeclaration,
   Identifier,
   IntegerLiteral,
   ReturnStatement,
@@ -12,6 +12,7 @@ import {
   StringLiteral,
   SyntaxKind,
   SyntaxNode,
+  VarDeclaration,
 } from "../frontend/ast";
 import { int } from "../shims";
 import { BackendContext } from "./backend";
@@ -77,8 +78,8 @@ function outputUnexpectedNode(
 
 function outputTopLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
-    case SyntaxKind.FunctionDeclaration:
-      outputFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
+    case SyntaxKind.FuncDeclaration:
+      outputFunctionDeclaration(context, sourceFile, <FuncDeclaration>node);
       break;
 
     default:
@@ -90,7 +91,7 @@ function outputTopLevelStatement(context: JSBackendContext, sourceFile: SourceFi
 function outputFunctionDeclaration(
   context: JSBackendContext,
   sourceFile: SourceFile,
-  functionDeclaration: FunctionDeclaration
+  functionDeclaration: FuncDeclaration
 ): void {
   const returnType: string = functionDeclaration.returnType.name.value;
   const name: string = functionDeclaration.name.value;
@@ -126,6 +127,10 @@ function outputBlockLevelStatement(context: JSBackendContext, sourceFile: Source
   context.indent();
 
   switch (node.kind) {
+    case SyntaxKind.VarDeclaration:
+      outputVarDeclaration(context, sourceFile, (<VarDeclaration>node));
+      break;
+    
     case SyntaxKind.ExpressionStatement:
       outputExpression(context, sourceFile, (<ExpressionStatement>node).expression);
       break;
@@ -137,6 +142,20 @@ function outputBlockLevelStatement(context: JSBackendContext, sourceFile: Source
     default:
       outputUnexpectedNode(context, outputBlockLevelStatement.name, sourceFile, node);
       break;
+  }
+
+  context.append(";\n");
+}
+
+function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {
+  context.indent();
+  
+  // TODO: Implement let
+  context.append(`const ${varDeclaration.name.value}`);
+
+  if (varDeclaration.expression) {
+    context.append("=");
+    outputExpression(context, sourceFile, varDeclaration.expression);
   }
 
   context.append(";\n");

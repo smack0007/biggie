@@ -2,7 +2,7 @@ import {
   CallExpression,
   Expression,
   ExpressionStatement,
-  FunctionDeclaration,
+  FuncDeclaration,
   Identifier,
   IntegerLiteral,
   ReturnStatement,
@@ -111,8 +111,8 @@ function outputUnexpectedNode(
 
 function outputTopLevelStatement(context: WatBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
-    case SyntaxKind.FunctionDeclaration:
-      outputFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
+    case SyntaxKind.FuncDeclaration:
+      outputFunctionDeclaration(context, sourceFile, <FuncDeclaration>node);
       break;
 
     default:
@@ -124,7 +124,7 @@ function outputTopLevelStatement(context: WatBackendContext, sourceFile: SourceF
 function outputFunctionDeclaration(
   context: WatBackendContext,
   sourceFile: SourceFile,
-  functionDeclaration: FunctionDeclaration
+  functionDeclaration: FuncDeclaration
 ): void {
   const name: string = functionDeclaration.name.value;
 

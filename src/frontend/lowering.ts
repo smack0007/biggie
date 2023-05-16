@@ -1,4 +1,4 @@
-import { DeferStatement, ExpressionStatement, FunctionDeclaration, ReturnStatement, SourceFile, Statement, StatementBlock, SyntaxKind } from "./ast.ts";
+import { DeferStatement, ExpressionStatement, FuncDeclaration, ReturnStatement, SourceFile, Statement, StatementBlock, SyntaxKind } from "./ast.ts";
 
 export function lower(sourceFile: SourceFile): SourceFile {
   return {
@@ -9,14 +9,14 @@ export function lower(sourceFile: SourceFile): SourceFile {
 
 function lowerTopLevelStatement(statement: Statement): Statement {
   switch (statement.kind) {
-    case SyntaxKind.FunctionDeclaration:
-      return lowerFunctionDeclaration(<FunctionDeclaration>statement);
+    case SyntaxKind.FuncDeclaration:
+      return lowerFunctionDeclaration(<FuncDeclaration>statement);
   }
   
   return statement;
 }
 
-function lowerFunctionDeclaration(functionDeclaration: FunctionDeclaration): FunctionDeclaration {
+function lowerFunctionDeclaration(functionDeclaration: FuncDeclaration): FuncDeclaration {
   return {
     ...functionDeclaration,
     body: lowerStatementBlock(functionDeclaration.body)

@@ -7,9 +7,9 @@ export enum SyntaxKind {
 
   IntegerLiteral,
 
-  FunctionArgument,
+  FuncArgument,
 
-  FunctionDeclaration,
+  FuncDeclaration,
 
   Identifier,
 
@@ -26,6 +26,8 @@ export enum SyntaxKind {
   StringLiteral,
 
   TypeName,
+
+  VarDeclaration,
 }
 
 export interface SyntaxTrivia {
@@ -52,8 +54,16 @@ export interface Statement extends SyntaxNode {
   readonly kind: SyntaxKind;
 }
 
-export interface FunctionDeclaration extends Statement {
-  readonly kind: SyntaxKind.FunctionDeclaration;
+export interface VarDeclaration extends Statement {
+  readonly kind: SyntaxKind.VarDeclaration;
+
+  readonly name: Identifier;
+
+  readonly expression?: Expression;
+}
+
+export interface FuncDeclaration extends Statement {
+  readonly kind: SyntaxKind.FuncDeclaration;
 
   readonly body: StatementBlock;
 
@@ -65,7 +75,7 @@ export interface FunctionDeclaration extends Statement {
 }
 
 export interface FunctionArgument extends SyntaxNode {
-  readonly kind: SyntaxKind.FunctionArgument;
+  readonly kind: SyntaxKind.FuncArgument;
   
   readonly name: Identifier;
 

@@ -9,6 +9,9 @@ func sayGoodbye(name: string): void {
 func main(): i32 {
   defer sayGoodbye("Lamp");
   defer sayGoodbye("World");
-  sayHello("World");
+  
+  const name: string = "Bobby";
+  sayHello(name);
+  
   return 42;
 }

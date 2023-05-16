@@ -4,7 +4,7 @@ import {
   CallExpression,
   Expression,
   ExpressionStatement,
-  FunctionDeclaration,
+  FuncDeclaration,
   Identifier,
   IntegerLiteral,
   ReturnStatement,
@@ -69,8 +69,8 @@ function outputUnexpectedNode(
 
 function outputTopLevelStatement(context: ClangBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
-    case SyntaxKind.FunctionDeclaration:
-      outputFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
+    case SyntaxKind.FuncDeclaration:
+      outputFunctionDeclaration(context, sourceFile, <FuncDeclaration>node);
       break;
 
     default:
@@ -82,7 +82,7 @@ function outputTopLevelStatement(context: ClangBackendContext, sourceFile: Sourc
 function outputFunctionDeclaration(
   context: ClangBackendContext,
   sourceFile: SourceFile,
-  functionDeclaration: FunctionDeclaration
+  functionDeclaration: FuncDeclaration
 ): void {
   const returnType: string = functionDeclaration.returnType.name.value;
   const name: string = functionDeclaration.name.value;

@@ -1,17 +1,23 @@
 <SourceFile> ::= <TopLevelStatement>* <EOF>
 
-<TopLevelStatement> ::= <FunctionDeclaration>
+<TopLevelStatement> ::= <VarDeclaration> |
+                        <FuncDeclaration>
 
-<FunctionDeclaration> ::= "function" <Identifier> "(" ")" ":" <TypeName> <StatementBlock>
+<VarDeclaration> ::= ( "const" | "let" ) <Identifier> ":" <TypeName> ( "=" <Expression> ) ";"
+
+<FuncDeclaration> ::= "function" <Identifier> "(" <FuncParameters> ")" ":" <TypeName> <StatementBlock>
+
+<FuncParameters> ::= // TODO
 
 <TypeName> ::= <Identifier>
   
 <StatementBlock> ::= "{" <BlockLevelStatement>* "}"
 
-<BlockLevelStatement> ::= <DeferStatement> |
+<BlockLevelStatement> ::= <VarDeclaration> |
+                          <DeferStatement> |
                           <ReturnStatement> |
                           <ExpressionStatement>
-  
+
 <DeferStatement> ::= "defer" <Expression> ";"
 
 <ReturnStatement> ::= "return" <Expression> ";"
