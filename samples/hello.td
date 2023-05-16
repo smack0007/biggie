@@ -1,9 +1,9 @@
 func sayHello(name: string): void {
-  println("Hello %s!", name);
+  println("Hello {0}!", name);
 }
 
 func sayGoodbye(name: string): void {
-  println("Goodbye %s!", name);
+  println("Goodbye {0}!", name);
 }
 
 func main(): i32 {

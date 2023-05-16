@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { SourceFile } from "./frontend/ast.ts";
-import { outputC } from "./backend/clangBackend.ts";
+// import { outputC } from "./backend/clangBackend.ts";
+import { outputJS } from "./backend/jsBackend.ts";
 import { scan, Token, TokenType } from "./frontend/scanner.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
 import { lower } from "./frontend/lowering.ts";
@@ -19,8 +20,8 @@ async function main(argv: string[]): Promise<i32> {
   // }
 
   let sourceFile = parse(fileName, lexemes, {
-    // enter: (name: string) => {},
-    enter: (name: string, token: Token) => console.info(`/* ${name} (${token.line}, ${token.column}) <${token.text}> */`),
+    enter: (name: string) => {},
+    // enter: (name: string, token: Token) => console.info(`/* ${name} (${token.line}, ${token.column}) <${token.text}> */`),
   });
 
   if (sourceFile.error != null) {
@@ -32,7 +33,7 @@ async function main(argv: string[]): Promise<i32> {
   } else {
     let buffer = "";
 
-    outputC(lower(sourceFile.value!), {
+    outputJS(lower(sourceFile.value!), {
       append: (value: string) => {
         buffer += value;
       },
