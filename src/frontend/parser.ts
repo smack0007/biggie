@@ -9,8 +9,6 @@ import {
   Expression,
   ReturnStatement,
   ExpressionStatement,
-  SyntaxTrivia,
-  SyntaxNode,
   IntegerLiteral,
   StringLiteral,
   CallExpression,
@@ -65,28 +63,11 @@ function advance(context: ParserContext): Token {
   return previous(context);
 }
 
-function advanceNonTrivial(context: ParserContext): Token {
-  if (!isEOF(context)) {
-    context.index += 1;
-    while (isTrivia(context) && !isEOF(context)) {
-      context.index += 1;
-    }
-  }
-  return previousNonTrivial(context);
-}
-
 function check(context: ParserContext, type: TokenType): bool {
   if (isEOF(context)) {
     return false;
   }
   return peek(context).type == type;
-}
-
-function checkNonTrivial(context: ParserContext, type: TokenType): bool {
-  if (isEOF(context)) {
-    return false;
-  }
-  return peekNonTrivial(context).type == type;
 }
 
 function isEOF(context: ParserContext): bool {
@@ -106,38 +87,8 @@ function match(context: ParserContext, ...types: Array<TokenType>): bool {
   return false;
 }
 
-function matchNonTrivial(context: ParserContext, ...types: Array<TokenType>): bool {
-  for (const type of types) {
-    if (check(context, type)) {
-      advance(context);
-      return true;
-    }
-  }
-  return false;
-}
-
-function isTrivia(context: ParserContext): bool {
-  return isTriviaToken(peek(context));
-}
-
-function isTriviaToken(token: Token): bool {
-  return token.type == TokenType.Whitespace;
-}
-
 function peek(context: ParserContext): Token {
   return context.tokens[context.index < context.tokens.length ? context.index : context.tokens.length - 1];
-}
-
-function peekNonTrivial(context: ParserContext): Token {
-  let index = context.index;
-  let token = context.tokens[index];
-
-  while (token.type != TokenType.EOF && isTriviaToken(token)) {
-    index += 1;
-    token = context.tokens[index];
-  }
-
-  return token;
 }
 
 function previous(context: ParserContext): Token {
@@ -145,17 +96,11 @@ function previous(context: ParserContext): Token {
   return context.tokens[index < context.tokens.length ? index : context.tokens.length - 1];
 }
 
-function previousNonTrivial(context: ParserContext): Token {
-  let index = context.index > 0 ? context.index - 1 : 0;
-
-  while (index > 0 && !isTriviaToken(context.tokens[index])) {
-    index -= 1;
-  }
-
-  return context.tokens[index < context.tokens.length ? index : context.tokens.length - 1];
-}
-
-function expect(context: ParserContext, expectedType: TokenType | TokenType[], functionName: string): Result<Token, ParserError> {
+function expect(
+  context: ParserContext,
+  expectedType: TokenType | TokenType[],
+  functionName: string
+): Result<Token, ParserError> {
   const token = peek(context);
 
   if (Array.isArray(expectedType)) {
@@ -164,9 +109,11 @@ function expect(context: ParserContext, expectedType: TokenType | TokenType[], f
         error: createError(
           token,
           ParserErrorKind.UnexpectedTokenType,
-          `Expected Token of Type ${expectedType.map(x => TokenType[x]).join(" | ")} but was ${TokenType[token.type]} at ${functionName}`
+          `Expected Token of Type ${expectedType.map((x) => TokenType[x]).join(" | ")} but was ${
+            TokenType[token.type]
+          } at ${functionName}`
         ),
-      }; 
+      };
     }
   } else {
     if (token.type != expectedType) {
@@ -176,69 +123,11 @@ function expect(context: ParserContext, expectedType: TokenType | TokenType[], f
           ParserErrorKind.UnexpectedTokenType,
           `Expected Token of Type ${TokenType[expectedType]} but was ${TokenType[token.type]} at ${functionName}`
         ),
-      }; 
+      };
     }
   }
 
   return { value: token };
-}
-
-function parseTrivia(context: ParserContext): OrNull<SyntaxTrivia> {
-  let value = "";
-  while (isTrivia(context)) {
-    const token = advance(context);
-    value += token.text ?? "";
-  }
-
-  if (value.length == 0) {
-    return null;
-  }
-
-  return {
-    value,
-  };
-}
-
-function mergeLeadingTriviaIntoResult(
-  result: Result<SyntaxNode, ParserError>,
-  leadingTrivia: OrNull<SyntaxTrivia>
-): Result<SyntaxNode, ParserError> {
-  if (result.value == null) {
-    return result;
-  }
-
-  return {
-    value: {
-      ...result.value,
-      leadingTrivia,
-    },
-  };
-}
-
-function mergeTriviaIntoNode(
-  node: SyntaxNode,
-  leadingTrivia: OrNull<SyntaxTrivia>,
-  trailingTrivia: OrNull<SyntaxTrivia>
-): SyntaxNode {
-  return {
-    ...node,
-    leadingTrivia,
-    trailingTrivia,
-  };
-}
-
-function mergeLeadingTriviaIntoNode(node: SyntaxNode, leadingTrivia: OrNull<SyntaxTrivia>): SyntaxNode {
-  return {
-    ...node,
-    leadingTrivia,
-  };
-}
-
-function mergeTrailingTriviaIntoNode(node: SyntaxNode, trailingTrivia: OrNull<SyntaxTrivia>): SyntaxNode {
-  return {
-    ...node,
-    trailingTrivia,
-  };
 }
 
 export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLogger): Result<SourceFile, ParserError> {
@@ -248,7 +137,9 @@ export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLog
     fileName,
     tokens: tokens,
     logger: {
-      enter(name: string) { logger?.enter(name, context.tokens[context.index]) },
+      enter(name: string) {
+        logger?.enter(name, context.tokens[context.index]);
+      },
     },
     index: 0,
   };
@@ -262,9 +153,7 @@ export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLog
       return { error: statement.error };
     }
 
-    const trailingTrivia = parseTrivia(context);
-
-    statements.push(mergeTrailingTriviaIntoNode(<Statement>statement.value, trailingTrivia));
+    statements.push(statement.value!);
   }
 
   const eof = expect(context, TokenType.EOF, parse.name);
@@ -284,7 +173,6 @@ export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLog
 
 function parseTopLevelStatement(context: ParserContext): Result<Statement, ParserError> {
   context.logger.enter(parseTopLevelStatement.name);
-  const leadingTrivia = parseTrivia(context);
   const token = peek(context);
 
   let result: Result<Statement, ParserError>;
@@ -293,7 +181,7 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
     case TokenType.Let:
       result = parseVarDeclaration(context);
       break;
-    
+
     case TokenType.Func:
       result = parseFuncDeclaration(context);
       break;
@@ -308,13 +196,12 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
       };
   }
 
-  return mergeLeadingTriviaIntoResult(result, leadingTrivia);
+  return result;
 }
 
 function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, ParserError> {
   context.logger.enter(parseVarDeclaration.name);
-  const leadingTrivia = parseTrivia(context);
-  let token = expect(context, [ TokenType.Const, TokenType.Let ], parseFuncDeclaration.name);
+  let token = expect(context, [TokenType.Const, TokenType.Let], parseFuncDeclaration.name);
 
   if (token.error != null) {
     return { error: token.error };
@@ -342,9 +229,7 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
 
   let expression: Result<Expression, ParserError> = {};
 
-  if (checkNonTrivial(context, TokenType.Assignment)) {
-    advanceNonTrivial(context);
-    
+  if (check(context, TokenType.Assignment)) {
     advance(context);
     expression = parseExpression(context);
 
@@ -352,7 +237,7 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
       return { error: expression.error };
     }
   }
-  
+
   token = expect(context, TokenType.EndStatement, parseVarDeclaration.name);
 
   if (token.error != null) {
@@ -366,13 +251,12 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
       kind: SyntaxKind.VarDeclaration,
       name: identifier.value!,
       expression: expression.value!,
-    }
-  }
+    },
+  };
 }
 
 function parseFuncDeclaration(context: ParserContext): Result<FuncDeclaration, ParserError> {
   context.logger.enter(parseFuncDeclaration.name);
-  const leadingTrivia = parseTrivia(context);
   let token = expect(context, TokenType.Func, parseFuncDeclaration.name);
 
   if (token.error != null) {
@@ -395,7 +279,7 @@ function parseFuncDeclaration(context: ParserContext): Result<FuncDeclaration, P
   advance(context);
 
   const args: Array<FunctionArgument> = [];
-  while (checkNonTrivial(context, TokenType.Identifier)) {
+  while (check(context, TokenType.Identifier)) {
     const arg = parseFunctionArgument(context);
 
     if (arg.error) {
@@ -421,7 +305,6 @@ function parseFuncDeclaration(context: ParserContext): Result<FuncDeclaration, P
   advance(context);
   const returnType = parseTypeName(context);
 
-  advance(context);
   const body = parseStatementBlock(context);
 
   if (body.error != null) {
@@ -435,14 +318,12 @@ function parseFuncDeclaration(context: ParserContext): Result<FuncDeclaration, P
       name: <Identifier>identifier.value,
       arguments: args,
       returnType: <TypeName>returnType.value,
-      leadingTrivia,
     },
   };
 }
 
 function parseFunctionArgument(context: ParserContext): Result<FunctionArgument, ParserError> {
   context.logger.enter(parseFunctionArgument.name);
-  const leadingTrivia = parseTrivia(context);
 
   const name = parseIdentifier(context);
 
@@ -467,16 +348,14 @@ function parseFunctionArgument(context: ParserContext): Result<FunctionArgument,
   return {
     value: {
       kind: SyntaxKind.FuncArgument,
-      name: <Identifier>name.value,
-      type: <Identifier>type.value,
-      leadingTrivia,
+      name: name.value!,
+      type: type.value!,
     },
   };
 }
 
 function parseStatementBlock(context: ParserContext): Result<StatementBlock, ParserError> {
   context.logger.enter(parseStatementBlock.name);
-  const leadingTrivia = parseTrivia(context);
   let token = expect(context, TokenType.OpenBrace, parseStatementBlock.name);
 
   if (token.error != null) {
@@ -493,9 +372,7 @@ function parseStatementBlock(context: ParserContext): Result<StatementBlock, Par
       return { error: statement.error };
     }
 
-    const trailingTrivia = parseTrivia(context);
-
-    statements.push(mergeTrailingTriviaIntoNode(<Statement>statement.value, trailingTrivia));
+    statements.push(statement.value!);
   }
 
   token = expect(context, TokenType.CloseBrace, parseStatementBlock.name);
@@ -510,14 +387,12 @@ function parseStatementBlock(context: ParserContext): Result<StatementBlock, Par
     value: {
       kind: SyntaxKind.StatementBlock,
       statements,
-      leadingTrivia,
     },
   };
 }
 
 function parseBlockLevelStatement(context: ParserContext): Result<Statement, ParserError> {
   context.logger.enter(parseBlockLevelStatement.name);
-  const leadingTrivia = parseTrivia(context);
   const token = peek(context);
 
   let result: Result<Statement, ParserError>;
@@ -526,11 +401,11 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
     case TokenType.Let:
       result = parseVarDeclaration(context);
       break;
-    
+
     case TokenType.Defer:
       result = parseDeferStatement(context);
       break;
-    
+
     case TokenType.Return:
       result = parseReturnStatement(context);
       break;
@@ -540,12 +415,11 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
       break;
   }
 
-  return mergeLeadingTriviaIntoResult(result, leadingTrivia);
+  return result;
 }
 
 function parseExpressionStatement(context: ParserContext): Result<ExpressionStatement, ParserError> {
   context.logger.enter(parseExpressionStatement.name);
-  const leadingTrivia = parseTrivia(context);
   const expression = parseExpression(context);
 
   if (expression.error != null) {
@@ -564,14 +438,12 @@ function parseExpressionStatement(context: ParserContext): Result<ExpressionStat
     value: {
       kind: SyntaxKind.ExpressionStatement,
       expression: <Expression>expression.value,
-      leadingTrivia,
     },
   };
 }
 
 function parseDeferStatement(context: ParserContext): Result<DeferStatement, ParserError> {
   context.logger.enter(parseReturnStatement.name);
-  const leadingTrivia = parseTrivia(context);
   let token = expect(context, TokenType.Defer, parseReturnStatement.name);
 
   if (token.error) {
@@ -597,14 +469,12 @@ function parseDeferStatement(context: ParserContext): Result<DeferStatement, Par
     value: {
       kind: SyntaxKind.DeferStatement,
       expression: <Expression>expression.value,
-      leadingTrivia,
     },
   };
 }
 
 function parseReturnStatement(context: ParserContext): Result<ReturnStatement, ParserError> {
   context.logger.enter(parseReturnStatement.name);
-  const leadingTrivia = parseTrivia(context);
   let token = expect(context, TokenType.Return, parseReturnStatement.name);
 
   if (token.error) {
@@ -630,14 +500,12 @@ function parseReturnStatement(context: ParserContext): Result<ReturnStatement, P
     value: {
       kind: SyntaxKind.ReturnStatement,
       expression: <Expression>expression.value,
-      leadingTrivia,
     },
   };
 }
 
 function parseExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseExpression.name);
-  const leadingTrivia = parseTrivia(context);
   let token = peek(context);
 
   let result: Result<Expression, ParserError>;
@@ -664,19 +532,20 @@ function parseExpression(context: ParserContext): Result<Expression, ParserError
       };
   }
 
-  if (result.error == null) {
-    token = peekNonTrivial(context);
-    if (token.type == TokenType.OpenParen) {
-      result = parseCallExpression(context, <Expression>result.value);
-    }
+  if (result.error != null) {
+    return { error: result.error };
   }
 
-  return mergeLeadingTriviaIntoResult(result, leadingTrivia);
+  token = peek(context);
+  if (token.type == TokenType.OpenParen) {
+    result = parseCallExpression(context, <Expression>result.value);
+  }
+
+  return result;
 }
 
 function parseCallExpression(context: ParserContext, expression: Expression): Result<CallExpression, ParserError> {
   context.logger.enter(parseCallExpression.name);
-  const leadingTrivia = parseTrivia(context);
   let token = expect(context, TokenType.OpenParen, parseCallExpression.name);
 
   if (token.error != null) {
@@ -702,8 +571,7 @@ function parseCallExpression(context: ParserContext, expression: Expression): Re
     value: {
       kind: SyntaxKind.CallExpression,
       expression,
-      arguments: <Array<Expression>>args.value,
-      leadingTrivia,
+      arguments: args.value!,
     },
   };
 }
@@ -714,7 +582,6 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
 
   let token = peek(context);
   while (!isEOF(context) && token.type != TokenType.CloseParen) {
-    const leadingTrivia = parseTrivia(context);
     token = peek(context);
 
     const expression = parseExpression(context);
@@ -723,9 +590,7 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
       return { error: expression.error };
     }
 
-    const trailingTrivia = parseTrivia(context);
-
-    args.push(mergeTriviaIntoNode(<Expression>expression.value, leadingTrivia, trailingTrivia));
+    args.push(expression.value!);
     token = peek(context);
 
     if (token.type == TokenType.Comma) {
@@ -741,7 +606,6 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
 
 function parseTypeName(context: ParserContext): Result<TypeName, ParserError> {
   context.logger.enter(parseTypeName.name);
-  const leadingTrivia = parseTrivia(context);
   const name = parseIdentifier(context);
 
   if (name.error != null) {
@@ -751,15 +615,13 @@ function parseTypeName(context: ParserContext): Result<TypeName, ParserError> {
   return {
     value: {
       kind: SyntaxKind.TypeName,
-      name: <Identifier>name.value,
-      leadingTrivia,
+      name: name.value!,
     },
   };
 }
 
 function parseIdentifier(context: ParserContext): Result<Identifier, ParserError> {
   context.logger.enter(parseIdentifier.name);
-  const leadingTrivia = parseTrivia(context);
   const token = expect(context, TokenType.Identifier, parseIdentifier.name);
 
   if (token.error != null) {
@@ -771,15 +633,13 @@ function parseIdentifier(context: ParserContext): Result<Identifier, ParserError
   return {
     value: {
       kind: SyntaxKind.Identifier,
-      value: <string>token.value?.text,
-      leadingTrivia,
+      value: token.value!.text!,
     },
   };
 }
 
 function parseIntegerLiteral(context: ParserContext): Result<IntegerLiteral, ParserError> {
   context.logger.enter(parseIntegerLiteral.name);
-  const leadingTrivia = parseTrivia(context);
   const token = expect(context, TokenType.Integer, parseIntegerLiteral.name);
 
   if (token.error != null) {
@@ -792,14 +652,12 @@ function parseIntegerLiteral(context: ParserContext): Result<IntegerLiteral, Par
     value: {
       kind: SyntaxKind.IntegerLiteral,
       value: <string>token.value?.text,
-      leadingTrivia,
     },
   };
 }
 
 function parseStringLiteral(context: ParserContext): Result<StringLiteral, ParserError> {
   context.logger.enter(parseStringLiteral.name);
-  const leadingTrivia = parseTrivia(context);
   const token = expect(context, TokenType.String, parseIntegerLiteral.name);
 
   if (token.error != null) {
@@ -811,8 +669,7 @@ function parseStringLiteral(context: ParserContext): Result<StringLiteral, Parse
   return {
     value: {
       kind: SyntaxKind.StringLiteral,
-      value: <string>token.value?.text,
-      leadingTrivia,
+      value: token.value!.text!,
     },
   };
 }

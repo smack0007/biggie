@@ -21,7 +21,8 @@ async function main(argv: string[]): Promise<i32> {
 
   let sourceFile = parse(fileName, lexemes, {
     enter: (name: string) => {},
-    // enter: (name: string, token: Token) => console.info(`/* ${name} (${token.line}, ${token.column}) <${token.text}> */`),
+    // enter: (name: string, token: Token) =>
+    //   console.info(`/* ${name} (${token.line}, ${token.column}) <${token.text}> */`),
   });
 
   if (sourceFile.error != null) {

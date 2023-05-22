@@ -4,9 +4,6 @@ export enum TokenType {
   // Used internally to indicate we're currently looking for a token.
   Unknown = 0,
 
-  // Whitespace
-  Whitespace,
-
   // 'c'.
   Char,
 
@@ -212,19 +209,12 @@ export function scan(text: string): Array<Token> {
       column = curColumn;
 
       if (isWhitespace(text[i])) {
-        while (i < text.length - 1 && isWhitespace(text[i + 1])) {
-          value += text[i];
-          i += 1;
-          curColumn += 1;
-
-          if (text[i] == "\n") {
-            curLine += 1;
-            curColumn = 0;
-          }
+        // Skip over whitespace
+        if (text[i] == "\n") {
+          curLine += 1;
+          curColumn = 0;
         }
 
-        token.push({ type: TokenType.Whitespace, text: value, line: line, column: column });
-        value = "";
         continue;
       } else if (text[i] == "'") {
         // Start of a char

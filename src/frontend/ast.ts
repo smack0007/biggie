@@ -16,7 +16,7 @@ export enum SyntaxKind {
   DeferStatement,
 
   ReturnStatement,
-  
+
   SourceFile,
 
   Statement,
@@ -30,16 +30,8 @@ export enum SyntaxKind {
   VarDeclaration,
 }
 
-export interface SyntaxTrivia {
-  readonly value: string;
-}
-
 export interface SyntaxNode {
   readonly kind: SyntaxKind;
-
-  readonly leadingTrivia?: SyntaxTrivia | null;
-
-  readonly trailingTrivia?: SyntaxTrivia | null;
 }
 
 export interface SourceFile extends SyntaxNode {
@@ -76,7 +68,7 @@ export interface FuncDeclaration extends Statement {
 
 export interface FunctionArgument extends SyntaxNode {
   readonly kind: SyntaxKind.FuncArgument;
-  
+
   readonly name: Identifier;
 
   readonly type: Identifier;
