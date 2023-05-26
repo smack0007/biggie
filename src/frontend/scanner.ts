@@ -101,37 +101,37 @@ export enum TokenType {
   Assignment,
 
   // !
-  LogicalNot,
+  Not,
 
   // ==
-  EqualTo,
+  EqualEqual,
 
   // !=
-  NotEqualTo,
+  NotEqual,
 
   // >
   GreaterThan,
 
   // >=
-  GreaterThanOrEqualTo,
+  GreaterThanEqual,
 
   // <
   LessThan,
 
   // <=
-  LessThanOrEqualTo,
+  LessThanEqual,
 
   // +
   Plus,
 
   // +=
-  PlusGets,
+  PlusEqual,
 
   // -
   Minus,
 
   // -=
-  MinusGets,
+  MinusEqual,
 
   // *
   Multiply,
@@ -254,7 +254,7 @@ export function scan(text: string): Array<Token> {
       } else if (text[i] == "=") {
         // Gets or EqualTo or MapsTo
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.EqualTo, text: null, line: line, column: column });
+          token.push({ type: TokenType.EqualEqual, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
@@ -263,15 +263,15 @@ export function scan(text: string): Array<Token> {
       } else if (text[i] == "!") {
         // Not or NotEqualTo
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.NotEqualTo, text: null, line: line, column: column });
+          token.push({ type: TokenType.NotEqual, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.LogicalNot, text: null, line: line, column: column });
+          token.push({ type: TokenType.Not, text: null, line: line, column: column });
         }
       } else if (text[i] == ">") {
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.GreaterThanOrEqualTo, text: null, line: line, column: column });
+          token.push({ type: TokenType.GreaterThanEqual, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
@@ -279,7 +279,7 @@ export function scan(text: string): Array<Token> {
         }
       } else if (text[i] == "<") {
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.LessThanOrEqualTo, text: null, line: line, column: column });
+          token.push({ type: TokenType.LessThanEqual, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
@@ -288,7 +288,7 @@ export function scan(text: string): Array<Token> {
       } else if (text[i] == "+") {
         // Plus or PlusGets
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.PlusGets, text: null, line: line, column: column });
+          token.push({ type: TokenType.PlusEqual, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
@@ -298,7 +298,7 @@ export function scan(text: string): Array<Token> {
         // Minus or MinusGets
         if (i + 1 < text.length && !isWhitespace(text[i + 1])) {
           if (text[i + 1] == "=") {
-            token.push({ type: TokenType.MinusGets, text: null, line: line, column: column });
+            token.push({ type: TokenType.MinusEqual, text: null, line: line, column: column });
             i += 1;
             curColumn += 1;
           } else if (isNumber(text[i + 1])) {

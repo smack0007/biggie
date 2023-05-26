@@ -14,7 +14,11 @@ func main(): i32 {
   sayHello(name);
 
   const value: i32 = 42;
-  println("{0} == 42 ?= {1}", value, value == 42);
-  
+  println("{0} == 42 = {1}", value, value == 42);
+  println("{0} > 42 = {1}", value, value > 42);
+  println("1 + 2 = {0}", 1 + 2);
+  println("3 * 4 = {0}", 3 * 4);
+  println("!true = {0}", !true);
+
   return 42;
 }

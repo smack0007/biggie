@@ -3,19 +3,24 @@ import * as path from "node:path";
 import {
   BoolLiteral,
   CallExpression,
+  ComparisonExpression,
   EqualityExpression,
   Expression,
   ExpressionStatement,
   FuncDeclaration,
   Identifier,
   IntegerLiteral as IntLiteral,
-  Operator,
+  BinaryOperator,
   ReturnStatement,
   SourceFile,
   StringLiteral,
   SyntaxKind,
   SyntaxNode,
   VarDeclaration,
+  AdditiveExpression,
+  MultiplcativeExpression,
+  UnaryExpression,
+  UnaryOperator,
 } from "../frontend/ast";
 import { int } from "../shims";
 import { BackendContext } from "./backend";
@@ -23,6 +28,10 @@ import { BackendContext } from "./backend";
 interface JSBackendContext extends BackendContext {
   indentLevel: int;
   indent: () => void;
+}
+
+function debugObj(context: JSBackendContext, value: unknown, message?: string, newLine: boolean = true): void {
+  context.append(`/*${message ? message + ": " : ""}${JSON.stringify(value, undefined, 2)}*/${newLine ? "\n" : ""}`);
 }
 
 const PREAMBLE = fs.readFileSync(path.join(__dirname, "jsPreamble.js"), "utf-8");
@@ -46,6 +55,9 @@ export function outputJS(sourceFile: SourceFile, baseContext: BackendContext): v
       baseContext.prepend(value);
     },
   };
+
+  debugObj(context, sourceFile);
+  context.append("\n");
 
   outputPreamble(context);
 
@@ -71,12 +83,8 @@ function outputUnexpectedNode(
   functionName: string,
   sourceFile: SourceFile,
   node: SyntaxNode
-): void {
-  context.append(`/* Unexpected node in ${functionName}:\n`);
-  // const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-  // context.output(`${sourceFile.fileName} (${line + 1},${character + 1}) ${SyntaxKind[node.kind]} ${message}`);
-  context.append(`${sourceFile.fileName} ${SyntaxKind[node.kind]}`);
-  context.append("*/\n");
+): void {  
+  context.append(`/* Unexpected node in "${functionName}": ${SyntaxKind[node.kind]} ${sourceFile.fileName} */`);
 }
 
 function outputTopLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
@@ -126,7 +134,7 @@ function outputFunctionDeclaration(
   context.append(`}\n\n`);
 }
 
-function outputBlockLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode) {
+function outputBlockLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode) {  
   context.indent();
 
   switch (node.kind) {
@@ -158,8 +166,6 @@ function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile,
     context.append("=");
     outputExpression(context, sourceFile, varDeclaration.expression);
   }
-
-  context.append(";\n");
 }
 
 function outputReturnStatement(context: JSBackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
@@ -172,12 +178,20 @@ function outputReturnStatement(context: JSBackendContext, sourceFile: SourceFile
 
 function outputExpression(context: JSBackendContext, sourceFile: SourceFile, expression: Expression) {
   switch (expression.kind) {
+    case SyntaxKind.AdditiveExpression:
+      outputAdditiveExpression(context, sourceFile, <AdditiveExpression>expression);
+      break;
+
     case SyntaxKind.BoolLiteral:
       outputBoolLiteral(context, sourceFile, <BoolLiteral>expression);
       break;
-      
+
     case SyntaxKind.CallExpression:
       outputCallExpression(context, sourceFile, <CallExpression>expression);
+      break;
+
+    case SyntaxKind.ComparisonExpression:
+      outputComparisonExpression(context, sourceFile, <ComparisonExpression>expression);
       break;
         
     case SyntaxKind.EqualityExpression:
@@ -192,8 +206,16 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       outputIntLiteral(context, sourceFile, <IntLiteral>expression);
       break;
 
+    case SyntaxKind.MultiplicativeExpression:
+      outputMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
+      break;
+
     case SyntaxKind.StringLiteral:
       outputStringLiteral(context, sourceFile, <StringLiteral>expression);
+      break;
+
+    case SyntaxKind.UnaryExpression:
+      outputUnaryExpression(context, sourceFile, <UnaryExpression>expression);
       break;
 
     default:
@@ -202,31 +224,67 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
   }
 }
 
+function outputAdditiveExpression(context: JSBackendContext, sourceFile: SourceFile, expression: AdditiveExpression): void {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  context.append(` ${expression.operator == BinaryOperator.Add ? "+" : "-"} `);
+
+  outputExpression(context, sourceFile, expression.rhs);
+}
+
 function outputBoolLiteral(context: JSBackendContext, sourceFile: SourceFile, boolLiteral: BoolLiteral) {
   context.append(boolLiteral.value ? "true" : "false");
 }
 
-function outputEqualityExpression(context: JSBackendContext, sourceFile: SourceFile, equalityExpression: EqualityExpression) {
-  outputExpression(context, sourceFile, equalityExpression.lhs);
-
-  context.append(equalityExpression.operator == Operator.EqualTo ? " === " : " !== ");
-
-  outputExpression(context, sourceFile, equalityExpression.rhs);
-}
-
-function outputCallExpression(context: JSBackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
-  outputExpression(context, sourceFile, callExpression.expression);
+function outputCallExpression(context: JSBackendContext, sourceFile: SourceFile, expression: CallExpression) {
+  outputExpression(context, sourceFile, expression.expression);
   context.append("(");
 
-  for (let i = 0; i < callExpression.arguments.length; i++) {
+  for (let i = 0; i < expression.arguments.length; i++) {
     if (i != 0) {
       context.append(", ");
     }
 
-    outputExpression(context, sourceFile, callExpression.arguments[i]);
+    outputExpression(context, sourceFile, expression.arguments[i]);
   }
 
   context.append(")");
+}
+
+function outputComparisonExpression(context: JSBackendContext, sourceFile: SourceFile, expression: ComparisonExpression) {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  let operator = ">";
+
+  switch (expression.operator) {
+    case BinaryOperator.GreaterThan:
+      operator = ">";
+      break;
+
+    case BinaryOperator.GreaterThanOrEqualTo:
+      operator = ">=";
+      break;
+
+    case BinaryOperator.LessThan:
+      operator = "<";
+      break;
+  
+    case BinaryOperator.LessThanOrEqualTo:
+      operator = "<=";
+      break;
+  }
+
+  context.append(` ${operator} `);
+
+  outputExpression(context, sourceFile, expression.rhs);
+}
+
+function outputEqualityExpression(context: JSBackendContext, sourceFile: SourceFile, expression: EqualityExpression) {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  context.append(expression.operator == BinaryOperator.EqualTo ? " === " : " !== ");
+
+  outputExpression(context, sourceFile, expression.rhs);
 }
 
 function outputIdentifier(context: JSBackendContext, sourceFile: SourceFile, identifier: Identifier) {
@@ -237,6 +295,20 @@ function outputIntLiteral(context: JSBackendContext, sourceFile: SourceFile, int
   context.append(integerLiteral.value);
 }
 
+function outputMultiplicativeExpression(context: JSBackendContext, sourceFile: SourceFile, expression: MultiplcativeExpression) {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  context.append(expression.operator == BinaryOperator.Multiply ? " * " : " / ");
+
+  outputExpression(context, sourceFile, expression.rhs);
+}
+
 function outputStringLiteral(context: JSBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
   context.append(`"${stringLiteral.value}"`);
+}
+
+function outputUnaryExpression(context: JSBackendContext, sourceFile: SourceFile, expression: UnaryExpression) {
+  context.append(expression.operator == UnaryOperator.LogicalNegate ? "!" : "-");
+
+  outputExpression(context, sourceFile, expression.expression);
 }

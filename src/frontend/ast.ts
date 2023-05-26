@@ -37,21 +37,37 @@ export enum SyntaxKind {
 
   TypeName,
 
+  UnaryExpression,
+
   VarDeclaration,
 }
 
-export enum Operator {
+export enum BinaryOperator {
+  Add,
+  
+  Divide,
+
   EqualTo,
 
   GreaterThan,
 
-  GreaterThanEquals,
+  GreaterThanOrEqualTo,
 
   LessThan,
 
-  LessThanEquals,
+  LessThanOrEqualTo,
 
-  NotEqualTo
+  Multiply,
+
+  NotEqualTo,
+
+  Subtract
+}
+
+export enum UnaryOperator {
+  Negate,
+
+  LogicalNegate
 }
 
 export interface SyntaxNode {
@@ -129,7 +145,7 @@ export interface EqualityExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: Operator.EqualTo | Operator.NotEqualTo;
+  readonly operator: BinaryOperator.EqualTo | BinaryOperator.NotEqualTo;
 
   readonly rhs: Expression;
 }
@@ -139,9 +155,37 @@ export interface ComparisonExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: Operator.GreaterThan | Operator.GreaterThanEquals | Operator.LessThan | Operator.LessThanEquals;
+  readonly operator: BinaryOperator.GreaterThan | BinaryOperator.GreaterThanOrEqualTo | BinaryOperator.LessThan | BinaryOperator.LessThanOrEqualTo;
 
   readonly rhs: Expression;
+}
+
+export interface AdditiveExpression extends Expression {
+  readonly kind: SyntaxKind.AdditiveExpression;
+
+  readonly lhs: Expression;
+
+  readonly operator: BinaryOperator.Add | BinaryOperator.Subtract;
+
+  readonly rhs: Expression;
+}
+
+export interface MultiplcativeExpression extends Expression {
+  readonly kind: SyntaxKind.MultiplicativeExpression;
+
+  readonly lhs: Expression;
+
+  readonly operator: BinaryOperator.Multiply | BinaryOperator.Divide;
+
+  readonly rhs: Expression;
+}
+
+export interface UnaryExpression extends Expression {
+  readonly kind: SyntaxKind.UnaryExpression;
+
+  readonly operator: UnaryOperator;
+
+  readonly expression: Expression;
 }
 
 export interface PrimaryExpression extends Expression {}

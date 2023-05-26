@@ -18,8 +18,12 @@ import {
   EqualityExpression,
   ComparisonExpression,
   PrimaryExpression,
-  Operator,
+  BinaryOperator,
   BoolLiteral,
+  AdditiveExpression,
+  UnaryExpression,
+  UnaryOperator,
+  MultiplcativeExpression,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
@@ -536,7 +540,7 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
   }
 
   const operatorToken = peek(context);
-  if (operatorToken.type == TokenType.EqualTo || operatorToken.type == TokenType.NotEqualTo) {
+  if (operatorToken.type == TokenType.EqualEqual || operatorToken.type == TokenType.NotEqual) {
     advance(context);
 
     const rhs = parseComparisonExpression(context);
@@ -545,14 +549,16 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
       return { error: rhs.error };
     }
 
-    return {
-      value: <EqualityExpression>{
+    const result: Result<EqualityExpression, ParserError> = {
+      value: {
         kind: SyntaxKind.EqualityExpression,
-        lhs: lhs.value,
-        operator: operatorToken.type == TokenType.EqualTo ? Operator.EqualTo : Operator.NotEqualTo,
-        rhs: rhs.value
+        lhs: lhs.value!,
+        operator: operatorToken.type == TokenType.EqualEqual ? BinaryOperator.EqualTo : BinaryOperator.NotEqualTo,
+        rhs: rhs.value!
       }
     };
+
+    return result;
   } else {
     return lhs;
   }
@@ -561,7 +567,7 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
 function parseComparisonExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseComparisonExpression.name);
   
-  const lhs = parsePrimaryExpression(context);
+  const lhs = parseAdditiveExpression(context);
 
   if (lhs.error != null) {
     return { error: lhs.error };
@@ -570,30 +576,144 @@ function parseComparisonExpression(context: ParserContext): Result<Expression, P
   const operatorToken = peek(context);
   if (
     operatorToken.type == TokenType.GreaterThan ||
-    operatorToken.type == TokenType.GreaterThanOrEqualTo ||
+    operatorToken.type == TokenType.GreaterThanEqual ||
     operatorToken.type == TokenType.LessThan ||
-    operatorToken.type == TokenType.LessThanOrEqualTo
+    operatorToken.type == TokenType.LessThanEqual
   ) {
     advance(context);
 
-    const rhs = parseComparisonExpression(context);
+    const rhs = parseAdditiveExpression(context);
 
     if (rhs.error != null) {
       return { error: rhs.error };
     }
 
-    let operator = Operator.GreaterThan;
+    let operator = BinaryOperator.GreaterThan;
+    switch (operatorToken.type) {
+      case TokenType.GreaterThan:
+        operator = BinaryOperator.GreaterThan;
+        break;
 
-    return {
-      value: <ComparisonExpression>{
+      case TokenType.GreaterThanEqual:
+        operator = BinaryOperator.GreaterThanOrEqualTo;
+        break;
+
+      case TokenType.LessThan:
+        operator = BinaryOperator.LessThan;
+        break;
+
+      case TokenType.LessThanEqual:
+        operator = BinaryOperator.LessThanOrEqualTo;
+        break;
+    }
+
+    const result: Result<ComparisonExpression, ParserError> = {
+      value: {
         kind: SyntaxKind.ComparisonExpression,
-        lhs,
+        lhs: lhs.value!,
         operator,
-        rhs
+        rhs: rhs.value!
       }
     };
+
+    return result;
   } else {
     return lhs;
+  }
+}
+
+function parseAdditiveExpression(context: ParserContext): Result<Expression, ParserError> {
+  context.logger.enter(parseAdditiveExpression.name);
+  
+  const lhs = parseMultiplicativeExpression(context);
+
+  if (lhs.error != null) {
+    return { error: lhs.error };
+  }
+
+  const operatorToken = peek(context);
+  if (operatorToken.type == TokenType.Plus || operatorToken.type == TokenType.Minus) {
+    advance(context);
+
+    const rhs = parseMultiplicativeExpression(context);
+
+    if (rhs.error != null) {
+      return { error: rhs.error };
+    }
+
+    const result: Result<AdditiveExpression, ParserError> = {
+      value: {
+        kind: SyntaxKind.AdditiveExpression,
+        lhs: lhs.value!,
+        operator: operatorToken.type == TokenType.Plus ? BinaryOperator.Add : BinaryOperator.Subtract,
+        rhs: rhs.value!
+      }
+    };
+
+    return result;
+  } else {
+    return lhs;
+  }
+}
+
+function parseMultiplicativeExpression(context: ParserContext): Result<Expression, ParserError> {
+  context.logger.enter(parseMultiplicativeExpression.name);
+  
+  const lhs = parseUnaryExpression(context);
+
+  if (lhs.error != null) {
+    return { error: lhs.error };
+  }
+
+  const operatorToken = peek(context);
+  if (operatorToken.type == TokenType.Multiply || operatorToken.type == TokenType.Divide) {
+    advance(context);
+
+    const rhs = parseUnaryExpression(context);
+
+    if (rhs.error != null) {
+      return { error: rhs.error };
+    }
+
+    const result: Result<MultiplcativeExpression, ParserError> = {
+      value: {
+        kind: SyntaxKind.MultiplicativeExpression,
+        lhs: lhs.value!,
+        operator: operatorToken.type == TokenType.Multiply ? BinaryOperator.Multiply : BinaryOperator.Divide,
+        rhs: rhs.value!
+      }
+    };
+
+    return result;
+  } else {
+    return lhs;
+  }
+}
+
+function parseUnaryExpression(context: ParserContext): Result<Expression, ParserError> {
+  context.logger.enter(parseUnaryExpression.name);
+  
+  const operatorToken = peek(context);
+  if (operatorToken.type == TokenType.Not || operatorToken.type == TokenType.Minus) {
+    advance(context);
+
+    const expression = parseUnaryExpression(context);
+
+    if (expression.error != null) {
+      return { error: expression.error };
+    }
+
+    const result: Result<UnaryExpression, ParserError> = {
+      value: {
+        kind: SyntaxKind.UnaryExpression,
+        operator: operatorToken.type == TokenType.Not ? UnaryOperator.LogicalNegate : UnaryOperator.Negate,
+        expression: expression.value!
+      }
+    };
+
+    return result;
+  } else {
+    return parsePrimaryExpression(context);
   }
 }
 
