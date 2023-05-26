@@ -1,12 +1,15 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
+  BoolLiteral,
   CallExpression,
+  EqualityExpression,
   Expression,
   ExpressionStatement,
   FuncDeclaration,
   Identifier,
-  IntegerLiteral,
+  IntegerLiteral as IntLiteral,
+  Operator,
   ReturnStatement,
   SourceFile,
   StringLiteral,
@@ -147,9 +150,7 @@ function outputBlockLevelStatement(context: JSBackendContext, sourceFile: Source
   context.append(";\n");
 }
 
-function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {
-  context.indent();
-  
+function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {  
   // TODO: Implement let
   context.append(`const ${varDeclaration.name.value}`);
 
@@ -171,8 +172,16 @@ function outputReturnStatement(context: JSBackendContext, sourceFile: SourceFile
 
 function outputExpression(context: JSBackendContext, sourceFile: SourceFile, expression: Expression) {
   switch (expression.kind) {
+    case SyntaxKind.BoolLiteral:
+      outputBoolLiteral(context, sourceFile, <BoolLiteral>expression);
+      break;
+      
     case SyntaxKind.CallExpression:
       outputCallExpression(context, sourceFile, <CallExpression>expression);
+      break;
+        
+    case SyntaxKind.EqualityExpression:
+      outputEqualityExpression(context, sourceFile, <EqualityExpression>expression);
       break;
 
     case SyntaxKind.Identifier:
@@ -180,7 +189,7 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       break;
 
     case SyntaxKind.IntegerLiteral:
-      outputIntegerLiteral(context, sourceFile, <IntegerLiteral>expression);
+      outputIntLiteral(context, sourceFile, <IntLiteral>expression);
       break;
 
     case SyntaxKind.StringLiteral:
@@ -191,6 +200,18 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       outputUnexpectedNode(context, outputExpression.name, sourceFile, expression);
       break;
   }
+}
+
+function outputBoolLiteral(context: JSBackendContext, sourceFile: SourceFile, boolLiteral: BoolLiteral) {
+  context.append(boolLiteral.value ? "true" : "false");
+}
+
+function outputEqualityExpression(context: JSBackendContext, sourceFile: SourceFile, equalityExpression: EqualityExpression) {
+  outputExpression(context, sourceFile, equalityExpression.lhs);
+
+  context.append(equalityExpression.operator == Operator.EqualTo ? " === " : " !== ");
+
+  outputExpression(context, sourceFile, equalityExpression.rhs);
 }
 
 function outputCallExpression(context: JSBackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
@@ -212,7 +233,7 @@ function outputIdentifier(context: JSBackendContext, sourceFile: SourceFile, ide
   context.append(identifier.value);
 }
 
-function outputIntegerLiteral(context: JSBackendContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
+function outputIntLiteral(context: JSBackendContext, sourceFile: SourceFile, integerLiteral: IntLiteral) {
   context.append(integerLiteral.value);
 }
 

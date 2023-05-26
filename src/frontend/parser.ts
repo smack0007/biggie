@@ -15,6 +15,11 @@ import {
   FunctionArgument,
   DeferStatement,
   VarDeclaration,
+  EqualityExpression,
+  ComparisonExpression,
+  PrimaryExpression,
+  Operator,
+  BoolLiteral,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
@@ -506,12 +511,106 @@ function parseReturnStatement(context: ParserContext): Result<ReturnStatement, P
 
 function parseExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseExpression.name);
-  let token = peek(context);
+  
+  let result: Result<Expression, ParserError> = parseEqualityExpression(context);
 
-  let result: Result<Expression, ParserError>;
+  if (result.error != null) {
+    return { error: result.error };
+  }
+
+  const token = peek(context);
+  if (token.type == TokenType.OpenParen) {
+    result = parseCallExpression(context, <Expression>result.value);
+  }
+
+  return result;
+}
+
+function parseEqualityExpression(context: ParserContext): Result<Expression, ParserError> {
+  context.logger.enter(parseEqualityExpression.name);
+  
+  const lhs = parseComparisonExpression(context);
+
+  if (lhs.error != null) {
+    return { error: lhs.error };
+  }
+
+  const operatorToken = peek(context);
+  if (operatorToken.type == TokenType.EqualTo || operatorToken.type == TokenType.NotEqualTo) {
+    advance(context);
+
+    const rhs = parseComparisonExpression(context);
+
+    if (rhs.error != null) {
+      return { error: rhs.error };
+    }
+
+    return {
+      value: <EqualityExpression>{
+        kind: SyntaxKind.EqualityExpression,
+        lhs: lhs.value,
+        operator: operatorToken.type == TokenType.EqualTo ? Operator.EqualTo : Operator.NotEqualTo,
+        rhs: rhs.value
+      }
+    };
+  } else {
+    return lhs;
+  }
+}
+
+function parseComparisonExpression(context: ParserContext): Result<Expression, ParserError> {
+  context.logger.enter(parseComparisonExpression.name);
+  
+  const lhs = parsePrimaryExpression(context);
+
+  if (lhs.error != null) {
+    return { error: lhs.error };
+  }
+
+  const operatorToken = peek(context);
+  if (
+    operatorToken.type == TokenType.GreaterThan ||
+    operatorToken.type == TokenType.GreaterThanOrEqualTo ||
+    operatorToken.type == TokenType.LessThan ||
+    operatorToken.type == TokenType.LessThanOrEqualTo
+  ) {
+    advance(context);
+
+    const rhs = parseComparisonExpression(context);
+
+    if (rhs.error != null) {
+      return { error: rhs.error };
+    }
+
+    let operator = Operator.GreaterThan;
+
+    return {
+      value: <ComparisonExpression>{
+        kind: SyntaxKind.ComparisonExpression,
+        lhs,
+        operator,
+        rhs
+      }
+    };
+  } else {
+    return lhs;
+  }
+}
+
+function parsePrimaryExpression(context: ParserContext): Result<PrimaryExpression, ParserError> {
+  context.logger.enter(parsePrimaryExpression.name);
+  
+  let result: Result<PrimaryExpression, ParserError>;
+  const token = peek(context);
+  
   switch (token.type) {
     case TokenType.Identifier:
       result = parseIdentifier(context);
+      break;
+
+    case TokenType.True:
+    case TokenType.False:
+      result = parseBoolLiteral(context);
       break;
 
     case TokenType.Integer:
@@ -530,15 +629,6 @@ function parseExpression(context: ParserContext): Result<Expression, ParserError
           `Token type ${TokenType[token.type]} unexpected in ${parseExpression.name}`
         ),
       };
-  }
-
-  if (result.error != null) {
-    return { error: result.error };
-  }
-
-  token = peek(context);
-  if (token.type == TokenType.OpenParen) {
-    result = parseCallExpression(context, <Expression>result.value);
   }
 
   return result;
@@ -634,6 +724,24 @@ function parseIdentifier(context: ParserContext): Result<Identifier, ParserError
     value: {
       kind: SyntaxKind.Identifier,
       value: token.value!.text!,
+    },
+  };
+}
+
+function parseBoolLiteral(context: ParserContext): Result<BoolLiteral, ParserError> {
+  context.logger.enter(parseBoolLiteral.name);
+  const token = expect(context, [ TokenType.True, TokenType.False ], parseBoolLiteral.name);
+
+  if (token.error != null) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  return {
+    value: {
+      kind: SyntaxKind.BoolLiteral,
+      value: token.value?.type == TokenType.True
     },
   };
 }

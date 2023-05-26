@@ -1,5 +1,15 @@
 export enum SyntaxKind {
+  AdditiveExpression,
+
+  BoolLiteral,
+  
   CallExpression,
+
+  ComparisonExpression,
+
+  DeferStatement,
+
+  EqualityExpression,
 
   Expression,
 
@@ -13,7 +23,7 @@ export enum SyntaxKind {
 
   Identifier,
 
-  DeferStatement,
+  MultiplicativeExpression,
 
   ReturnStatement,
 
@@ -28,6 +38,20 @@ export enum SyntaxKind {
   TypeName,
 
   VarDeclaration,
+}
+
+export enum Operator {
+  EqualTo,
+
+  GreaterThan,
+
+  GreaterThanEquals,
+
+  LessThan,
+
+  LessThanEquals,
+
+  NotEqualTo
 }
 
 export interface SyntaxNode {
@@ -100,6 +124,28 @@ export interface StatementBlock extends SyntaxNode {
 
 export interface Expression extends SyntaxNode {}
 
+export interface EqualityExpression extends Expression {
+  readonly kind: SyntaxKind.EqualityExpression;
+
+  readonly lhs: Expression;
+
+  readonly operator: Operator.EqualTo | Operator.NotEqualTo;
+
+  readonly rhs: Expression;
+}
+
+export interface ComparisonExpression extends Expression {
+  readonly kind: SyntaxKind.ComparisonExpression;
+
+  readonly lhs: Expression;
+
+  readonly operator: Operator.GreaterThan | Operator.GreaterThanEquals | Operator.LessThan | Operator.LessThanEquals;
+
+  readonly rhs: Expression;
+}
+
+export interface PrimaryExpression extends Expression {}
+
 export interface CallExpression extends Expression {
   readonly kind: SyntaxKind.CallExpression;
 
@@ -108,7 +154,7 @@ export interface CallExpression extends Expression {
   readonly arguments: Array<Expression>;
 }
 
-export interface TypeName extends Expression {
+export interface TypeName extends SyntaxNode {
   readonly kind: SyntaxKind.TypeName;
 
   readonly name: Identifier;
@@ -118,6 +164,12 @@ export interface Identifier extends SyntaxNode {
   readonly kind: SyntaxKind.Identifier;
 
   readonly value: string;
+}
+
+export interface BoolLiteral extends Expression {
+  readonly kind: SyntaxKind.BoolLiteral;
+
+  readonly value: boolean;
 }
 
 export interface IntegerLiteral extends Expression {

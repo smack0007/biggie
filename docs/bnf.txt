@@ -24,15 +24,29 @@
   
 <ExpressionStatement> ::= <Expression> ";"
   
-<Expression> ::= <CallExpression> | <IntegerLiteral> | <StringLiteral>
+<Expression> ::= <EqualityExpression> | <CallExpression>
+
+<EqualityExpression> ::= <ComparisonExpression> ( ( "!=" | "==" ) <ComparisonExpression> )*
+
+<ComparisonExpression> ::= <AdditiveExpression> ( ( ">" | ">=" | "<" | "<=" ) <AdditiveExpression> )*
+
+<AdditiveExpression> ::= <MultiplicativeExpression> ( ( "+" | "-" ) <MultiplicativeExpression> )*
+
+<MultiplicativeExpression> ::= <UnaryExpression> ( ( "*" | "/" ) <UnaryExpression> )*
+
+<UnaryExpression> ::= ( "!" | "-" ) <UnaryExpression> | <PrimaryExpression>
+
+<PrimaryExpression> ::= <BoolLiteral> | <IntLiteral> | <StringLiteral>
 
 <CallExpression> ::= <Expression> "(" <Expression>? ("," <Expression>)* ")"
 
-<IntegerLiteral> ::= <digit>*
+<BoolLiteral> ::= "true" | "false"
 
-<StringLiteral> ::= "\"" (<letter> | <digit>)* "\""
+<IntLiteral> ::= <digit>*
 
-<Identifier> ::= (<letter> | <identifierSymbol>) (<letter> | <digit> | <identifierSymbol>)*
+<StringLiteral> ::= "\"" ( <letter> | <digit> )* "\""
+
+<Identifier> ::= ( <letter> | <identifierSymbol> ) ( <letter> | <digit> | <identifierSymbol> )*
 
 <identifierSymbol ::= "_"
   
