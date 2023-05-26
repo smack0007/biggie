@@ -19,6 +19,8 @@ func main(): i32 {
   println("1 + 2 = {0}", 1 + 2);
   println("3 * 4 = {0}", 3 * 4);
   println("!true = {0}", !true);
+  println("1 + 2 * 3 = {0}", 1 + 2 * 3);
+  println("4 * (2 + 3) = {0}", 4 * (2 + 3));
 
   return 42;
 }

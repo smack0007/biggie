@@ -25,6 +25,8 @@ export enum SyntaxKind {
 
   MultiplicativeExpression,
 
+  ParenthesizedExpression,
+
   ReturnStatement,
 
   SourceFile,
@@ -188,7 +190,11 @@ export interface UnaryExpression extends Expression {
   readonly expression: Expression;
 }
 
-export interface PrimaryExpression extends Expression {}
+export interface ParenthesizedExpression extends Expression {
+  readonly kind: SyntaxKind.ParenthesizedExpression;
+
+  readonly expression: Expression;
+}
 
 export interface CallExpression extends Expression {
   readonly kind: SyntaxKind.CallExpression;

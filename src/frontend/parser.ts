@@ -24,6 +24,7 @@ import {
   UnaryExpression,
   UnaryOperator,
   MultiplcativeExpression,
+  ParenthesizedExpression,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
@@ -724,6 +725,10 @@ function parsePrimaryExpression(context: ParserContext): Result<PrimaryExpressio
   const token = peek(context);
   
   switch (token.type) {
+    case TokenType.OpenParen:
+      result = parseParenthesizedExpression(context);
+      break;
+
     case TokenType.Identifier:
       result = parseIdentifier(context);
       break;
@@ -752,6 +757,38 @@ function parsePrimaryExpression(context: ParserContext): Result<PrimaryExpressio
   }
 
   return result;
+}
+
+function parseParenthesizedExpression(context: ParserContext): Result<ParenthesizedExpression, ParserError> {
+  context.logger.enter(parseParenthesizedExpression.name);
+  
+  const openParenToken = expect(context, TokenType.OpenParen, parseParenthesizedExpression.name);
+  
+  if (openParenToken.error != null) {
+    return { error: openParenToken.error };
+  }
+
+  advance(context);
+  const expression = parseExpression(context);
+
+  if (expression.error != null) {
+    return { error: expression.error };
+  }
+
+  const closeParenToken = expect(context, TokenType.CloseParen, parseParenthesizedExpression.name);
+
+  if (closeParenToken.error != null) {
+    return { error: closeParenToken.error };
+  }
+
+  advance(context);
+
+  return {
+    value: {
+      kind: SyntaxKind.ParenthesizedExpression,
+      expression: expression.value!
+    }
+  };
 }
 
 function parseCallExpression(context: ParserContext, expression: Expression): Result<CallExpression, ParserError> {

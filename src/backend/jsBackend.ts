@@ -21,6 +21,7 @@ import {
   MultiplcativeExpression,
   UnaryExpression,
   UnaryOperator,
+  ParenthesizedExpression,
 } from "../frontend/ast";
 import { int } from "../shims";
 import { BackendContext } from "./backend";
@@ -210,6 +211,10 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       outputMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
       break;
 
+    case SyntaxKind.ParenthesizedExpression:
+      outputParenthesizedExpression(context, sourceFile, <ParenthesizedExpression>expression);  
+      break;
+
     case SyntaxKind.StringLiteral:
       outputStringLiteral(context, sourceFile, <StringLiteral>expression);
       break;
@@ -301,6 +306,12 @@ function outputMultiplicativeExpression(context: JSBackendContext, sourceFile: S
   context.append(expression.operator == BinaryOperator.Multiply ? " * " : " / ");
 
   outputExpression(context, sourceFile, expression.rhs);
+}
+
+function outputParenthesizedExpression(context: JSBackendContext, sourceFile: SourceFile, expression: ParenthesizedExpression) {
+  context.append("(");
+  outputExpression(context, sourceFile, expression.expression);
+  context.append(")");
 }
 
 function outputStringLiteral(context: JSBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {

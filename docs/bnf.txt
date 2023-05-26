@@ -36,7 +36,9 @@
 
 <UnaryExpression> ::= ( "!" | "-" ) <UnaryExpression> | <PrimaryExpression>
 
-<PrimaryExpression> ::= <BoolLiteral> | <IntLiteral> | <StringLiteral>
+<PrimaryExpression> ::= <ParenthesizedExpression> | <BoolLiteral> | <IntLiteral> | <StringLiteral> | 
+
+<ParenthesizedExpression> ::= "(" <Expression> ")"
 
 <CallExpression> ::= <Expression> "(" <Expression>? ("," <Expression>)* ")"
 
