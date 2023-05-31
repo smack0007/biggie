@@ -24,7 +24,9 @@
   
 <ExpressionStatement> ::= <Expression> ";"
   
-<Expression> ::= <EqualityExpression> | <CallExpression>
+<Expression> ::= <AssignmentExpression> | <CallExpression>
+
+<AssignmentExpression> ::= <Identifier> "=" <Assignment> | <EqualityExpression>
 
 <EqualityExpression> ::= <ComparisonExpression> ( ( "!=" | "==" ) <ComparisonExpression> )*
 

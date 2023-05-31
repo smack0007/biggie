@@ -17,7 +17,6 @@ import {
   VarDeclaration,
   EqualityExpression,
   ComparisonExpression,
-  PrimaryExpression,
   BinaryOperator,
   BoolLiteral,
   AdditiveExpression,
@@ -25,6 +24,7 @@ import {
   UnaryOperator,
   MultiplcativeExpression,
   ParenthesizedExpression,
+  AssignmentExpression,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
@@ -44,6 +44,8 @@ interface ParserContext {
 }
 
 export enum ParserErrorKind {
+  InvalidAssignmentTarget,
+
   UnexpectedTokenType,
   UnknownTopLevelStatement,
   UnknownBlockLevelStatement,
@@ -217,6 +219,8 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
     return { error: token.error };
   }
 
+  const isConst = token.value!.type == TokenType.Const;
+
   advance(context);
   const identifier = parseIdentifier(context);
 
@@ -239,7 +243,7 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
 
   let expression: Result<Expression, ParserError> = {};
 
-  if (check(context, TokenType.Assignment)) {
+  if (check(context, TokenType.Equal)) {
     advance(context);
     expression = parseExpression(context);
 
@@ -259,6 +263,7 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
   return {
     value: {
       kind: SyntaxKind.VarDeclaration,
+      isConst,
       name: identifier.value!,
       expression: expression.value!,
     },
@@ -517,7 +522,7 @@ function parseReturnStatement(context: ParserContext): Result<ReturnStatement, P
 function parseExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseExpression.name);
   
-  let result: Result<Expression, ParserError> = parseEqualityExpression(context);
+  let result: Result<Expression, ParserError> = parseAssignmentExpression(context);
 
   if (result.error != null) {
     return { error: result.error };
@@ -529,6 +534,41 @@ function parseExpression(context: ParserContext): Result<Expression, ParserError
   }
 
   return result;
+}
+
+function parseAssignmentExpression(context: ParserContext): Result<Expression, ParserError> {
+  context.logger.enter(parseAssignmentExpression.name);
+  
+  const startToken = peek(context);
+  const expression = parseEqualityExpression(context);
+
+  if (expression.error) {
+    return expression;
+  }
+
+  if (match(context, TokenType.Equal)) {
+    const value = parseAssignmentExpression(context);
+
+    if (value.error) {
+      return { error: value.error };
+    }
+
+    if (expression.value!.kind != SyntaxKind.Identifier) {
+      return { error: createError(startToken, ParserErrorKind.InvalidAssignmentTarget, "Invalid assignment target.") };
+    }
+
+    const result: Result<AssignmentExpression, ParserError> = {
+      value: {
+        kind: SyntaxKind.AssignmentExpression,
+        name: <Identifier>expression.value!,
+        value: value.value!
+      }
+    };
+
+    return result;
+  } else {
+    return expression;
+  }
 }
 
 function parseEqualityExpression(context: ParserContext): Result<Expression, ParserError> {
@@ -718,10 +758,10 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
   }
 }
 
-function parsePrimaryExpression(context: ParserContext): Result<PrimaryExpression, ParserError> {
+function parsePrimaryExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parsePrimaryExpression.name);
   
-  let result: Result<PrimaryExpression, ParserError>;
+  let result: Result<Expression, ParserError>;
   const token = peek(context);
   
   switch (token.type) {

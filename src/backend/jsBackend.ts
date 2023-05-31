@@ -22,6 +22,7 @@ import {
   UnaryExpression,
   UnaryOperator,
   ParenthesizedExpression,
+  AssignmentExpression,
 } from "../frontend/ast";
 import { int } from "../shims";
 import { BackendContext } from "./backend";
@@ -160,8 +161,7 @@ function outputBlockLevelStatement(context: JSBackendContext, sourceFile: Source
 }
 
 function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {  
-  // TODO: Implement let
-  context.append(`const ${varDeclaration.name.value}`);
+  context.append(`${varDeclaration.isConst ? "const" : "let"} ${varDeclaration.name.value}`);
 
   if (varDeclaration.expression) {
     context.append("=");
@@ -181,6 +181,10 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
   switch (expression.kind) {
     case SyntaxKind.AdditiveExpression:
       outputAdditiveExpression(context, sourceFile, <AdditiveExpression>expression);
+      break;
+
+    case SyntaxKind.AssignmentExpression:
+      outputAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);  
       break;
 
     case SyntaxKind.BoolLiteral:
@@ -227,6 +231,14 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       outputUnexpectedNode(context, outputExpression.name, sourceFile, expression);
       break;
   }
+}
+
+function outputAssignmentExpression(context: JSBackendContext, sourceFile: SourceFile, expression: AssignmentExpression): void {
+  outputIdentifier(context, sourceFile, expression.name);
+  
+  context.append(" = ");
+
+  outputExpression(context, sourceFile, expression.value);
 }
 
 function outputAdditiveExpression(context: JSBackendContext, sourceFile: SourceFile, expression: AdditiveExpression): void {

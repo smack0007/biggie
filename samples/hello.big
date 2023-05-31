@@ -13,7 +13,7 @@ func main(): i32 {
   const name: string = "Bobby";
   sayHello(name);
 
-  const value: i32 = 42;
+  let value: i32 = 42;
   println("{0} == 42 = {1}", value, value == 42);
   println("{0} > 42 = {1}", value, value > 42);
   println("1 + 2 = {0}", 1 + 2);
@@ -21,6 +21,15 @@ func main(): i32 {
   println("!true = {0}", !true);
   println("1 + 2 * 3 = {0}", 1 + 2 * 3);
   println("4 * (2 + 3) = {0}", 4 * (2 + 3));
+
+  value = 12;
+  println("value = 12, value = {0}", value);
+
+  let x: i32 = 0;
+  let y: i32 = 0;
+  let z: i32 = 0;
+  x = y = z = 99;
+  println("x = {0}, y = {1}, z = {2}", x, y, z);
 
   return 42;
 }

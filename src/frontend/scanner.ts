@@ -98,7 +98,7 @@ export enum TokenType {
   Colon,
 
   // =
-  Assignment,
+  Equal,
 
   // !
   Not,
@@ -258,7 +258,7 @@ export function scan(text: string): Array<Token> {
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.Assignment, text: null, line: line, column: column });
+          token.push({ type: TokenType.Equal, text: null, line: line, column: column });
         }
       } else if (text[i] == "!") {
         // Not or NotEqualTo

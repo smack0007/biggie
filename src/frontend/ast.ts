@@ -1,6 +1,8 @@
 export enum SyntaxKind {
   AdditiveExpression,
 
+  AssignmentExpression,
+
   BoolLiteral,
   
   CallExpression,
@@ -91,6 +93,8 @@ export interface Statement extends SyntaxNode {
 export interface VarDeclaration extends Statement {
   readonly kind: SyntaxKind.VarDeclaration;
 
+  readonly isConst: boolean;
+
   readonly name: Identifier;
 
   readonly expression?: Expression;
@@ -141,6 +145,14 @@ export interface StatementBlock extends SyntaxNode {
 }
 
 export interface Expression extends SyntaxNode {}
+
+export interface AssignmentExpression extends Expression {
+  readonly kind: SyntaxKind.AssignmentExpression;
+
+  readonly name: Identifier;
+
+  readonly value: Expression;
+}
 
 export interface EqualityExpression extends Expression {
   readonly kind: SyntaxKind.EqualityExpression;
