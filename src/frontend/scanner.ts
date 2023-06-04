@@ -98,16 +98,16 @@ export enum TokenType {
   Colon,
 
   // =
-  Equal,
+  Equals,
 
   // !
-  Not,
+  Exclamation,
 
   // ==
-  EqualEqual,
+  EqualsEquals,
 
   // !=
-  NotEqual,
+  ExclamationEquals,
 
   // >
   GreaterThan,
@@ -125,34 +125,34 @@ export enum TokenType {
   Plus,
 
   // +=
-  PlusEqual,
+  PlusEquals,
 
   // -
   Minus,
 
   // -=
-  MinusEqual,
+  MinusEquals,
 
   // *
-  Multiply,
+  Asterisk,
 
   // *=
-  MultiplyGets,
+  AsteriskEquals,
 
   // /
-  Divide,
+  Slash,
 
   // /=
-  DivideGets,
+  SlashEquals,
 
   // &&
-  LogicalAnd,
+  AmpersandAmpersand,
 
   // ||
-  LogicalOr,
+  BarBar,
 
   // Used to indicate the end of a list of tokens.
-  EOF,
+  EndOfFile,
 }
 
 export interface Token {
@@ -162,7 +162,7 @@ export interface Token {
   column: int;
 }
 
-function isNumber(ch: char): boolean {
+function isDigit(ch: char): boolean {
   return (
     ch == "0" ||
     ch == "1" ||
@@ -254,20 +254,20 @@ export function scan(text: string): Array<Token> {
       } else if (text[i] == "=") {
         // Gets or EqualTo or MapsTo
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.EqualEqual, text: null, line: line, column: column });
+          token.push({ type: TokenType.EqualsEquals, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.Equal, text: null, line: line, column: column });
+          token.push({ type: TokenType.Equals, text: null, line: line, column: column });
         }
       } else if (text[i] == "!") {
         // Not or NotEqualTo
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.NotEqual, text: null, line: line, column: column });
+          token.push({ type: TokenType.ExclamationEquals, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.Not, text: null, line: line, column: column });
+          token.push({ type: TokenType.Exclamation, text: null, line: line, column: column });
         }
       } else if (text[i] == ">") {
         if (i + 1 < text.length && text[i + 1] == "=") {
@@ -288,7 +288,7 @@ export function scan(text: string): Array<Token> {
       } else if (text[i] == "+") {
         // Plus or PlusGets
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.PlusEqual, text: null, line: line, column: column });
+          token.push({ type: TokenType.PlusEquals, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         } else {
@@ -298,10 +298,10 @@ export function scan(text: string): Array<Token> {
         // Minus or MinusGets
         if (i + 1 < text.length && !isWhitespace(text[i + 1])) {
           if (text[i + 1] == "=") {
-            token.push({ type: TokenType.MinusEqual, text: null, line: line, column: column });
+            token.push({ type: TokenType.MinusEquals, text: null, line: line, column: column });
             i += 1;
             curColumn += 1;
-          } else if (isNumber(text[i + 1])) {
+          } else if (isDigit(text[i + 1])) {
             type = TokenType.Numeric;
             value += "-";
             value += text[i + 1];
@@ -316,16 +316,16 @@ export function scan(text: string): Array<Token> {
       } else if (text[i] == "*") {
         // Multiply or MultiplyGets
         if (i + 1 < text.length && text[i + 1] != "=") {
-          token.push({ type: TokenType.Multiply, text: null, line: line, column: column });
+          token.push({ type: TokenType.Asterisk, text: null, line: line, column: column });
         } else {
-          token.push({ type: TokenType.MultiplyGets, text: null, line: line, column: column });
+          token.push({ type: TokenType.AsteriskEquals, text: null, line: line, column: column });
           i += 1;
           curColumn += 1;
         }
       } else if (text[i] == "/") {
         // Divide or DivideGets or Comments
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.DivideGets, text: null, line: line, column: column });
+          token.push({ type: TokenType.SlashEquals, text: null, line: line, column: column });
           i++;
         } else if (i + 1 < text.length && text[i + 1] == "/") {
           // Single line comment
@@ -346,18 +346,18 @@ export function scan(text: string): Array<Token> {
             curColumn += 1;
           }
         } else {
-          token.push({ type: TokenType.Divide, text: null, line: line, column: column });
+          token.push({ type: TokenType.Slash, text: null, line: line, column: column });
         }
       } else if (text[i] == "&" && i + 1 < text.length && text[i + 1] == "&") {
         // And
-        token.push({ type: TokenType.LogicalAnd, text: null, line: line, column: column });
+        token.push({ type: TokenType.AmpersandAmpersand, text: null, line: line, column: column });
         i += 1;
         curColumn += 1;
       } else if (text[i] == "|") {
         // LogicalOr or ClosePipeBracket
         if (i + 1 < text.length) {
           if (text[i + 1] == "|") {
-            token.push({ type: TokenType.LogicalOr, text: null, line: line, column: column });
+            token.push({ type: TokenType.BarBar, text: null, line: line, column: column });
             i += 1;
             curColumn += 1;
           }
@@ -366,7 +366,7 @@ export function scan(text: string): Array<Token> {
         // Identifier
         type = TokenType.Identifier;
         value += text[i];
-      } else if (isNumber(text[i])) {
+      } else if (isDigit(text[i])) {
         // Numeric
         type = TokenType.Numeric;
         value += text[i];
@@ -393,7 +393,7 @@ export function scan(text: string): Array<Token> {
       }
     } else if (type == TokenType.Identifier) {
       // We're inside an identifier
-      if (isLetter(text[i]) || isNumber(text[i]) || text[i] == "_") {
+      if (isLetter(text[i]) || isDigit(text[i]) || text[i] == "_") {
         value += text[i];
       } else {
         output = true;
@@ -402,7 +402,7 @@ export function scan(text: string): Array<Token> {
       }
     } else if (type == TokenType.Numeric) {
       // We're inside a numeric
-      if (isNumber(text[i])) {
+      if (isDigit(text[i])) {
         value += text[i];
       } else if (text[i] == ".") {
         isFloatingPoint = true;
@@ -507,7 +507,7 @@ export function scan(text: string): Array<Token> {
 
   if (type == TokenType.Unknown) {
     // Add an EOF to mark the end of the script.
-    token.push({ type: TokenType.EOF, text: null, line: line, column: column });
+    token.push({ type: TokenType.EndOfFile, text: null, line: line, column: column });
   }
 
   return token;

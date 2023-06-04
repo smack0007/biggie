@@ -47,31 +47,37 @@ export enum SyntaxKind {
 }
 
 export enum BinaryOperator {
-  Add,
+  Asterisk,
   
-  Divide,
+  Equals,
 
-  EqualTo,
+  EqualsEquals,
+  
+  ExclamationEquals,
 
   GreaterThan,
 
-  GreaterThanOrEqualTo,
+  GreaterThanEquals,
 
   LessThan,
 
-  LessThanOrEqualTo,
+  LessThanEquals,
 
-  Multiply,
+  Minus,
 
-  NotEqualTo,
+  MinusEquals,
 
-  Subtract
+  Plus,
+
+  PlusEquals,
+  
+  Slash
 }
 
 export enum UnaryOperator {
-  Negate,
+  Exclamation,
 
-  LogicalNegate
+  Minus
 }
 
 export interface SyntaxNode {
@@ -151,6 +157,8 @@ export interface AssignmentExpression extends Expression {
 
   readonly name: Identifier;
 
+  readonly operator: BinaryOperator.Equals | BinaryOperator.PlusEquals | BinaryOperator.MinusEquals;
+
   readonly value: Expression;
 }
 
@@ -159,7 +167,7 @@ export interface EqualityExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: BinaryOperator.EqualTo | BinaryOperator.NotEqualTo;
+  readonly operator: BinaryOperator.EqualsEquals | BinaryOperator.ExclamationEquals;
 
   readonly rhs: Expression;
 }
@@ -169,7 +177,7 @@ export interface ComparisonExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: BinaryOperator.GreaterThan | BinaryOperator.GreaterThanOrEqualTo | BinaryOperator.LessThan | BinaryOperator.LessThanOrEqualTo;
+  readonly operator: BinaryOperator.GreaterThan | BinaryOperator.GreaterThanEquals | BinaryOperator.LessThan | BinaryOperator.LessThanEquals;
 
   readonly rhs: Expression;
 }
@@ -179,7 +187,7 @@ export interface AdditiveExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: BinaryOperator.Add | BinaryOperator.Subtract;
+  readonly operator: BinaryOperator.Plus | BinaryOperator.Minus;
 
   readonly rhs: Expression;
 }
@@ -189,7 +197,7 @@ export interface MultiplcativeExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: BinaryOperator.Multiply | BinaryOperator.Divide;
+  readonly operator: BinaryOperator.Asterisk | BinaryOperator.Slash;
 
   readonly rhs: Expression;
 }

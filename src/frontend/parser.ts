@@ -86,10 +86,10 @@ function isEOF(context: ParserContext): bool {
   if (context.index >= context.tokens.length) {
     return true;
   }
-  return peek(context).type == TokenType.EOF;
+  return peek(context).type == TokenType.EndOfFile;
 }
 
-function match(context: ParserContext, ...types: Array<TokenType>): bool {
+function match(context: ParserContext, types: Array<TokenType>): bool {
   for (const type of types) {
     if (check(context, type)) {
       advance(context);
@@ -168,7 +168,7 @@ export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLog
     statements.push(statement.value!);
   }
 
-  const eof = expect(context, TokenType.EOF, parse.name);
+  const eof = expect(context, TokenType.EndOfFile, parse.name);
 
   if (eof.error != null) {
     return { error: eof.error };
@@ -243,7 +243,7 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
 
   let expression: Result<Expression, ParserError> = {};
 
-  if (check(context, TokenType.Equal)) {
+  if (check(context, TokenType.Equals)) {
     advance(context);
     expression = parseExpression(context);
 
@@ -536,6 +536,18 @@ function parseExpression(context: ParserContext): Result<Expression, ParserError
   return result;
 }
 
+const ASSIGNMENT_TOKENS = [
+  TokenType.Equals,
+  TokenType.PlusEquals,
+  TokenType.MinusEquals
+];
+
+const ASSIGNMENT_OPERATORS_MAP: Partial<Record<TokenType, BinaryOperator>> = {
+  [TokenType.Equals]: BinaryOperator.Equals,
+  [TokenType.PlusEquals]: BinaryOperator.PlusEquals,
+  [TokenType.MinusEquals]: BinaryOperator.MinusEquals,
+};
+
 function parseAssignmentExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseAssignmentExpression.name);
   
@@ -546,8 +558,9 @@ function parseAssignmentExpression(context: ParserContext): Result<Expression, P
     return expression;
   }
 
-  if (match(context, TokenType.Equal)) {
-    const value = parseAssignmentExpression(context);
+  if (match(context, ASSIGNMENT_TOKENS)) {
+    const operatorToken = previous(context);
+    const value = parseExpression(context);
 
     if (value.error) {
       return { error: value.error };
@@ -561,6 +574,7 @@ function parseAssignmentExpression(context: ParserContext): Result<Expression, P
       value: {
         kind: SyntaxKind.AssignmentExpression,
         name: <Identifier>expression.value!,
+        operator: ASSIGNMENT_OPERATORS_MAP[operatorToken.type] as any,
         value: value.value!
       }
     };
@@ -581,7 +595,7 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
   }
 
   const operatorToken = peek(context);
-  if (operatorToken.type == TokenType.EqualEqual || operatorToken.type == TokenType.NotEqual) {
+  if (operatorToken.type == TokenType.EqualsEquals || operatorToken.type == TokenType.ExclamationEquals) {
     advance(context);
 
     const rhs = parseComparisonExpression(context);
@@ -594,7 +608,7 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
       value: {
         kind: SyntaxKind.EqualityExpression,
         lhs: lhs.value!,
-        operator: operatorToken.type == TokenType.EqualEqual ? BinaryOperator.EqualTo : BinaryOperator.NotEqualTo,
+        operator: operatorToken.type == TokenType.EqualsEquals ? BinaryOperator.EqualsEquals : BinaryOperator.ExclamationEquals,
         rhs: rhs.value!
       }
     };
@@ -636,7 +650,7 @@ function parseComparisonExpression(context: ParserContext): Result<Expression, P
         break;
 
       case TokenType.GreaterThanEqual:
-        operator = BinaryOperator.GreaterThanOrEqualTo;
+        operator = BinaryOperator.GreaterThanEquals;
         break;
 
       case TokenType.LessThan:
@@ -644,7 +658,7 @@ function parseComparisonExpression(context: ParserContext): Result<Expression, P
         break;
 
       case TokenType.LessThanEqual:
-        operator = BinaryOperator.LessThanOrEqualTo;
+        operator = BinaryOperator.LessThanEquals;
         break;
     }
 
@@ -686,7 +700,7 @@ function parseAdditiveExpression(context: ParserContext): Result<Expression, Par
       value: {
         kind: SyntaxKind.AdditiveExpression,
         lhs: lhs.value!,
-        operator: operatorToken.type == TokenType.Plus ? BinaryOperator.Add : BinaryOperator.Subtract,
+        operator: operatorToken.type == TokenType.Plus ? BinaryOperator.Plus : BinaryOperator.Minus,
         rhs: rhs.value!
       }
     };
@@ -707,7 +721,7 @@ function parseMultiplicativeExpression(context: ParserContext): Result<Expressio
   }
 
   const operatorToken = peek(context);
-  if (operatorToken.type == TokenType.Multiply || operatorToken.type == TokenType.Divide) {
+  if (operatorToken.type == TokenType.Asterisk || operatorToken.type == TokenType.Slash) {
     advance(context);
 
     const rhs = parseUnaryExpression(context);
@@ -720,7 +734,7 @@ function parseMultiplicativeExpression(context: ParserContext): Result<Expressio
       value: {
         kind: SyntaxKind.MultiplicativeExpression,
         lhs: lhs.value!,
-        operator: operatorToken.type == TokenType.Multiply ? BinaryOperator.Multiply : BinaryOperator.Divide,
+        operator: operatorToken.type == TokenType.Asterisk ? BinaryOperator.Asterisk : BinaryOperator.Slash,
         rhs: rhs.value!
       }
     };
@@ -735,7 +749,7 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
   context.logger.enter(parseUnaryExpression.name);
   
   const operatorToken = peek(context);
-  if (operatorToken.type == TokenType.Not || operatorToken.type == TokenType.Minus) {
+  if (operatorToken.type == TokenType.Exclamation || operatorToken.type == TokenType.Minus) {
     advance(context);
 
     const expression = parseUnaryExpression(context);
@@ -747,7 +761,7 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
     const result: Result<UnaryExpression, ParserError> = {
       value: {
         kind: SyntaxKind.UnaryExpression,
-        operator: operatorToken.type == TokenType.Not ? UnaryOperator.LogicalNegate : UnaryOperator.Negate,
+        operator: operatorToken.type == TokenType.Exclamation ? UnaryOperator.Exclamation : UnaryOperator.Minus,
         expression: expression.value!
       }
     };

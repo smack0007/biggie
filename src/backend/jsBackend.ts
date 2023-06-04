@@ -236,7 +236,18 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
 function outputAssignmentExpression(context: JSBackendContext, sourceFile: SourceFile, expression: AssignmentExpression): void {
   outputIdentifier(context, sourceFile, expression.name);
   
-  context.append(" = ");
+  let operator = "=";
+  switch (expression.operator) {
+    case BinaryOperator.PlusEquals:
+      operator = "+=";
+      break;
+
+    case BinaryOperator.MinusEquals:
+      operator = "-=";
+      break;
+  }  
+
+  context.append(` ${operator} `);
 
   outputExpression(context, sourceFile, expression.value);
 }
@@ -244,7 +255,7 @@ function outputAssignmentExpression(context: JSBackendContext, sourceFile: Sourc
 function outputAdditiveExpression(context: JSBackendContext, sourceFile: SourceFile, expression: AdditiveExpression): void {
   outputExpression(context, sourceFile, expression.lhs);
 
-  context.append(` ${expression.operator == BinaryOperator.Add ? "+" : "-"} `);
+  context.append(` ${expression.operator == BinaryOperator.Plus ? "+" : "-"} `);
 
   outputExpression(context, sourceFile, expression.rhs);
 }
@@ -278,7 +289,7 @@ function outputComparisonExpression(context: JSBackendContext, sourceFile: Sourc
       operator = ">";
       break;
 
-    case BinaryOperator.GreaterThanOrEqualTo:
+    case BinaryOperator.GreaterThanEquals:
       operator = ">=";
       break;
 
@@ -286,7 +297,7 @@ function outputComparisonExpression(context: JSBackendContext, sourceFile: Sourc
       operator = "<";
       break;
   
-    case BinaryOperator.LessThanOrEqualTo:
+    case BinaryOperator.LessThanEquals:
       operator = "<=";
       break;
   }
@@ -299,7 +310,7 @@ function outputComparisonExpression(context: JSBackendContext, sourceFile: Sourc
 function outputEqualityExpression(context: JSBackendContext, sourceFile: SourceFile, expression: EqualityExpression) {
   outputExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == BinaryOperator.EqualTo ? " === " : " !== ");
+  context.append(expression.operator == BinaryOperator.EqualsEquals ? " === " : " !== ");
 
   outputExpression(context, sourceFile, expression.rhs);
 }
@@ -315,7 +326,7 @@ function outputIntLiteral(context: JSBackendContext, sourceFile: SourceFile, int
 function outputMultiplicativeExpression(context: JSBackendContext, sourceFile: SourceFile, expression: MultiplcativeExpression) {
   outputExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == BinaryOperator.Multiply ? " * " : " / ");
+  context.append(expression.operator == BinaryOperator.Asterisk ? " * " : " / ");
 
   outputExpression(context, sourceFile, expression.rhs);
 }
@@ -331,7 +342,7 @@ function outputStringLiteral(context: JSBackendContext, sourceFile: SourceFile, 
 }
 
 function outputUnaryExpression(context: JSBackendContext, sourceFile: SourceFile, expression: UnaryExpression) {
-  context.append(expression.operator == UnaryOperator.LogicalNegate ? "!" : "-");
+  context.append(expression.operator == UnaryOperator.Exclamation ? "!" : "-");
 
   outputExpression(context, sourceFile, expression.expression);
 }

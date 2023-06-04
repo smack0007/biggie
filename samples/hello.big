@@ -22,8 +22,11 @@ func main(): i32 {
   println("1 + 2 * 3 = {0}", 1 + 2 * 3);
   println("4 * (2 + 3) = {0}", 4 * (2 + 3));
 
-  value = 12;
-  println("value = 12, value = {0}", value);
+  value += 12;
+  println("value = 54, value = {0}", value);
+
+  value -= 24;
+  println("value = 30, value = {0}", value);
 
   let x: i32 = 0;
   let y: i32 = 0;
