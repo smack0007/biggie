@@ -48,6 +48,8 @@ export enum SyntaxKind {
 
 export enum BinaryOperator {
   Asterisk,
+
+  AsteriskEquals,
   
   Equals,
 
@@ -71,7 +73,9 @@ export enum BinaryOperator {
 
   PlusEquals,
   
-  Slash
+  Slash,
+
+  SlashEquals
 }
 
 export enum UnaryOperator {
@@ -157,7 +161,7 @@ export interface AssignmentExpression extends Expression {
 
   readonly name: Identifier;
 
-  readonly operator: BinaryOperator.Equals | BinaryOperator.PlusEquals | BinaryOperator.MinusEquals;
+  readonly operator: BinaryOperator.Equals | BinaryOperator.PlusEquals | BinaryOperator.MinusEquals | BinaryOperator.AsteriskEquals | BinaryOperator.SlashEquals;
 
   readonly value: Expression;
 }

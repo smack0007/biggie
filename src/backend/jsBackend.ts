@@ -245,6 +245,14 @@ function outputAssignmentExpression(context: JSBackendContext, sourceFile: Sourc
     case BinaryOperator.MinusEquals:
       operator = "-=";
       break;
+
+    case BinaryOperator.AsteriskEquals:
+      operator = "*=";
+      break;
+
+    case BinaryOperator.SlashEquals:
+      operator = "/=";
+      break;
   }  
 
   context.append(` ${operator} `);

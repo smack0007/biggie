@@ -539,13 +539,17 @@ function parseExpression(context: ParserContext): Result<Expression, ParserError
 const ASSIGNMENT_TOKENS = [
   TokenType.Equals,
   TokenType.PlusEquals,
-  TokenType.MinusEquals
+  TokenType.MinusEquals,
+  TokenType.AsteriskEquals,
+  TokenType.SlashEquals
 ];
 
 const ASSIGNMENT_OPERATORS_MAP: Partial<Record<TokenType, BinaryOperator>> = {
   [TokenType.Equals]: BinaryOperator.Equals,
   [TokenType.PlusEquals]: BinaryOperator.PlusEquals,
   [TokenType.MinusEquals]: BinaryOperator.MinusEquals,
+  [TokenType.AsteriskEquals]: BinaryOperator.AsteriskEquals,
+  [TokenType.SlashEquals]: BinaryOperator.SlashEquals
 };
 
 function parseAssignmentExpression(context: ParserContext): Result<Expression, ParserError> {
