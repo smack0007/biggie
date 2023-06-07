@@ -10,7 +10,7 @@ import {
   FuncDeclaration,
   Identifier,
   IntegerLiteral as IntLiteral,
-  BinaryOperator,
+  Operator,
   ReturnStatement,
   SourceFile,
   StringLiteral,
@@ -20,7 +20,6 @@ import {
   AdditiveExpression,
   MultiplcativeExpression,
   UnaryExpression,
-  UnaryOperator,
   ParenthesizedExpression,
   AssignmentExpression,
 } from "../frontend/ast";
@@ -238,19 +237,19 @@ function outputAssignmentExpression(context: JSBackendContext, sourceFile: Sourc
   
   let operator = "=";
   switch (expression.operator) {
-    case BinaryOperator.PlusEquals:
+    case Operator.PlusEquals:
       operator = "+=";
       break;
 
-    case BinaryOperator.MinusEquals:
+    case Operator.MinusEquals:
       operator = "-=";
       break;
 
-    case BinaryOperator.AsteriskEquals:
+    case Operator.AsteriskEquals:
       operator = "*=";
       break;
 
-    case BinaryOperator.SlashEquals:
+    case Operator.SlashEquals:
       operator = "/=";
       break;
   }  
@@ -263,7 +262,7 @@ function outputAssignmentExpression(context: JSBackendContext, sourceFile: Sourc
 function outputAdditiveExpression(context: JSBackendContext, sourceFile: SourceFile, expression: AdditiveExpression): void {
   outputExpression(context, sourceFile, expression.lhs);
 
-  context.append(` ${expression.operator == BinaryOperator.Plus ? "+" : "-"} `);
+  context.append(` ${expression.operator == Operator.Plus ? "+" : "-"} `);
 
   outputExpression(context, sourceFile, expression.rhs);
 }
@@ -293,19 +292,19 @@ function outputComparisonExpression(context: JSBackendContext, sourceFile: Sourc
   let operator = ">";
 
   switch (expression.operator) {
-    case BinaryOperator.GreaterThan:
+    case Operator.GreaterThan:
       operator = ">";
       break;
 
-    case BinaryOperator.GreaterThanEquals:
+    case Operator.GreaterThanEquals:
       operator = ">=";
       break;
 
-    case BinaryOperator.LessThan:
+    case Operator.LessThan:
       operator = "<";
       break;
   
-    case BinaryOperator.LessThanEquals:
+    case Operator.LessThanEquals:
       operator = "<=";
       break;
   }
@@ -318,7 +317,7 @@ function outputComparisonExpression(context: JSBackendContext, sourceFile: Sourc
 function outputEqualityExpression(context: JSBackendContext, sourceFile: SourceFile, expression: EqualityExpression) {
   outputExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == BinaryOperator.EqualsEquals ? " === " : " !== ");
+  context.append(expression.operator == Operator.EqualsEquals ? " === " : " !== ");
 
   outputExpression(context, sourceFile, expression.rhs);
 }
@@ -334,7 +333,7 @@ function outputIntLiteral(context: JSBackendContext, sourceFile: SourceFile, int
 function outputMultiplicativeExpression(context: JSBackendContext, sourceFile: SourceFile, expression: MultiplcativeExpression) {
   outputExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == BinaryOperator.Asterisk ? " * " : " / ");
+  context.append(expression.operator == Operator.Asterisk ? " * " : " / ");
 
   outputExpression(context, sourceFile, expression.rhs);
 }
@@ -350,7 +349,7 @@ function outputStringLiteral(context: JSBackendContext, sourceFile: SourceFile, 
 }
 
 function outputUnaryExpression(context: JSBackendContext, sourceFile: SourceFile, expression: UnaryExpression) {
-  context.append(expression.operator == UnaryOperator.Exclamation ? "!" : "-");
+  context.append(expression.operator == Operator.Exclamation ? "!" : "-");
 
   outputExpression(context, sourceFile, expression.expression);
 }

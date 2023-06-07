@@ -17,11 +17,10 @@ import {
   VarDeclaration,
   EqualityExpression,
   ComparisonExpression,
-  BinaryOperator,
+  Operator,
   BoolLiteral,
   AdditiveExpression,
   UnaryExpression,
-  UnaryOperator,
   MultiplcativeExpression,
   ParenthesizedExpression,
   AssignmentExpression,
@@ -544,12 +543,12 @@ const ASSIGNMENT_TOKENS = [
   TokenType.SlashEquals
 ];
 
-const ASSIGNMENT_OPERATORS_MAP: Partial<Record<TokenType, BinaryOperator>> = {
-  [TokenType.Equals]: BinaryOperator.Equals,
-  [TokenType.PlusEquals]: BinaryOperator.PlusEquals,
-  [TokenType.MinusEquals]: BinaryOperator.MinusEquals,
-  [TokenType.AsteriskEquals]: BinaryOperator.AsteriskEquals,
-  [TokenType.SlashEquals]: BinaryOperator.SlashEquals
+const ASSIGNMENT_OPERATORS_MAP: Partial<Record<TokenType, Operator>> = {
+  [TokenType.Equals]: Operator.Equals,
+  [TokenType.PlusEquals]: Operator.PlusEquals,
+  [TokenType.MinusEquals]: Operator.MinusEquals,
+  [TokenType.AsteriskEquals]: Operator.AsteriskEquals,
+  [TokenType.SlashEquals]: Operator.SlashEquals
 };
 
 function parseAssignmentExpression(context: ParserContext): Result<Expression, ParserError> {
@@ -612,7 +611,7 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
       value: {
         kind: SyntaxKind.EqualityExpression,
         lhs: lhs.value!,
-        operator: operatorToken.type == TokenType.EqualsEquals ? BinaryOperator.EqualsEquals : BinaryOperator.ExclamationEquals,
+        operator: operatorToken.type == TokenType.EqualsEquals ? Operator.EqualsEquals : Operator.ExclamationEquals,
         rhs: rhs.value!
       }
     };
@@ -647,22 +646,22 @@ function parseComparisonExpression(context: ParserContext): Result<Expression, P
       return { error: rhs.error };
     }
 
-    let operator = BinaryOperator.GreaterThan;
+    let operator = Operator.GreaterThan;
     switch (operatorToken.type) {
       case TokenType.GreaterThan:
-        operator = BinaryOperator.GreaterThan;
+        operator = Operator.GreaterThan;
         break;
 
       case TokenType.GreaterThanEqual:
-        operator = BinaryOperator.GreaterThanEquals;
+        operator = Operator.GreaterThanEquals;
         break;
 
       case TokenType.LessThan:
-        operator = BinaryOperator.LessThan;
+        operator = Operator.LessThan;
         break;
 
       case TokenType.LessThanEqual:
-        operator = BinaryOperator.LessThanEquals;
+        operator = Operator.LessThanEquals;
         break;
     }
 
@@ -704,7 +703,7 @@ function parseAdditiveExpression(context: ParserContext): Result<Expression, Par
       value: {
         kind: SyntaxKind.AdditiveExpression,
         lhs: lhs.value!,
-        operator: operatorToken.type == TokenType.Plus ? BinaryOperator.Plus : BinaryOperator.Minus,
+        operator: operatorToken.type == TokenType.Plus ? Operator.Plus : Operator.Minus,
         rhs: rhs.value!
       }
     };
@@ -738,7 +737,7 @@ function parseMultiplicativeExpression(context: ParserContext): Result<Expressio
       value: {
         kind: SyntaxKind.MultiplicativeExpression,
         lhs: lhs.value!,
-        operator: operatorToken.type == TokenType.Asterisk ? BinaryOperator.Asterisk : BinaryOperator.Slash,
+        operator: operatorToken.type == TokenType.Asterisk ? Operator.Asterisk : Operator.Slash,
         rhs: rhs.value!
       }
     };
@@ -765,7 +764,7 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
     const result: Result<UnaryExpression, ParserError> = {
       value: {
         kind: SyntaxKind.UnaryExpression,
-        operator: operatorToken.type == TokenType.Exclamation ? UnaryOperator.Exclamation : UnaryOperator.Minus,
+        operator: operatorToken.type == TokenType.Exclamation ? Operator.Exclamation : Operator.Minus,
         expression: expression.value!
       }
     };

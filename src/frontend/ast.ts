@@ -46,7 +46,7 @@ export enum SyntaxKind {
   VarDeclaration,
 }
 
-export enum BinaryOperator {
+export enum Operator {
   Asterisk,
 
   AsteriskEquals,
@@ -55,6 +55,8 @@ export enum BinaryOperator {
 
   EqualsEquals,
   
+  Exclamation,
+
   ExclamationEquals,
 
   GreaterThan,
@@ -76,12 +78,6 @@ export enum BinaryOperator {
   Slash,
 
   SlashEquals
-}
-
-export enum UnaryOperator {
-  Exclamation,
-
-  Minus
 }
 
 export interface SyntaxNode {
@@ -161,7 +157,7 @@ export interface AssignmentExpression extends Expression {
 
   readonly name: Identifier;
 
-  readonly operator: BinaryOperator.Equals | BinaryOperator.PlusEquals | BinaryOperator.MinusEquals | BinaryOperator.AsteriskEquals | BinaryOperator.SlashEquals;
+  readonly operator: Operator.Equals | Operator.PlusEquals | Operator.MinusEquals | Operator.AsteriskEquals | Operator.SlashEquals;
 
   readonly value: Expression;
 }
@@ -171,7 +167,7 @@ export interface EqualityExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: BinaryOperator.EqualsEquals | BinaryOperator.ExclamationEquals;
+  readonly operator: Operator.EqualsEquals | Operator.ExclamationEquals;
 
   readonly rhs: Expression;
 }
@@ -181,7 +177,7 @@ export interface ComparisonExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: BinaryOperator.GreaterThan | BinaryOperator.GreaterThanEquals | BinaryOperator.LessThan | BinaryOperator.LessThanEquals;
+  readonly operator: Operator.GreaterThan | Operator.GreaterThanEquals | Operator.LessThan | Operator.LessThanEquals;
 
   readonly rhs: Expression;
 }
@@ -191,7 +187,7 @@ export interface AdditiveExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: BinaryOperator.Plus | BinaryOperator.Minus;
+  readonly operator: Operator.Plus | Operator.Minus;
 
   readonly rhs: Expression;
 }
@@ -201,7 +197,7 @@ export interface MultiplcativeExpression extends Expression {
 
   readonly lhs: Expression;
 
-  readonly operator: BinaryOperator.Asterisk | BinaryOperator.Slash;
+  readonly operator: Operator.Asterisk | Operator.Slash;
 
   readonly rhs: Expression;
 }
@@ -209,7 +205,7 @@ export interface MultiplcativeExpression extends Expression {
 export interface UnaryExpression extends Expression {
   readonly kind: SyntaxKind.UnaryExpression;
 
-  readonly operator: UnaryOperator;
+  readonly operator: Operator.Exclamation | Operator.Minus;
 
   readonly expression: Expression;
 }
