@@ -24,6 +24,7 @@ import {
   AssignmentExpression,
   IfStatement,
   StatementBlock,
+  WhileStatement,
 } from "../frontend/ast";
 import { int } from "../shims";
 import { BackendContext } from "./backend";
@@ -155,6 +156,10 @@ function outputBlockLevelStatement(context: JSBackendContext, sourceFile: Source
       outputIfStatement(context, sourceFile, <IfStatement>node);
       break;
 
+    case SyntaxKind.WhileStatement:
+      outputWhileStatement(context, sourceFile, <WhileStatement>node);
+      break;
+
     case SyntaxKind.ReturnStatement:
       outputReturnStatement(context, sourceFile, <ReturnStatement>node);
       break;
@@ -178,7 +183,7 @@ function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile,
   context.append(`${varDeclaration.isConst ? "const" : "let"} ${varDeclaration.name.value}`);
 
   if (varDeclaration.expression) {
-    context.append("=");
+    context.append(" = ");
     outputExpression(context, sourceFile, varDeclaration.expression);
   }
 
@@ -196,6 +201,14 @@ function outputIfStatement(context: JSBackendContext, sourceFile: SourceFile, if
     outputBlockLevelStatement(context, sourceFile, ifStatement.else);
   }
 
+  context.append("\n");
+}
+
+function outputWhileStatement(context: JSBackendContext, sourceFile: SourceFile, whileStatement: WhileStatement) {
+  context.append("while (");
+  outputExpression(context, sourceFile, whileStatement.condition);
+  context.append(") ");
+  outputBlockLevelStatement(context, sourceFile, whileStatement.body);
   context.append("\n");
 }
 

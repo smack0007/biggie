@@ -24,6 +24,8 @@
 
 <IfStatement> ::= "if" "(" <Expression> ")" <BlockLevelStatement> ( "else" <BlockLevelStatement> )?
 
+<WhileStatement> ::= "while" "(" <Expression> ")" <BlockLevelStatement>
+
 <ReturnStatement> ::= "return" <Expression> ";"
   
 <ExpressionStatement> ::= <Expression> ";"

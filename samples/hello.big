@@ -53,5 +53,11 @@ func main(): i32 {
     println("x != 55");
   }
 
+  let count: i32 = 0;
+  while (count < 3) {
+    count += 1;
+    println("count = {0}", count);
+  }
+
   return 42;
 }

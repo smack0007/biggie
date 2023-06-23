@@ -46,6 +46,8 @@ export enum SyntaxKind {
   UnaryExpression,
 
   VarDeclaration,
+
+  WhileStatement
 }
 
 export enum Operator {
@@ -148,6 +150,14 @@ export interface IfStatement extends Statement {
   readonly then: Statement;
 
   readonly else?: Statement;
+}
+
+export interface WhileStatement extends Statement {
+  readonly kind: SyntaxKind.WhileStatement;
+
+  readonly condition: Expression;
+
+  readonly body: Statement;
 }
 
 export interface ReturnStatement extends Statement {

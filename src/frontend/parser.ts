@@ -25,6 +25,7 @@ import {
   ParenthesizedExpression,
   AssignmentExpression,
   IfStatement,
+  WhileStatement,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
@@ -425,6 +426,10 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
       result = parseIfStatement(context);
       break;
 
+    case TokenType.While:
+      result = parseWhileStatement(context);
+      break;
+
     case TokenType.Return:
       result = parseReturnStatement(context);
       break;
@@ -549,9 +554,55 @@ function parseIfStatement(context: ParserContext): Result<IfStatement, ParserErr
   return {
     value: {
       kind: SyntaxKind.IfStatement,
-      condition: <Expression>condition.value,
-      then: <Statement>then.value,
+      condition: condition.value!,
+      then: then.value!,
       else: _else
+    },
+  };
+}
+
+function parseWhileStatement(context: ParserContext): Result<WhileStatement, ParserError> {
+  context.logger.enter(parseWhileStatement.name);
+  let token = expect(context, TokenType.While, parseWhileStatement.name);
+
+  if (token.error) {
+    return { error: token.error };
+  }
+
+  advance(context);
+  token = expect(context, TokenType.OpenParen, parseWhileStatement.name);
+
+  if (token.error) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  const condition = parseExpression(context);
+
+  if (condition.error) {
+    return { error: condition.error };
+  }
+
+  token = expect(context, TokenType.CloseParen, parseWhileStatement.name);
+
+  if (token.error) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  const body = parseBlockLevelStatement(context);
+
+  if (body.error) {
+    return { error: body.error };
+  }
+
+  return {
+    value: {
+      kind: SyntaxKind.WhileStatement,
+      condition: condition.value!,
+      body: body.value!,
     },
   };
 }
