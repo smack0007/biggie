@@ -15,10 +15,14 @@
 
 <BlockLevelStatement> ::= <VarDeclaration> |
                           <DeferStatement> |
+                          <IfStatement> |
                           <ReturnStatement> |
+                          <StatementBlock> |
                           <ExpressionStatement>
 
 <DeferStatement> ::= "defer" <Expression> ";"
+
+<IfStatement> ::= "if" "(" <Expression> ")" <BlockLevelStatement> ( "else" <BlockLevelStatement> )?
 
 <ReturnStatement> ::= "return" <Expression> ";"
   

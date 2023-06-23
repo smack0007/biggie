@@ -43,5 +43,15 @@ func main(): i32 {
   x = y = z = 99;
   println("x = {0}, y = {1}, z = {2}", x, y, z);
 
+  if (z == 99) {
+    println("z == 99");
+  }
+
+  if (x == 55) {
+    println("x == 55");
+  } else {
+    println("x != 55");
+  }
+
   return 42;
 }

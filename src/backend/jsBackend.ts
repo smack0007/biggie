@@ -22,6 +22,8 @@ import {
   UnaryExpression,
   ParenthesizedExpression,
   AssignmentExpression,
+  IfStatement,
+  StatementBlock,
 } from "../frontend/ast";
 import { int } from "../shims";
 import { BackendContext } from "./backend";
@@ -122,41 +124,54 @@ function outputFunctionDeclaration(
     context.append(`${argName} /* ${argType} */`);
   }
 
-  context.append(`) /* ${returnType} */ {\n`);
-  context.indentLevel += 1;
+  context.append(`) /* ${returnType} */ `);
 
-  if (functionDeclaration.body?.statements) {
-    for (const statement of functionDeclaration.body.statements) {
-      outputBlockLevelStatement(context, sourceFile, statement);
-    }
+  outputStatementBlock(context, sourceFile, functionDeclaration.body);
+
+  context.append(`\n\n`);
+}
+
+function outputStatementBlock(context: JSBackendContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
+  context.append('{\n');
+  context.indentLevel += 1;
+  
+  for (const statement of statementBlock.statements) {
+    context.indent();
+    outputBlockLevelStatement(context, sourceFile, statement);
   }
 
   context.indentLevel -= 1;
-  context.append(`}\n\n`);
+  context.indent();
+  context.append('}');
 }
 
 function outputBlockLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode) {  
-  context.indent();
-
   switch (node.kind) {
     case SyntaxKind.VarDeclaration:
       outputVarDeclaration(context, sourceFile, (<VarDeclaration>node));
       break;
-    
-    case SyntaxKind.ExpressionStatement:
-      outputExpression(context, sourceFile, (<ExpressionStatement>node).expression);
+
+    case SyntaxKind.IfStatement:
+      outputIfStatement(context, sourceFile, <IfStatement>node);
       break;
 
     case SyntaxKind.ReturnStatement:
       outputReturnStatement(context, sourceFile, <ReturnStatement>node);
       break;
 
+    case SyntaxKind.StatementBlock:
+      outputStatementBlock(context, sourceFile, <StatementBlock>node);
+      break;
+
+    case SyntaxKind.ExpressionStatement:
+      outputExpression(context, sourceFile, (<ExpressionStatement>node).expression);
+      context.append(";\n");
+      break;
+
     default:
       outputUnexpectedNode(context, outputBlockLevelStatement.name, sourceFile, node);
       break;
   }
-
-  context.append(";\n");
 }
 
 function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {  
@@ -166,6 +181,22 @@ function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile,
     context.append("=");
     outputExpression(context, sourceFile, varDeclaration.expression);
   }
+
+  context.append(";\n");
+}
+
+function outputIfStatement(context: JSBackendContext, sourceFile: SourceFile, ifStatement: IfStatement) {  
+  context.append("if (");
+  outputExpression(context, sourceFile, ifStatement.condition);
+  context.append(") ");
+  outputBlockLevelStatement(context, sourceFile, ifStatement.then);
+
+  if (ifStatement.else != null) {
+    context.append(" else ");
+    outputBlockLevelStatement(context, sourceFile, ifStatement.else);
+  }
+
+  context.append("\n");
 }
 
 function outputReturnStatement(context: JSBackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
@@ -174,6 +205,8 @@ function outputReturnStatement(context: JSBackendContext, sourceFile: SourceFile
   if (returnStatement.expression) {
     outputExpression(context, sourceFile, returnStatement.expression);
   }
+
+  context.append(";\n");
 }
 
 function outputExpression(context: JSBackendContext, sourceFile: SourceFile, expression: Expression) {

@@ -24,6 +24,7 @@ import {
   MultiplcativeExpression,
   ParenthesizedExpression,
   AssignmentExpression,
+  IfStatement,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
@@ -420,8 +421,16 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
       result = parseDeferStatement(context);
       break;
 
+    case TokenType.If:
+      result = parseIfStatement(context);
+      break;
+
     case TokenType.Return:
       result = parseReturnStatement(context);
+      break;
+
+    case TokenType.OpenBrace:
+      result = parseStatementBlock(context);
       break;
 
     default:
@@ -483,6 +492,66 @@ function parseDeferStatement(context: ParserContext): Result<DeferStatement, Par
     value: {
       kind: SyntaxKind.DeferStatement,
       expression: <Expression>expression.value,
+    },
+  };
+}
+
+function parseIfStatement(context: ParserContext): Result<IfStatement, ParserError> {
+  context.logger.enter(parseIfStatement.name);
+  let token = expect(context, TokenType.If, parseIfStatement.name);
+
+  if (token.error) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  token = expect(context, TokenType.OpenParen, parseIfStatement.name);
+
+  if (token.error) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  const condition = parseExpression(context);
+
+  if (condition.error) {
+    return { error: condition.error };
+  }
+
+  token = expect(context, TokenType.CloseParen, parseIfStatement.name);
+
+  if (token.error) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  const then = parseBlockLevelStatement(context);
+
+  if (then.error) {
+    return { error: then.error };
+  }
+
+  let _else: Statement | undefined = undefined;
+
+  if (match(context, [ TokenType.Else ])) {
+    const elseResult = parseBlockLevelStatement(context);
+
+    if (elseResult.error) {
+      return { error: elseResult.error };
+    }
+
+    _else = elseResult.value;
+  }
+
+  return {
+    value: {
+      kind: SyntaxKind.IfStatement,
+      condition: <Expression>condition.value,
+      then: <Statement>then.value,
+      else: _else
     },
   };
 }

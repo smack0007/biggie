@@ -23,6 +23,8 @@ export enum SyntaxKind {
 
   FuncDeclaration,
 
+  IfStatement,
+
   Identifier,
 
   MultiplicativeExpression,
@@ -136,6 +138,16 @@ export interface DeferStatement extends Statement {
   readonly kind: SyntaxKind.DeferStatement;
 
   readonly expression: Expression;
+}
+
+export interface IfStatement extends Statement {
+  readonly kind: SyntaxKind.IfStatement;
+
+  readonly condition: Expression;
+ 
+  readonly then: Statement;
+
+  readonly else?: Statement;
 }
 
 export interface ReturnStatement extends Statement {

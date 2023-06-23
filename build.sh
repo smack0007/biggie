@@ -1,9 +1,10 @@
 #!/bin/bash
 ROOT_PATH=$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-BIN_PATH="${ROOT_PATH}/bin"
-SAMPLES_PATH="${ROOT_PATH}/samples"
-SRC_PATH="${ROOT_PATH}/src"
+BIN_PATH="./bin"
+SAMPLES_PATH="./samples"
+SRC_PATH="./src"
 
+cd ${ROOT_PATH}
 mkdir -p ${BIN_PATH}
 
 mkdir -p ${BIN_PATH}/hello
