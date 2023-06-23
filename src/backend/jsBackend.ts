@@ -25,6 +25,7 @@ import {
   IfStatement,
   StatementBlock,
   WhileStatement,
+  LogicalExpression,
 } from "../frontend/ast";
 import { int } from "../shims";
 import { BackendContext } from "./backend";
@@ -256,6 +257,10 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       outputIntLiteral(context, sourceFile, <IntLiteral>expression);
       break;
 
+    case SyntaxKind.LogicalExpression:
+      outputLogicalExpression(context, sourceFile, <LogicalExpression>expression);
+      break;
+
     case SyntaxKind.MultiplicativeExpression:
       outputMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
       break;
@@ -374,6 +379,14 @@ function outputIdentifier(context: JSBackendContext, sourceFile: SourceFile, ide
 
 function outputIntLiteral(context: JSBackendContext, sourceFile: SourceFile, integerLiteral: IntLiteral) {
   context.append(integerLiteral.value);
+}
+
+function outputLogicalExpression(context: JSBackendContext, sourceFile: SourceFile, expression: LogicalExpression) {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  context.append(expression.operator == Operator.AmpersandAmpersand ? " && " : " || ");
+
+  outputExpression(context, sourceFile, expression.rhs);
 }
 
 function outputMultiplicativeExpression(context: JSBackendContext, sourceFile: SourceFile, expression: MultiplcativeExpression) {

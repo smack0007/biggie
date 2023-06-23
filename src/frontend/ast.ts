@@ -27,6 +27,8 @@ export enum SyntaxKind {
 
   Identifier,
 
+  LogicalExpression,
+
   MultiplicativeExpression,
 
   ParenthesizedExpression,
@@ -51,10 +53,14 @@ export enum SyntaxKind {
 }
 
 export enum Operator {
+  AmpersandAmpersand,
+  
   Asterisk,
 
   AsteriskEquals,
   
+  BarBar,
+
   Equals,
 
   EqualsEquals,
@@ -173,6 +179,16 @@ export interface StatementBlock extends SyntaxNode {
 }
 
 export interface Expression extends SyntaxNode {}
+
+export interface LogicalExpression extends Expression {
+  readonly kind: SyntaxKind.LogicalExpression;
+
+  readonly lhs: Expression;
+
+  readonly operator: Operator.AmpersandAmpersand | Operator.BarBar;
+
+  readonly rhs: Expression;
+}
 
 export interface AssignmentExpression extends Expression {
   readonly kind: SyntaxKind.AssignmentExpression;

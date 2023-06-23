@@ -26,6 +26,7 @@ import {
   AssignmentExpression,
   IfStatement,
   WhileStatement,
+  LogicalExpression,
 } from "./ast";
 import { Token, TokenType } from "./scanner";
 import { bool, Result, int, OrNull } from "../shims";
@@ -675,7 +676,7 @@ function parseAssignmentExpression(context: ParserContext): Result<Expression, P
   context.logger.enter(parseAssignmentExpression.name);
   
   const startToken = peek(context);
-  const expression = parseEqualityExpression(context);
+  const expression = parseLogicalOrExpression(context);
 
   if (expression.error) {
     return expression;
@@ -708,18 +709,75 @@ function parseAssignmentExpression(context: ParserContext): Result<Expression, P
   }
 }
 
+function parseLogicalOrExpression(context: ParserContext): Result<Expression, ParserError> {
+  context.logger.enter(parseLogicalOrExpression.name);
+  
+  let result = parseLogicalAndExpression(context);
+
+  if (result.error) {
+    return { error: result.error };
+  }
+
+  while (match(context, [ TokenType.BarBar ])) {
+    const rhs = parseLogicalAndExpression(context);
+    
+    if (rhs.error) {
+      return { error: rhs.error };
+    }
+
+    const expression: LogicalExpression = {
+      kind: SyntaxKind.LogicalExpression,
+      lhs: result.value!,
+      operator: Operator.BarBar,
+      rhs: rhs.value!
+    };
+
+    result = { value: expression };
+  }
+
+  return result;
+}
+
+function parseLogicalAndExpression(context: ParserContext): Result<Expression, ParserError> {
+  context.logger.enter(parseLogicalAndExpression.name);
+  
+  let result = parseEqualityExpression(context);
+
+  if (result.error) {
+    return { error: result.error };
+  }
+
+  while (match(context, [ TokenType.AmpersandAmpersand ])) {
+    const rhs = parseEqualityExpression(context);
+
+    if (rhs.error) {
+      return { error: rhs.error };
+    }
+
+    const expression: LogicalExpression = {
+      kind: SyntaxKind.LogicalExpression,
+      lhs: result.value!,
+      operator: Operator.AmpersandAmpersand,
+      rhs: rhs.value!
+    };
+
+    result = { value: expression };
+  }
+
+  return result;
+}
+
 function parseEqualityExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseEqualityExpression.name);
   
-  const lhs = parseComparisonExpression(context);
+  let result = parseComparisonExpression(context);
 
-  if (lhs.error != null) {
-    return { error: lhs.error };
+  if (result.error != null) {
+    return { error: result.error };
   }
 
-  const operatorToken = peek(context);
-  if (operatorToken.type == TokenType.EqualsEquals || operatorToken.type == TokenType.ExclamationEquals) {
-    advance(context);
+  while (match(context, [ TokenType.EqualsEquals, TokenType.ExclamationEquals ])) {
+    const operatorToken = previous(context);
 
     const rhs = parseComparisonExpression(context);
 
@@ -727,19 +785,17 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
       return { error: rhs.error };
     }
 
-    const result: Result<EqualityExpression, ParserError> = {
-      value: {
-        kind: SyntaxKind.EqualityExpression,
-        lhs: lhs.value!,
-        operator: operatorToken.type == TokenType.EqualsEquals ? Operator.EqualsEquals : Operator.ExclamationEquals,
-        rhs: rhs.value!
-      }
+    const expression: EqualityExpression = {
+      kind: SyntaxKind.EqualityExpression,
+      lhs: result.value!,
+      operator: operatorToken.type == TokenType.EqualsEquals ? Operator.EqualsEquals : Operator.ExclamationEquals,
+      rhs: rhs.value!
     };
 
-    return result;
-  } else {
-    return lhs;
+    result = { value: expression };
   }
+  
+  return result;
 }
 
 function parseComparisonExpression(context: ParserContext): Result<Expression, ParserError> {

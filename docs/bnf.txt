@@ -32,9 +32,13 @@
   
 <Expression> ::= <AssignmentExpression> | <CallExpression>
 
-<AssignmentExpression> ::= <EqualityExpression> | <Identifier> <AssignmentOperator> <Expression>
+<AssignmentExpression> ::= <LogicalOrExpression> | <Identifier> <AssignmentOperator> <Expression>
 
 <AssignmentOperator> ::= "=" | "+=" | "-="
+
+<LogicalOrExpression> ::= <LogicalAndExpression> ( "||" <LogicalAndExpression> )*
+
+<LogicalAndExpression> ::= <EqualityExpression> ( "&&" <EqualityExpression> )*
 
 <EqualityExpression> ::= <ComparisonExpression> ( ( "!=" | "==" ) <ComparisonExpression> )*
 

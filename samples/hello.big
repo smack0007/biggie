@@ -42,6 +42,9 @@ func main(): i32 {
   let z: i32 = 0;
   x = y = z = 99;
   println("x = {0}, y = {1}, z = {2}", x, y, z);
+  println("x == y == true := {0}", x == y == true);
+  println("x == y && x == z := {0}", x == y && x == z);
+  println("x == y || y == z := {0}", x == y || x == z);
 
   if (z == 99) {
     println("z == 99");
