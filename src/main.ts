@@ -1,7 +1,8 @@
+import * as process from "node:process";
 import { readFile } from "node:fs/promises";
 import { SourceFile } from "./frontend/ast.ts";
-// import { outputC } from "./backend/clangBackend.ts";
-import { outputJS } from "./backend/jsBackend.ts";
+import { outputC } from "./backend/clangBackend.ts";
+//import { outputJS } from "./backend/jsBackend.ts";
 import { scan, Token, TokenType } from "./frontend/scanner.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
 import { lower } from "./frontend/lowering.ts";
@@ -34,7 +35,7 @@ async function main(argv: string[]): Promise<i32> {
   } else {
     let buffer = "";
 
-    outputJS(lower(sourceFile.value!), {
+    outputC(lower(sourceFile.value!), {
       append: (value: string) => {
         buffer += value;
       },

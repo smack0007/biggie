@@ -27,9 +27,9 @@ import {
   IfStatement,
   WhileStatement,
   LogicalExpression,
-} from "./ast";
-import { Token, TokenType } from "./scanner";
-import { bool, Result, int, OrNull } from "../shims";
+} from "./ast.ts";
+import { Token, TokenType } from "./scanner.ts";
+import { bool, Result, int, OrNull } from "../shims.ts";
 
 export interface ParserLogger {
   enter(name: string, token: Token): void;
@@ -267,6 +267,7 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
       kind: SyntaxKind.VarDeclaration,
       isConst,
       name: identifier.value!,
+      type: type.value!,
       expression: expression.value!,
     },
   };
@@ -542,7 +543,7 @@ function parseIfStatement(context: ParserContext): Result<IfStatement, ParserErr
 
   let _else: Statement | undefined = undefined;
 
-  if (match(context, [ TokenType.Else ])) {
+  if (match(context, [TokenType.Else])) {
     const elseResult = parseBlockLevelStatement(context);
 
     if (elseResult.error) {
@@ -557,7 +558,7 @@ function parseIfStatement(context: ParserContext): Result<IfStatement, ParserErr
       kind: SyntaxKind.IfStatement,
       condition: condition.value!,
       then: then.value!,
-      else: _else
+      else: _else,
     },
   };
 }
@@ -641,7 +642,7 @@ function parseReturnStatement(context: ParserContext): Result<ReturnStatement, P
 
 function parseExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseExpression.name);
-  
+
   let result: Result<Expression, ParserError> = parseAssignmentExpression(context);
 
   if (result.error != null) {
@@ -661,7 +662,7 @@ const ASSIGNMENT_TOKENS = [
   TokenType.PlusEquals,
   TokenType.MinusEquals,
   TokenType.AsteriskEquals,
-  TokenType.SlashEquals
+  TokenType.SlashEquals,
 ];
 
 const ASSIGNMENT_OPERATORS_MAP: Partial<Record<TokenType, Operator>> = {
@@ -669,12 +670,12 @@ const ASSIGNMENT_OPERATORS_MAP: Partial<Record<TokenType, Operator>> = {
   [TokenType.PlusEquals]: Operator.PlusEquals,
   [TokenType.MinusEquals]: Operator.MinusEquals,
   [TokenType.AsteriskEquals]: Operator.AsteriskEquals,
-  [TokenType.SlashEquals]: Operator.SlashEquals
+  [TokenType.SlashEquals]: Operator.SlashEquals,
 };
 
 function parseAssignmentExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseAssignmentExpression.name);
-  
+
   const startToken = peek(context);
   const expression = parseLogicalOrExpression(context);
 
@@ -699,8 +700,8 @@ function parseAssignmentExpression(context: ParserContext): Result<Expression, P
         kind: SyntaxKind.AssignmentExpression,
         name: <Identifier>expression.value!,
         operator: ASSIGNMENT_OPERATORS_MAP[operatorToken.type] as any,
-        value: value.value!
-      }
+        value: value.value!,
+      },
     };
 
     return result;
@@ -711,16 +712,16 @@ function parseAssignmentExpression(context: ParserContext): Result<Expression, P
 
 function parseLogicalOrExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseLogicalOrExpression.name);
-  
+
   let result = parseLogicalAndExpression(context);
 
   if (result.error) {
     return { error: result.error };
   }
 
-  while (match(context, [ TokenType.BarBar ])) {
+  while (match(context, [TokenType.BarBar])) {
     const rhs = parseLogicalAndExpression(context);
-    
+
     if (rhs.error) {
       return { error: rhs.error };
     }
@@ -729,7 +730,7 @@ function parseLogicalOrExpression(context: ParserContext): Result<Expression, Pa
       kind: SyntaxKind.LogicalExpression,
       lhs: result.value!,
       operator: Operator.BarBar,
-      rhs: rhs.value!
+      rhs: rhs.value!,
     };
 
     result = { value: expression };
@@ -740,14 +741,14 @@ function parseLogicalOrExpression(context: ParserContext): Result<Expression, Pa
 
 function parseLogicalAndExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseLogicalAndExpression.name);
-  
+
   let result = parseEqualityExpression(context);
 
   if (result.error) {
     return { error: result.error };
   }
 
-  while (match(context, [ TokenType.AmpersandAmpersand ])) {
+  while (match(context, [TokenType.AmpersandAmpersand])) {
     const rhs = parseEqualityExpression(context);
 
     if (rhs.error) {
@@ -758,7 +759,7 @@ function parseLogicalAndExpression(context: ParserContext): Result<Expression, P
       kind: SyntaxKind.LogicalExpression,
       lhs: result.value!,
       operator: Operator.AmpersandAmpersand,
-      rhs: rhs.value!
+      rhs: rhs.value!,
     };
 
     result = { value: expression };
@@ -769,14 +770,14 @@ function parseLogicalAndExpression(context: ParserContext): Result<Expression, P
 
 function parseEqualityExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseEqualityExpression.name);
-  
+
   let result = parseComparisonExpression(context);
 
   if (result.error != null) {
     return { error: result.error };
   }
 
-  while (match(context, [ TokenType.EqualsEquals, TokenType.ExclamationEquals ])) {
+  while (match(context, [TokenType.EqualsEquals, TokenType.ExclamationEquals])) {
     const operatorToken = previous(context);
 
     const rhs = parseComparisonExpression(context);
@@ -789,18 +790,18 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
       kind: SyntaxKind.EqualityExpression,
       lhs: result.value!,
       operator: operatorToken.type == TokenType.EqualsEquals ? Operator.EqualsEquals : Operator.ExclamationEquals,
-      rhs: rhs.value!
+      rhs: rhs.value!,
     };
 
     result = { value: expression };
   }
-  
+
   return result;
 }
 
 function parseComparisonExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseComparisonExpression.name);
-  
+
   const lhs = parseAdditiveExpression(context);
 
   if (lhs.error != null) {
@@ -846,8 +847,8 @@ function parseComparisonExpression(context: ParserContext): Result<Expression, P
         kind: SyntaxKind.ComparisonExpression,
         lhs: lhs.value!,
         operator,
-        rhs: rhs.value!
-      }
+        rhs: rhs.value!,
+      },
     };
 
     return result;
@@ -858,7 +859,7 @@ function parseComparisonExpression(context: ParserContext): Result<Expression, P
 
 function parseAdditiveExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseAdditiveExpression.name);
-  
+
   const lhs = parseMultiplicativeExpression(context);
 
   if (lhs.error != null) {
@@ -880,8 +881,8 @@ function parseAdditiveExpression(context: ParserContext): Result<Expression, Par
         kind: SyntaxKind.AdditiveExpression,
         lhs: lhs.value!,
         operator: operatorToken.type == TokenType.Plus ? Operator.Plus : Operator.Minus,
-        rhs: rhs.value!
-      }
+        rhs: rhs.value!,
+      },
     };
 
     return result;
@@ -892,7 +893,7 @@ function parseAdditiveExpression(context: ParserContext): Result<Expression, Par
 
 function parseMultiplicativeExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseMultiplicativeExpression.name);
-  
+
   const lhs = parseUnaryExpression(context);
 
   if (lhs.error != null) {
@@ -914,8 +915,8 @@ function parseMultiplicativeExpression(context: ParserContext): Result<Expressio
         kind: SyntaxKind.MultiplicativeExpression,
         lhs: lhs.value!,
         operator: operatorToken.type == TokenType.Asterisk ? Operator.Asterisk : Operator.Slash,
-        rhs: rhs.value!
-      }
+        rhs: rhs.value!,
+      },
     };
 
     return result;
@@ -926,7 +927,7 @@ function parseMultiplicativeExpression(context: ParserContext): Result<Expressio
 
 function parseUnaryExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parseUnaryExpression.name);
-  
+
   const operatorToken = peek(context);
   if (operatorToken.type == TokenType.Exclamation || operatorToken.type == TokenType.Minus) {
     advance(context);
@@ -941,8 +942,8 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
       value: {
         kind: SyntaxKind.UnaryExpression,
         operator: operatorToken.type == TokenType.Exclamation ? Operator.Exclamation : Operator.Minus,
-        expression: expression.value!
-      }
+        expression: expression.value!,
+      },
     };
 
     return result;
@@ -953,10 +954,10 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
 
 function parsePrimaryExpression(context: ParserContext): Result<Expression, ParserError> {
   context.logger.enter(parsePrimaryExpression.name);
-  
+
   let result: Result<Expression, ParserError>;
   const token = peek(context);
-  
+
   switch (token.type) {
     case TokenType.OpenParen:
       result = parseParenthesizedExpression(context);
@@ -994,9 +995,9 @@ function parsePrimaryExpression(context: ParserContext): Result<Expression, Pars
 
 function parseParenthesizedExpression(context: ParserContext): Result<ParenthesizedExpression, ParserError> {
   context.logger.enter(parseParenthesizedExpression.name);
-  
+
   const openParenToken = expect(context, TokenType.OpenParen, parseParenthesizedExpression.name);
-  
+
   if (openParenToken.error != null) {
     return { error: openParenToken.error };
   }
@@ -1019,8 +1020,8 @@ function parseParenthesizedExpression(context: ParserContext): Result<Parenthesi
   return {
     value: {
       kind: SyntaxKind.ParenthesizedExpression,
-      expression: expression.value!
-    }
+      expression: expression.value!,
+    },
   };
 }
 
@@ -1120,7 +1121,7 @@ function parseIdentifier(context: ParserContext): Result<Identifier, ParserError
 
 function parseBoolLiteral(context: ParserContext): Result<BoolLiteral, ParserError> {
   context.logger.enter(parseBoolLiteral.name);
-  const token = expect(context, [ TokenType.True, TokenType.False ], parseBoolLiteral.name);
+  const token = expect(context, [TokenType.True, TokenType.False], parseBoolLiteral.name);
 
   if (token.error != null) {
     return { error: token.error };
@@ -1131,7 +1132,7 @@ function parseBoolLiteral(context: ParserContext): Result<BoolLiteral, ParserErr
   return {
     value: {
       kind: SyntaxKind.BoolLiteral,
-      value: token.value?.type == TokenType.True
+      value: token.value?.type == TokenType.True,
     },
   };
 }

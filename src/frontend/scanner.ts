@@ -1,4 +1,4 @@
-import { char, int } from "../shims";
+import { char, int } from "../shims.ts";
 
 export enum TokenType {
   // Used internally to indicate we're currently looking for a token.

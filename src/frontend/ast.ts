@@ -4,7 +4,7 @@ export enum SyntaxKind {
   AssignmentExpression,
 
   BoolLiteral,
-  
+
   CallExpression,
 
   ComparisonExpression,
@@ -49,22 +49,22 @@ export enum SyntaxKind {
 
   VarDeclaration,
 
-  WhileStatement
+  WhileStatement,
 }
 
 export enum Operator {
   AmpersandAmpersand,
-  
+
   Asterisk,
 
   AsteriskEquals,
-  
+
   BarBar,
 
   Equals,
 
   EqualsEquals,
-  
+
   Exclamation,
 
   ExclamationEquals,
@@ -84,10 +84,10 @@ export enum Operator {
   Plus,
 
   PlusEquals,
-  
+
   Slash,
 
-  SlashEquals
+  SlashEquals,
 }
 
 export interface SyntaxNode {
@@ -112,6 +112,8 @@ export interface VarDeclaration extends Statement {
   readonly isConst: boolean;
 
   readonly name: Identifier;
+
+  readonly type: TypeName;
 
   readonly expression?: Expression;
 }
@@ -152,7 +154,7 @@ export interface IfStatement extends Statement {
   readonly kind: SyntaxKind.IfStatement;
 
   readonly condition: Expression;
- 
+
   readonly then: Statement;
 
   readonly else?: Statement;
@@ -195,7 +197,12 @@ export interface AssignmentExpression extends Expression {
 
   readonly name: Identifier;
 
-  readonly operator: Operator.Equals | Operator.PlusEquals | Operator.MinusEquals | Operator.AsteriskEquals | Operator.SlashEquals;
+  readonly operator:
+    | Operator.Equals
+    | Operator.PlusEquals
+    | Operator.MinusEquals
+    | Operator.AsteriskEquals
+    | Operator.SlashEquals;
 
   readonly value: Expression;
 }

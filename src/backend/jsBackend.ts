@@ -26,9 +26,9 @@ import {
   StatementBlock,
   WhileStatement,
   LogicalExpression,
-} from "../frontend/ast";
-import { int } from "../shims";
-import { BackendContext } from "./backend";
+} from "../frontend/ast.ts";
+import { int } from "../shims.ts";
+import { BackendContext } from "./backend.ts";
 
 interface JSBackendContext extends BackendContext {
   indentLevel: int;
@@ -39,6 +39,7 @@ function debugObj(context: JSBackendContext, value: unknown, message?: string, n
   context.append(`/*${message ? message + ": " : ""}${JSON.stringify(value, undefined, 2)}*/${newLine ? "\n" : ""}`);
 }
 
+const __dirname = new URL('.', import.meta.url).pathname;
 const PREAMBLE = fs.readFileSync(path.join(__dirname, "jsPreamble.js"), "utf-8");
 const POSTAMBLE = fs.readFileSync(path.join(__dirname, "jsPostamble.js"), "utf-8");
 
@@ -88,7 +89,7 @@ function outputUnexpectedNode(
   functionName: string,
   sourceFile: SourceFile,
   node: SyntaxNode
-): void {  
+): void {
   context.append(`/* Unexpected node in "${functionName}": ${SyntaxKind[node.kind]} ${sourceFile.fileName} */`);
 }
 
@@ -134,9 +135,9 @@ function outputFunctionDeclaration(
 }
 
 function outputStatementBlock(context: JSBackendContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
-  context.append('{\n');
+  context.append("{\n");
   context.indentLevel += 1;
-  
+
   for (const statement of statementBlock.statements) {
     context.indent();
     outputBlockLevelStatement(context, sourceFile, statement);
@@ -144,13 +145,13 @@ function outputStatementBlock(context: JSBackendContext, sourceFile: SourceFile,
 
   context.indentLevel -= 1;
   context.indent();
-  context.append('}');
+  context.append("}");
 }
 
-function outputBlockLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode) {  
+function outputBlockLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode) {
   switch (node.kind) {
     case SyntaxKind.VarDeclaration:
-      outputVarDeclaration(context, sourceFile, (<VarDeclaration>node));
+      outputVarDeclaration(context, sourceFile, <VarDeclaration>node);
       break;
 
     case SyntaxKind.IfStatement:
@@ -180,7 +181,7 @@ function outputBlockLevelStatement(context: JSBackendContext, sourceFile: Source
   }
 }
 
-function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {  
+function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {
   context.append(`${varDeclaration.isConst ? "const" : "let"} ${varDeclaration.name.value}`);
 
   if (varDeclaration.expression) {
@@ -191,7 +192,7 @@ function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile,
   context.append(";\n");
 }
 
-function outputIfStatement(context: JSBackendContext, sourceFile: SourceFile, ifStatement: IfStatement) {  
+function outputIfStatement(context: JSBackendContext, sourceFile: SourceFile, ifStatement: IfStatement) {
   context.append("if (");
   outputExpression(context, sourceFile, ifStatement.condition);
   context.append(") ");
@@ -230,7 +231,7 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       break;
 
     case SyntaxKind.AssignmentExpression:
-      outputAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);  
+      outputAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);
       break;
 
     case SyntaxKind.BoolLiteral:
@@ -244,7 +245,7 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
     case SyntaxKind.ComparisonExpression:
       outputComparisonExpression(context, sourceFile, <ComparisonExpression>expression);
       break;
-        
+
     case SyntaxKind.EqualityExpression:
       outputEqualityExpression(context, sourceFile, <EqualityExpression>expression);
       break;
@@ -266,7 +267,7 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       break;
 
     case SyntaxKind.ParenthesizedExpression:
-      outputParenthesizedExpression(context, sourceFile, <ParenthesizedExpression>expression);  
+      outputParenthesizedExpression(context, sourceFile, <ParenthesizedExpression>expression);
       break;
 
     case SyntaxKind.StringLiteral:
@@ -283,9 +284,13 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
   }
 }
 
-function outputAssignmentExpression(context: JSBackendContext, sourceFile: SourceFile, expression: AssignmentExpression): void {
+function outputAssignmentExpression(
+  context: JSBackendContext,
+  sourceFile: SourceFile,
+  expression: AssignmentExpression
+): void {
   outputIdentifier(context, sourceFile, expression.name);
-  
+
   let operator = "=";
   switch (expression.operator) {
     case Operator.PlusEquals:
@@ -303,14 +308,18 @@ function outputAssignmentExpression(context: JSBackendContext, sourceFile: Sourc
     case Operator.SlashEquals:
       operator = "/=";
       break;
-  }  
+  }
 
   context.append(` ${operator} `);
 
   outputExpression(context, sourceFile, expression.value);
 }
 
-function outputAdditiveExpression(context: JSBackendContext, sourceFile: SourceFile, expression: AdditiveExpression): void {
+function outputAdditiveExpression(
+  context: JSBackendContext,
+  sourceFile: SourceFile,
+  expression: AdditiveExpression
+): void {
   outputExpression(context, sourceFile, expression.lhs);
 
   context.append(` ${expression.operator == Operator.Plus ? "+" : "-"} `);
@@ -337,7 +346,11 @@ function outputCallExpression(context: JSBackendContext, sourceFile: SourceFile,
   context.append(")");
 }
 
-function outputComparisonExpression(context: JSBackendContext, sourceFile: SourceFile, expression: ComparisonExpression) {
+function outputComparisonExpression(
+  context: JSBackendContext,
+  sourceFile: SourceFile,
+  expression: ComparisonExpression
+) {
   outputExpression(context, sourceFile, expression.lhs);
 
   let operator = ">";
@@ -354,7 +367,7 @@ function outputComparisonExpression(context: JSBackendContext, sourceFile: Sourc
     case Operator.LessThan:
       operator = "<";
       break;
-  
+
     case Operator.LessThanEquals:
       operator = "<=";
       break;
@@ -389,7 +402,11 @@ function outputLogicalExpression(context: JSBackendContext, sourceFile: SourceFi
   outputExpression(context, sourceFile, expression.rhs);
 }
 
-function outputMultiplicativeExpression(context: JSBackendContext, sourceFile: SourceFile, expression: MultiplcativeExpression) {
+function outputMultiplicativeExpression(
+  context: JSBackendContext,
+  sourceFile: SourceFile,
+  expression: MultiplcativeExpression
+) {
   outputExpression(context, sourceFile, expression.lhs);
 
   context.append(expression.operator == Operator.Asterisk ? " * " : " / ");
@@ -397,7 +414,11 @@ function outputMultiplicativeExpression(context: JSBackendContext, sourceFile: S
   outputExpression(context, sourceFile, expression.rhs);
 }
 
-function outputParenthesizedExpression(context: JSBackendContext, sourceFile: SourceFile, expression: ParenthesizedExpression) {
+function outputParenthesizedExpression(
+  context: JSBackendContext,
+  sourceFile: SourceFile,
+  expression: ParenthesizedExpression
+) {
   context.append("(");
   outputExpression(context, sourceFile, expression.expression);
   context.append(")");

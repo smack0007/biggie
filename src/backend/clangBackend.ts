@@ -1,26 +1,38 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
+  AdditiveExpression,
+  AssignmentExpression,
+  BoolLiteral,
   CallExpression,
+  ComparisonExpression,
+  EqualityExpression,
   Expression,
   ExpressionStatement,
   FuncDeclaration,
   Identifier,
   IntegerLiteral,
+  LogicalExpression,
+  MultiplcativeExpression,
+  Operator,
+  ParenthesizedExpression,
   ReturnStatement,
   SourceFile,
   StringLiteral,
   SyntaxKind,
   SyntaxNode,
-} from "../frontend/ast";
-import { int } from "../shims";
-import { BackendContext } from "./backend";
+  UnaryExpression,
+  VarDeclaration,
+} from "../frontend/ast.ts";
+import { int } from "../shims.ts";
+import { BackendContext } from "./backend.ts";
 
 interface ClangBackendContext extends BackendContext {
   indentLevel: int;
   indent: () => void;
 }
 
+const __dirname = new URL(".", import.meta.url).pathname;
 const PREAMBLE = fs.readFileSync(path.join(__dirname, "clangPreamble.c"), "utf-8");
 
 export function outputC(sourceFile: SourceFile, baseContext: BackendContext): void {
@@ -126,6 +138,10 @@ function outputBlockLevelStatement(context: ClangBackendContext, sourceFile: Sou
       outputReturnStatement(context, sourceFile, <ReturnStatement>node);
       break;
 
+    case SyntaxKind.VarDeclaration:
+      outputVarDeclaration(context, sourceFile, <VarDeclaration>node);
+      break;
+
     default:
       outputUnexpectedNode(context, outputBlockLevelStatement.name, sourceFile, node);
       break;
@@ -137,15 +153,46 @@ function outputBlockLevelStatement(context: ClangBackendContext, sourceFile: Sou
 function outputReturnStatement(context: ClangBackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
   context.append("return ");
 
-  if (returnStatement.expression) {
+  if (returnStatement.expression != null) {
     outputExpression(context, sourceFile, returnStatement.expression);
+  }
+}
+
+function outputVarDeclaration(context: ClangBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {
+  outputIdentifier(context, sourceFile, varDeclaration.type.name);
+  context.append(" ");
+  outputIdentifier(context, sourceFile, varDeclaration.name);
+
+  if (varDeclaration.expression != null) {
+    context.append(" = ");
+    outputExpression(context, sourceFile, varDeclaration.expression);
   }
 }
 
 function outputExpression(context: ClangBackendContext, sourceFile: SourceFile, expression: Expression) {
   switch (expression.kind) {
+    case SyntaxKind.AdditiveExpression:
+      outputAdditiveExpression(context, sourceFile, <AdditiveExpression>expression);
+      break;
+
+    case SyntaxKind.AssignmentExpression:
+      outputAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);
+      break;
+
+    case SyntaxKind.BoolLiteral:
+      outputBoolLiteral(context, sourceFile, <BoolLiteral>expression);
+      break;
+
     case SyntaxKind.CallExpression:
       outputCallExpression(context, sourceFile, <CallExpression>expression);
+      break;
+
+    case SyntaxKind.ComparisonExpression:
+      outputComparisonExpression(context, sourceFile, <ComparisonExpression>expression);
+      break;
+
+    case SyntaxKind.EqualityExpression:
+      outputEqualityExpression(context, sourceFile, <EqualityExpression>expression);
       break;
 
     case SyntaxKind.Identifier:
@@ -156,14 +203,77 @@ function outputExpression(context: ClangBackendContext, sourceFile: SourceFile, 
       outputIntegerLiteral(context, sourceFile, <IntegerLiteral>expression);
       break;
 
+    case SyntaxKind.LogicalExpression:
+      outputLogicalExpression(context, sourceFile, <LogicalExpression>expression);
+      break;
+
+    case SyntaxKind.MultiplicativeExpression:
+      outputMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
+      break;
+
+    case SyntaxKind.ParenthesizedExpression:
+      outputParenthesizedExpression(context, sourceFile, <ParenthesizedExpression>expression);
+      break;
+
     case SyntaxKind.StringLiteral:
       outputStringLiteral(context, sourceFile, <StringLiteral>expression);
+      break;
+
+    case SyntaxKind.UnaryExpression:
+      outputUnaryExpression(context, sourceFile, <UnaryExpression>expression);
       break;
 
     default:
       outputUnexpectedNode(context, outputExpression.name, sourceFile, expression);
       break;
   }
+}
+
+function outputAssignmentExpression(
+  context: ClangBackendContext,
+  sourceFile: SourceFile,
+  expression: AssignmentExpression
+): void {
+  outputIdentifier(context, sourceFile, expression.name);
+
+  let operator = "=";
+  switch (expression.operator) {
+    case Operator.PlusEquals:
+      operator = "+=";
+      break;
+
+    case Operator.MinusEquals:
+      operator = "-=";
+      break;
+
+    case Operator.AsteriskEquals:
+      operator = "*=";
+      break;
+
+    case Operator.SlashEquals:
+      operator = "/=";
+      break;
+  }
+
+  context.append(` ${operator} `);
+
+  outputExpression(context, sourceFile, expression.value);
+}
+
+function outputAdditiveExpression(
+  context: ClangBackendContext,
+  sourceFile: SourceFile,
+  expression: AdditiveExpression
+): void {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  context.append(` ${expression.operator == Operator.Plus ? "+" : "-"} `);
+
+  outputExpression(context, sourceFile, expression.rhs);
+}
+
+function outputBoolLiteral(context: ClangBackendContext, sourceFile: SourceFile, boolLiteral: BoolLiteral) {
+  context.append(boolLiteral.value ? "true" : "false");
 }
 
 function outputCallExpression(context: ClangBackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
@@ -181,6 +291,50 @@ function outputCallExpression(context: ClangBackendContext, sourceFile: SourceFi
   context.append(")");
 }
 
+function outputComparisonExpression(
+  context: ClangBackendContext,
+  sourceFile: SourceFile,
+  expression: ComparisonExpression
+) {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  let operator = ">";
+
+  switch (expression.operator) {
+    case Operator.GreaterThan:
+      operator = ">";
+      break;
+
+    case Operator.GreaterThanEquals:
+      operator = ">=";
+      break;
+
+    case Operator.LessThan:
+      operator = "<";
+      break;
+
+    case Operator.LessThanEquals:
+      operator = "<=";
+      break;
+  }
+
+  context.append(` ${operator} `);
+
+  outputExpression(context, sourceFile, expression.rhs);
+}
+
+function outputEqualityExpression(
+  context: ClangBackendContext,
+  sourceFile: SourceFile,
+  expression: EqualityExpression
+) {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  context.append(expression.operator == Operator.EqualsEquals ? " == " : " != ");
+
+  outputExpression(context, sourceFile, expression.rhs);
+}
+
 function outputIdentifier(context: ClangBackendContext, sourceFile: SourceFile, identifier: Identifier) {
   context.append(identifier.value);
 }
@@ -189,6 +343,42 @@ function outputIntegerLiteral(context: ClangBackendContext, sourceFile: SourceFi
   context.append(integerLiteral.value);
 }
 
+function outputLogicalExpression(context: ClangBackendContext, sourceFile: SourceFile, expression: LogicalExpression) {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  context.append(expression.operator == Operator.AmpersandAmpersand ? " && " : " || ");
+
+  outputExpression(context, sourceFile, expression.rhs);
+}
+
+function outputMultiplicativeExpression(
+  context: ClangBackendContext,
+  sourceFile: SourceFile,
+  expression: MultiplcativeExpression
+) {
+  outputExpression(context, sourceFile, expression.lhs);
+
+  context.append(expression.operator == Operator.Asterisk ? " * " : " / ");
+
+  outputExpression(context, sourceFile, expression.rhs);
+}
+
+function outputParenthesizedExpression(
+  context: ClangBackendContext,
+  sourceFile: SourceFile,
+  expression: ParenthesizedExpression
+) {
+  context.append("(");
+  outputExpression(context, sourceFile, expression.expression);
+  context.append(")");
+}
+
 function outputStringLiteral(context: ClangBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
   context.append(`"${stringLiteral.value}"`);
+}
+
+function outputUnaryExpression(context: ClangBackendContext, sourceFile: SourceFile, expression: UnaryExpression) {
+  context.append(expression.operator == Operator.Exclamation ? "!" : "-");
+
+  outputExpression(context, sourceFile, expression.expression);
 }

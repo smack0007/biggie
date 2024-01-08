@@ -8,8 +8,8 @@ cd ${ROOT_PATH}
 mkdir -p ${BIN_PATH}
 
 mkdir -p ${BIN_PATH}/hello
-ts-node --transpile-only --log-error ${SRC_PATH}/main.ts ${SAMPLES_PATH}/hello.big > ${BIN_PATH}/hello/hello.mjs
-node ${BIN_PATH}/hello/hello.mjs
+deno run --allow-read ${SRC_PATH}/main.ts ${SAMPLES_PATH}/hello.big > ${BIN_PATH}/hello/hello.cpp
+# deno run ${BIN_PATH}/hello/hello.mjs
 
-# clang -o ${BIN_PATH}/hello/hello ${BIN_PATH}/hello/hello.c
-# ${BIN_PATH}/hello/hello
+clang++ ${BIN_PATH}/hello/hello.cpp -o ${BIN_PATH}/hello/hello
+${BIN_PATH}/hello/hello
