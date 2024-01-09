@@ -6,11 +6,13 @@ import {
   BoolLiteral,
   CallExpression,
   ComparisonExpression,
+  DeferStatement,
   EqualityExpression,
   Expression,
   ExpressionStatement,
   FuncDeclaration,
   Identifier,
+  IfStatement,
   IntegerLiteral,
   LogicalExpression,
   MultiplcativeExpression,
@@ -18,11 +20,13 @@ import {
   ParenthesizedExpression,
   ReturnStatement,
   SourceFile,
+  StatementBlock,
   StringLiteral,
   SyntaxKind,
   SyntaxNode,
   UnaryExpression,
   VarDeclaration,
+  WhileStatement,
 } from "../frontend/ast.ts";
 import { int } from "../shims.ts";
 import { BackendContext } from "./backend.ts";
@@ -113,10 +117,9 @@ function outputFunctionDeclaration(
   context.append(") {\n");
   context.indentLevel += 1;
 
-  if (functionDeclaration.body?.statements) {
-    for (const statement of functionDeclaration.body.statements) {
-      outputBlockLevelStatement(context, sourceFile, statement);
-    }
+  
+  for (const statement of functionDeclaration.body.statements) {
+    outputBlockLevelStatement(context, sourceFile, statement);
   }
 
   context.indentLevel -= 1;
@@ -127,24 +130,73 @@ function outputBlockLevelStatement(context: ClangBackendContext, sourceFile: Sou
   context.indent();
 
   switch (node.kind) {
+    case SyntaxKind.DeferStatement:
+      outputDeferStatement(context, sourceFile, <DeferStatement>node);
+      break;
+
     case SyntaxKind.ExpressionStatement:
-      outputExpression(context, sourceFile, (<ExpressionStatement>node).expression);
+      outputExpressionStatement(context, sourceFile, <ExpressionStatement>node);
+      break;
+
+    case SyntaxKind.IfStatement:
+      outputIfStatement(context, sourceFile, <IfStatement>node);
       break;
 
     case SyntaxKind.ReturnStatement:
       outputReturnStatement(context, sourceFile, <ReturnStatement>node);
       break;
 
+    case SyntaxKind.StatementBlock:
+      outputStatementBlock(context, sourceFile, <StatementBlock>node);
+      break;
+
     case SyntaxKind.VarDeclaration:
       outputVarDeclaration(context, sourceFile, <VarDeclaration>node);
+      break;
+
+    case SyntaxKind.WhileStatement:
+      outputWhileStatement(context, sourceFile, <WhileStatement>node);
       break;
 
     default:
       outputUnexpectedNode(context, outputBlockLevelStatement.name, sourceFile, node);
       break;
   }
+}
 
+function outputDeferStatement(context: ClangBackendContext, sourceFile: SourceFile, deferStatement: DeferStatement) {
+  context.append("defer { ");
+
+  // TODO: We probably need to use something like outputStatementBlock here.
+  outputExpression(context, sourceFile, deferStatement.expression);
+
+  // HACK: DeferStatement should contain a StatementBlock.
+  context.append(";");
+  context.append(" }");
   context.append(";\n");
+}
+
+function outputExpressionStatement(
+  context: ClangBackendContext,
+  sourceFile: SourceFile,
+  expressionStatement: ExpressionStatement
+) {
+  outputExpression(context, sourceFile, expressionStatement.expression);
+  context.append(";\n");
+}
+
+function outputIfStatement(context: ClangBackendContext, sourceFile: SourceFile, ifStatement: IfStatement) {
+  context.append("if (");
+  outputExpression(context, sourceFile, ifStatement.condition);
+  context.append(") ");
+  outputBlockLevelStatement(context, sourceFile, ifStatement.then);
+
+  if (ifStatement.else != null) {
+    context.append(" else ");
+    outputBlockLevelStatement(context, sourceFile, ifStatement.else);
+  }
+
+  context.append("\n");
 }
 
 function outputReturnStatement(context: ClangBackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
@@ -153,6 +205,22 @@ function outputReturnStatement(context: ClangBackendContext, sourceFile: SourceF
   if (returnStatement.expression != null) {
     outputExpression(context, sourceFile, returnStatement.expression);
   }
+
+  context.append(";\n");
+}
+
+function outputStatementBlock(context: ClangBackendContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
+  context.append("{\n");
+  context.indentLevel += 1;
+
+  for (const statement of statementBlock.statements) {
+    context.indent();
+    outputBlockLevelStatement(context, sourceFile, statement);
+  }
+
+  context.indentLevel -= 1;
+  context.indent();
+  context.append("}");
 }
 
 function outputVarDeclaration(context: ClangBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {
@@ -164,6 +232,16 @@ function outputVarDeclaration(context: ClangBackendContext, sourceFile: SourceFi
     context.append(" = ");
     outputExpression(context, sourceFile, varDeclaration.expression);
   }
+
+  context.append(";\n");
+}
+
+function outputWhileStatement(context: ClangBackendContext, sourceFile: SourceFile, whileStatement: WhileStatement) {
+  context.append("while (");
+  outputExpression(context, sourceFile, whileStatement.condition);
+  context.append(") ");
+  outputBlockLevelStatement(context, sourceFile, whileStatement.body);
+  context.append("\n");
 }
 
 function outputExpression(context: ClangBackendContext, sourceFile: SourceFile, expression: Expression) {

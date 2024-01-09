@@ -35,7 +35,7 @@ async function main(argv: string[]): Promise<i32> {
   } else {
     let buffer = "";
 
-    outputCpp(lower(sourceFile.value!), {
+    outputCpp(sourceFile.value!, {
       append: (value: string) => {
         buffer += value;
       },

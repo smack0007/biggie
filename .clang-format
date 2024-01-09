@@ -4,6 +4,8 @@ BasedOnStyle: LLVM
 IndentWidth: 2
 ColumnLimit: 120
 UseTab: Never
+
+AlwaysBreakTemplateDeclarations: true
 AllowShortIfStatementsOnASingleLine: false
 AlignTrailingComments: true
 SpacesBeforeTrailingComments: 1

@@ -3,6 +3,9 @@
 #define FMT_HEADER_ONLY
 #include <fmt/core.h>
 
+#define _CONCAT(a, b) a##b
+#define CONCAT(a, b) _CONCAT(a, b)
+
 typedef float_t f32;
 typedef double_t f64;
 typedef int8_t i8;
@@ -16,6 +19,9 @@ typedef uint64_t u64;
 
 typedef std::string string;
 
-template <typename... T> void println(fmt::format_string<T...> format, T &&...args) {
+template <typename... T>
+void println(fmt::format_string<T...> format, T &&...args) {
   fmt::println(format, std::forward<T>(args)...);
 }
+
+#include "defer.cpp"
