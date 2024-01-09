@@ -32,10 +32,7 @@ interface ClangBackendContext extends BackendContext {
   indent: () => void;
 }
 
-const __dirname = new URL(".", import.meta.url).pathname;
-const PREAMBLE = fs.readFileSync(path.join(__dirname, "clangPreamble.c"), "utf-8");
-
-export function outputC(sourceFile: SourceFile, baseContext: BackendContext): void {
+export function outputCpp(sourceFile: SourceFile, baseContext: BackendContext): void {
   const context = <ClangBackendContext>{
     indentLevel: 0,
 
@@ -62,7 +59,7 @@ export function outputC(sourceFile: SourceFile, baseContext: BackendContext): vo
 }
 
 function outputPreamble(context: ClangBackendContext): void {
-  context.append(PREAMBLE);
+  context.append("#include <biggie.cpp>");
   context.append("\n");
 }
 

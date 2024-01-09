@@ -15,5 +15,9 @@
 
   "files.exclude": {
     "**/.git": true
+  },
+
+  "[cpp]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools"
   }
 }
