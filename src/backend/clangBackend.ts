@@ -114,21 +114,28 @@ function outputFunctionDeclaration(
     context.append(`${argType} ${argName}`);
   }
 
-  context.append(") {\n");
+  context.append(") ");
+
+  outputStatementBlock(context, sourceFile, functionDeclaration.body);
+
+  context.append("\n\n");
+}
+
+function outputStatementBlock(context: ClangBackendContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
+  context.append("{\n");
   context.indentLevel += 1;
 
-  
-  for (const statement of functionDeclaration.body.statements) {
+  for (const statement of statementBlock.statements) {
+    context.indent();
     outputBlockLevelStatement(context, sourceFile, statement);
   }
 
   context.indentLevel -= 1;
-  context.append(`}\n\n`);
+  context.indent();
+  context.append("}");
 }
 
 function outputBlockLevelStatement(context: ClangBackendContext, sourceFile: SourceFile, node: SyntaxNode) {
-  context.indent();
-
   switch (node.kind) {
     case SyntaxKind.DeferStatement:
       outputDeferStatement(context, sourceFile, <DeferStatement>node);
@@ -207,20 +214,6 @@ function outputReturnStatement(context: ClangBackendContext, sourceFile: SourceF
   }
 
   context.append(";\n");
-}
-
-function outputStatementBlock(context: ClangBackendContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
-  context.append("{\n");
-  context.indentLevel += 1;
-
-  for (const statement of statementBlock.statements) {
-    context.indent();
-    outputBlockLevelStatement(context, sourceFile, statement);
-  }
-
-  context.indentLevel -= 1;
-  context.indent();
-  context.append("}");
 }
 
 function outputVarDeclaration(context: ClangBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {
