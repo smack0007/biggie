@@ -135,7 +135,9 @@ function expect(
         error: createError(
           token,
           ParserErrorKind.UnexpectedTokenType,
-          `Expected Token of Type ${TokenType[expectedType]} but was ${TokenType[token.type]} at ${functionName}`
+          `Expected Token of Type ${TokenType[expectedType]} but was ${TokenType[token.type]} (${
+            token.text
+          }) at ${functionName}`
         ),
       };
     }
@@ -191,8 +193,7 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 
   let result: Result<Statement, ParserError>;
   switch (token.type) {
-    case TokenType.Const:
-    case TokenType.Let:
+    case TokenType.Var:
       result = parseVarDeclaration(context);
       break;
 
@@ -215,13 +216,11 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 
 function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, ParserError> {
   context.logger.enter(parseVarDeclaration.name);
-  let token = expect(context, [TokenType.Const, TokenType.Let], parseFuncDeclaration.name);
+  let token = expect(context, TokenType.Var, parseVarDeclaration.name);
 
   if (token.error != null) {
     return { error: token.error };
   }
-
-  const isConst = token.value!.type == TokenType.Const;
 
   advance(context);
   const identifier = parseIdentifier(context);
@@ -265,7 +264,6 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
   return {
     value: {
       kind: SyntaxKind.VarDeclaration,
-      isConst,
       name: identifier.value!,
       type: type.value!,
       expression: expression.value!,
@@ -415,8 +413,7 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
 
   let result: Result<Statement, ParserError>;
   switch (token.type) {
-    case TokenType.Const:
-    case TokenType.Let:
+    case TokenType.Var:
       result = parseVarDeclaration(context);
       break;
 
@@ -603,7 +600,7 @@ function parseWhileStatement(context: ParserContext): Result<WhileStatement, Par
 
 function parseReturnStatement(context: ParserContext): Result<ReturnStatement, ParserError> {
   context.logger.enter(parseReturnStatement.name);
-  let token = expect(context, TokenType.Return, parseReturnStatement.name);
+  const token = expect(context, TokenType.Return, parseReturnStatement.name);
 
   if (token.error) {
     return { error: token.error };
@@ -617,11 +614,6 @@ function parseReturnStatement(context: ParserContext): Result<ReturnStatement, P
   }
 
   expect(context, TokenType.EndStatement, parseReturnStatement.name);
-
-  if (token.error) {
-    return { error: token.error };
-  }
-
   advance(context);
 
   return {

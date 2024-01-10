@@ -30,8 +30,10 @@ async function main(argv: string[]): Promise<i32> {
     process.stderr.write(
       `Error: (${sourceFile.error.line}, ${sourceFile.error.column}) ${ParserErrorKind[sourceFile.error.kind]} ${
         sourceFile.error.message
-      }`
+      }\n`
     );
+
+    return 1;
   } else {
     let buffer = "";
 

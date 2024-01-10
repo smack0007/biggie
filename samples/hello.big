@@ -10,10 +10,10 @@ func main(): i32 {
   defer sayGoodbye("Lamp");
   defer sayGoodbye("World");
   
-  const name: string = "Bobby";
+  var name: string = "Bobby";
   sayHello(name);
 
-  let value: i32 = 42;
+  var value: i32 = 42;
   println("{0} == 42 = {1}", value, value == 42);
   println("{0} > 42 = {1}", value, value > 42);
   println("1 + 2 = {0}", 1 + 2);
@@ -37,9 +37,9 @@ func main(): i32 {
   value = -value;
   println("value = -10, value = {0}", value);
 
-  let x: i32 = 0;
-  let y: i32 = 0;
-  let z: i32 = 0;
+  var x: i32 = 0;
+  var y: i32 = 0;
+  var z: i32 = 0;
   x = y = z = 99;
   println("x = {0}, y = {1}, z = {2}", x, y, z);
   println("x == y == true := {0}", x == y == true);
@@ -56,7 +56,7 @@ func main(): i32 {
     println("x != 55");
   }
 
-  let count: i32 = 0;
+  var count: i32 = 0;
   while (count < 3) {
     count += 1;
     println("count = {0}", count);
