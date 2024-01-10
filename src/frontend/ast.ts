@@ -1,3 +1,5 @@
+// deno-lint-ignore-file no-empty-interface
+
 export enum SyntaxKind {
   AdditiveExpression,
 
@@ -147,7 +149,7 @@ export interface ExpressionStatement extends Statement {
 export interface DeferStatement extends Statement {
   readonly kind: SyntaxKind.DeferStatement;
 
-  readonly expression: Expression;
+  readonly body: Statement;
 }
 
 export interface IfStatement extends Statement {

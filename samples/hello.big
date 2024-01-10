@@ -62,5 +62,5 @@ func main(): i32 {
     println("count = {0}", count);
   }
 
-  return 42;
+  return 0;
 }

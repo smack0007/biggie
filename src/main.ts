@@ -42,6 +42,9 @@ async function main(argv: string[]): Promise<i32> {
       prepend: (value: string) => {
         buffer = value + buffer;
       },
+      remove: (count: u64) => {
+        buffer = buffer.substring(0, buffer.length - count);
+      },
     });
     // outputWat(<SourceFile>sourceFile.value, {
     //   append: (value: string) => {

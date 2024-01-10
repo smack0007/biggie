@@ -29,7 +29,7 @@ import {
   LogicalExpression,
 } from "./ast.ts";
 import { Token, TokenType } from "./scanner.ts";
-import { bool, Result, int, OrNull } from "../shims.ts";
+import { bool, Result, int } from "../shims.ts";
 
 export interface ParserLogger {
   enter(name: string, token: Token): void;
@@ -473,32 +473,24 @@ function parseExpressionStatement(context: ParserContext): Result<ExpressionStat
 }
 
 function parseDeferStatement(context: ParserContext): Result<DeferStatement, ParserError> {
-  context.logger.enter(parseReturnStatement.name);
-  let token = expect(context, TokenType.Defer, parseReturnStatement.name);
+  context.logger.enter(parseDeferStatement.name);
+  const token = expect(context, TokenType.Defer, parseDeferStatement.name);
 
   if (token.error) {
     return { error: token.error };
   }
 
   advance(context);
-  const expression = parseExpression(context);
+  const body = parseBlockLevelStatement(context);
 
-  if (expression.error) {
-    return { error: expression.error };
+  if (body.error) {
+    return { error: body.error };
   }
-
-  expect(context, TokenType.EndStatement, parseReturnStatement.name);
-
-  if (token.error) {
-    return { error: token.error };
-  }
-
-  advance(context);
 
   return {
     value: {
       kind: SyntaxKind.DeferStatement,
-      expression: <Expression>expression.value,
+      body: <Statement>body.value,
     },
   };
 }

@@ -1,5 +1,3 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
 import {
   AdditiveExpression,
   AssignmentExpression,
@@ -53,6 +51,10 @@ export function outputCpp(sourceFile: SourceFile, baseContext: BackendContext): 
     prepend: (value: string) => {
       baseContext.prepend(value);
     },
+
+    remove: (count: u64) => {
+      baseContext.remove(count);
+    },
   };
 
   outputPreamble(context);
@@ -63,7 +65,7 @@ export function outputCpp(sourceFile: SourceFile, baseContext: BackendContext): 
 }
 
 function outputPreamble(context: ClangBackendContext): void {
-  context.append("#include <biggie.cpp>");
+  context.append("#include <biggie.cpp>\n");
   context.append("\n");
 }
 
@@ -172,14 +174,19 @@ function outputBlockLevelStatement(context: ClangBackendContext, sourceFile: Sou
 }
 
 function outputDeferStatement(context: ClangBackendContext, sourceFile: SourceFile, deferStatement: DeferStatement) {
-  context.append("defer { ");
+  context.append("defer ");
 
-  // TODO: We probably need to use something like outputStatementBlock here.
-  outputExpression(context, sourceFile, deferStatement.expression);
+  if (deferStatement.body.kind !== SyntaxKind.StatementBlock) {
+    context.append("{ ");
+  }
 
-  // HACK: DeferStatement should contain a StatementBlock.
-  context.append(";");
-  context.append(" }");
+  outputBlockLevelStatement(context, sourceFile, deferStatement.body);
+
+  if (deferStatement.body.kind !== SyntaxKind.StatementBlock) {
+    context.remove(1);
+    context.append(" }");
+  }
+
   context.append(";\n");
 }
 
