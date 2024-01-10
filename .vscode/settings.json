@@ -8,11 +8,6 @@
   "prettier.printWidth": 120,
   "prettier.tabWidth": 2,
 
-  "files.associations": {
-    // Just treat the files as go for now to get syntax highlighting
-    "*.big": "go"
-  },
-
   "files.exclude": {
     "**/.git": true
   },
