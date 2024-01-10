@@ -12,6 +12,10 @@
     "**/.git": true
   },
 
+  "files.associations": {
+    "*.big": "biggie"
+  },
+
   "[cpp]": {
     "editor.defaultFormatter": "ms-vscode.cpptools"
   }
