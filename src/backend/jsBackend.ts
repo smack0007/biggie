@@ -1,13 +1,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
-  BoolLiteral,
+  BooleanLiteral,
   CallExpression,
   ComparisonExpression,
   EqualityExpression,
   Expression,
   ExpressionStatement,
-  FuncDeclaration,
+  FunctionDeclaration,
   Identifier,
   IntegerLiteral as IntLiteral,
   Operator,
@@ -16,7 +16,7 @@ import {
   StringLiteral,
   SyntaxKind,
   SyntaxNode,
-  VarDeclaration,
+  VariableDeclaration,
   AdditiveExpression,
   MultiplcativeExpression,
   UnaryExpression,
@@ -39,7 +39,7 @@ function debugObj(context: JSBackendContext, value: unknown, message?: string, n
   context.append(`/*${message ? message + ": " : ""}${JSON.stringify(value, undefined, 2)}*/${newLine ? "\n" : ""}`);
 }
 
-const __dirname = new URL('.', import.meta.url).pathname;
+const __dirname = new URL(".", import.meta.url).pathname;
 const PREAMBLE = fs.readFileSync(path.join(__dirname, "jsPreamble.js"), "utf-8");
 const POSTAMBLE = fs.readFileSync(path.join(__dirname, "jsPostamble.js"), "utf-8");
 
@@ -96,7 +96,7 @@ function outputUnexpectedNode(
 function outputTopLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
     case SyntaxKind.FuncDeclaration:
-      outputFunctionDeclaration(context, sourceFile, <FuncDeclaration>node);
+      outputFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
       break;
 
     default:
@@ -108,7 +108,7 @@ function outputTopLevelStatement(context: JSBackendContext, sourceFile: SourceFi
 function outputFunctionDeclaration(
   context: JSBackendContext,
   sourceFile: SourceFile,
-  functionDeclaration: FuncDeclaration
+  functionDeclaration: FunctionDeclaration
 ): void {
   const returnType: string = functionDeclaration.returnType.name.value;
   const name: string = functionDeclaration.name.value;
@@ -151,7 +151,7 @@ function outputStatementBlock(context: JSBackendContext, sourceFile: SourceFile,
 function outputBlockLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode) {
   switch (node.kind) {
     case SyntaxKind.VarDeclaration:
-      outputVarDeclaration(context, sourceFile, <VarDeclaration>node);
+      outputVarDeclaration(context, sourceFile, <VariableDeclaration>node);
       break;
 
     case SyntaxKind.IfStatement:
@@ -181,7 +181,7 @@ function outputBlockLevelStatement(context: JSBackendContext, sourceFile: Source
   }
 }
 
-function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {
+function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VariableDeclaration) {
   context.append(`${varDeclaration.isConst ? "const" : "let"} ${varDeclaration.name.value}`);
 
   if (varDeclaration.expression) {
@@ -234,8 +234,8 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       outputAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);
       break;
 
-    case SyntaxKind.BoolLiteral:
-      outputBoolLiteral(context, sourceFile, <BoolLiteral>expression);
+    case SyntaxKind.BooleanLiteral:
+      outputBoolLiteral(context, sourceFile, <BooleanLiteral>expression);
       break;
 
     case SyntaxKind.CallExpression:
@@ -327,7 +327,7 @@ function outputAdditiveExpression(
   outputExpression(context, sourceFile, expression.rhs);
 }
 
-function outputBoolLiteral(context: JSBackendContext, sourceFile: SourceFile, boolLiteral: BoolLiteral) {
+function outputBoolLiteral(context: JSBackendContext, sourceFile: SourceFile, boolLiteral: BooleanLiteral) {
   context.append(boolLiteral.value ? "true" : "false");
 }
 

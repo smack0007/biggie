@@ -14,7 +14,7 @@ func main(): i32 {
   sayHello(name);
 
   var value: i32 = 42;
-  println("{0} == 42 = {1}", value, value == 42);
+  println("{} == 42 = {}", value, value == 42);
   println("{0} > 42 = {1}", value, value > 42);
   println("1 + 2 = {0}", 1 + 2);
   println("3 * 4 = {0}", 3 * 4);
@@ -61,6 +61,9 @@ func main(): i32 {
     count += 1;
     println("count = {0}", count);
   }
+
+  var data: []i32 = [ 1, 2, 3, 4];
+  println("{0}", data);
 
   return 0;
 }

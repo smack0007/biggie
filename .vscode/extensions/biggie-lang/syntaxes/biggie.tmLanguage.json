@@ -3,6 +3,9 @@
   "name": "Biggie",
   "patterns": [
     {
+      "include": "#comments"
+    },
+    {
       "include": "#keywords"
     },
     {
@@ -10,6 +13,35 @@
     }
   ],
   "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.biggie",
+          "begin": "(\\/\\*)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.comment.biggie"
+            }
+          },
+          "end": "(\\*\\/)",
+          "endCaptures": {
+            "1": {
+              "name": "punctuation.definition.comment.biggie"
+            }
+          }
+        },
+        {
+          "name": "comment.line.double-slash.biggie",
+          "begin": "(\\/\\/)",
+          "beginCaptures": {
+            "1": {
+              "name": "punctuation.definition.comment.biggie"
+            }
+          },
+          "end": "(?:\\n|$)"
+        }
+      ]
+    },
     "keywords": {
       "patterns": [
         {

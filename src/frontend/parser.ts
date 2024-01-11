@@ -1,11 +1,11 @@
 import {
   StatementBlock,
-  FuncDeclaration,
+  FunctionDeclaration,
   Identifier,
   SourceFile,
   Statement,
   SyntaxKind,
-  TypeName,
+  TypeReference,
   Expression,
   ReturnStatement,
   ExpressionStatement,
@@ -14,11 +14,11 @@ import {
   CallExpression,
   FunctionArgument,
   DeferStatement,
-  VarDeclaration,
+  VariableDeclaration,
   EqualityExpression,
   ComparisonExpression,
   Operator,
-  BoolLiteral,
+  BooleanLiteral,
   AdditiveExpression,
   UnaryExpression,
   MultiplcativeExpression,
@@ -27,6 +27,7 @@ import {
   IfStatement,
   WhileStatement,
   LogicalExpression,
+  TypeNode,
 } from "./ast.ts";
 import { Token, TokenType } from "./scanner.ts";
 import { bool, Result, int } from "../shims.ts";
@@ -214,7 +215,7 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
   return result;
 }
 
-function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, ParserError> {
+function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration, ParserError> {
   context.logger.enter(parseVarDeclaration.name);
   let token = expect(context, TokenType.Var, parseVarDeclaration.name);
 
@@ -236,7 +237,7 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
   }
 
   advance(context);
-  const type = parseTypeName(context);
+  const type = parseType(context);
 
   if (type.error != null) {
     return { error: type.error };
@@ -271,7 +272,7 @@ function parseVarDeclaration(context: ParserContext): Result<VarDeclaration, Par
   };
 }
 
-function parseFuncDeclaration(context: ParserContext): Result<FuncDeclaration, ParserError> {
+function parseFuncDeclaration(context: ParserContext): Result<FunctionDeclaration, ParserError> {
   context.logger.enter(parseFuncDeclaration.name);
   let token = expect(context, TokenType.Func, parseFuncDeclaration.name);
 
@@ -319,7 +320,7 @@ function parseFuncDeclaration(context: ParserContext): Result<FuncDeclaration, P
   }
 
   advance(context);
-  const returnType = parseTypeName(context);
+  const returnType = parseType(context);
 
   const body = parseStatementBlock(context);
 
@@ -333,7 +334,7 @@ function parseFuncDeclaration(context: ParserContext): Result<FuncDeclaration, P
       body: <StatementBlock>body.value,
       name: <Identifier>identifier.value,
       arguments: args,
-      returnType: <TypeName>returnType.value,
+      returnType: <TypeReference>returnType.value,
     },
   };
 }
@@ -1069,8 +1070,24 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
   };
 }
 
-function parseTypeName(context: ParserContext): Result<TypeName, ParserError> {
-  context.logger.enter(parseTypeName.name);
+function parseType(context: ParserContext): Result<TypeNode, ParserError> {
+  context.logger.enter(parseType.name);
+
+  let result: TypeNode | null = null;
+
+  let token = peek(context);
+  while (token.type === TokenType.OpenBracket) {
+    advance(context);
+    const expectResult = expect(context, TokenType.CloseBracket, parseType.name);
+
+    if (expectResult.error) {
+      return { error: expectResult.error };
+    }
+
+    advance(context);
+    token = peek(context);
+  }
+
   const name = parseIdentifier(context);
 
   if (name.error != null) {
@@ -1079,7 +1096,7 @@ function parseTypeName(context: ParserContext): Result<TypeName, ParserError> {
 
   return {
     value: {
-      kind: SyntaxKind.TypeName,
+      kind: SyntaxKind.TypeReference,
       name: name.value!,
     },
   };
@@ -1103,7 +1120,7 @@ function parseIdentifier(context: ParserContext): Result<Identifier, ParserError
   };
 }
 
-function parseBoolLiteral(context: ParserContext): Result<BoolLiteral, ParserError> {
+function parseBoolLiteral(context: ParserContext): Result<BooleanLiteral, ParserError> {
   context.logger.enter(parseBoolLiteral.name);
   const token = expect(context, [TokenType.True, TokenType.False], parseBoolLiteral.name);
 
@@ -1115,7 +1132,7 @@ function parseBoolLiteral(context: ParserContext): Result<BoolLiteral, ParserErr
 
   return {
     value: {
-      kind: SyntaxKind.BoolLiteral,
+      kind: SyntaxKind.BooleanLiteral,
       value: token.value?.type == TokenType.True,
     },
   };

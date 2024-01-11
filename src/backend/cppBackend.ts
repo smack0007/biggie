@@ -1,14 +1,14 @@
 import {
   AdditiveExpression,
   AssignmentExpression,
-  BoolLiteral,
+  BooleanLiteral,
   CallExpression,
   ComparisonExpression,
   DeferStatement,
   EqualityExpression,
   Expression,
   ExpressionStatement,
-  FuncDeclaration,
+  FunctionDeclaration,
   Identifier,
   IfStatement,
   IntegerLiteral,
@@ -23,7 +23,7 @@ import {
   SyntaxKind,
   SyntaxNode,
   UnaryExpression,
-  VarDeclaration,
+  VariableDeclaration,
   WhileStatement,
 } from "../frontend/ast.ts";
 import { int } from "../shims.ts";
@@ -36,24 +36,14 @@ interface CppBackendContext extends BackendContext {
 
 export function emitCpp(sourceFile: SourceFile, baseContext: BackendContext): void {
   const context: CppBackendContext = {
+    ...baseContext,
+
     indentLevel: 0,
 
     indent: () => {
       for (let i = 0; i < context.indentLevel; i++) {
         baseContext.append("\t");
       }
-    },
-
-    append: (value: string) => {
-      baseContext.append(value);
-    },
-
-    prepend: (value: string) => {
-      baseContext.prepend(value);
-    },
-
-    remove: (count: u64) => {
-      baseContext.remove(count);
     },
   };
 
@@ -85,7 +75,7 @@ function emitUnexpectedNode(
 function emitTopLevelStatement(context: CppBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
     case SyntaxKind.FuncDeclaration:
-      emitFunctionDeclaration(context, sourceFile, <FuncDeclaration>node);
+      emitFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
       break;
 
     default:
@@ -97,7 +87,7 @@ function emitTopLevelStatement(context: CppBackendContext, sourceFile: SourceFil
 function emitFunctionDeclaration(
   context: CppBackendContext,
   sourceFile: SourceFile,
-  functionDeclaration: FuncDeclaration
+  functionDeclaration: FunctionDeclaration
 ): void {
   const returnType: string = functionDeclaration.returnType.name.value;
   const name: string = functionDeclaration.name.value;
@@ -160,7 +150,7 @@ function emitBlockLevelStatement(context: CppBackendContext, sourceFile: SourceF
       break;
 
     case SyntaxKind.VarDeclaration:
-      emitVarDeclaration(context, sourceFile, <VarDeclaration>node);
+      emitVarDeclaration(context, sourceFile, <VariableDeclaration>node);
       break;
 
     case SyntaxKind.WhileStatement:
@@ -223,7 +213,7 @@ function emitReturnStatement(context: CppBackendContext, sourceFile: SourceFile,
   context.append(";\n");
 }
 
-function emitVarDeclaration(context: CppBackendContext, sourceFile: SourceFile, varDeclaration: VarDeclaration) {
+function emitVarDeclaration(context: CppBackendContext, sourceFile: SourceFile, varDeclaration: VariableDeclaration) {
   emitIdentifier(context, sourceFile, varDeclaration.type.name);
   context.append(" ");
   emitIdentifier(context, sourceFile, varDeclaration.name);
@@ -254,8 +244,8 @@ function emitExpression(context: CppBackendContext, sourceFile: SourceFile, expr
       emitAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);
       break;
 
-    case SyntaxKind.BoolLiteral:
-      emitBoolLiteral(context, sourceFile, <BoolLiteral>expression);
+    case SyntaxKind.BooleanLiteral:
+      emitBoolLiteral(context, sourceFile, <BooleanLiteral>expression);
       break;
 
     case SyntaxKind.CallExpression:
@@ -347,7 +337,7 @@ function emitAdditiveExpression(
   emitExpression(context, sourceFile, expression.rhs);
 }
 
-function emitBoolLiteral(context: CppBackendContext, sourceFile: SourceFile, boolLiteral: BoolLiteral) {
+function emitBoolLiteral(context: CppBackendContext, sourceFile: SourceFile, boolLiteral: BooleanLiteral) {
   context.append(boolLiteral.value ? "true" : "false");
 }
 

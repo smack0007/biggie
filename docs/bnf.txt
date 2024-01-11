@@ -1,74 +1,74 @@
-<SourceFile> ::= <TopLevelStatement>* <EOF>
+<SourceFile> := <TopLevelStatement>* <EOF>
 
-<TopLevelStatement> ::= <VarDeclaration> |
+<TopLevelStatement> := <VarDeclaration> |
                         <FuncDeclaration>
 
-<VarDeclaration> ::= "var" <Identifier> ":" <TypeName> ( "=" <Expression> ) ";"
+<VarDeclaration> := "var" <Identifier> ":" <TypeName> ( "=" <Expression> ) ";"
 
-<FuncDeclaration> ::= "function" <Identifier> "(" <FuncParameters> ")" ":" <TypeName> <StatementBlock>
+<FuncDeclaration> := "function" <Identifier> "(" <FuncParameters> ")" ":" <TypeName> <StatementBlock>
 
-<FuncParameters> ::= // TODO
+<FuncParameters> := // TODO
 
-<TypeName> ::= <Identifier>
+<TypeName> := ( "[" "]" )* <Identifier>
   
-<StatementBlock> ::= "{" <BlockLevelStatement>* "}"
+<StatementBlock> := "{" <BlockLevelStatement>* "}"
 
-<BlockLevelStatement> ::= <VarDeclaration> |
+<BlockLevelStatement> := <VarDeclaration> |
                           <DeferStatement> |
                           <IfStatement> |
                           <ReturnStatement> |
                           <StatementBlock> |
                           <ExpressionStatement>
 
-<DeferStatement> ::= "defer" <BlockLevelStatement> ";"
+<DeferStatement> := "defer" <BlockLevelStatement> ";"
 
-<IfStatement> ::= "if" "(" <Expression> ")" <BlockLevelStatement> ( "else" <BlockLevelStatement> )?
+<IfStatement> := "if" "(" <Expression> ")" <BlockLevelStatement> ( "else" <BlockLevelStatement> )?
 
-<WhileStatement> ::= "while" "(" <Expression> ")" <BlockLevelStatement>
+<WhileStatement> := "while" "(" <Expression> ")" <BlockLevelStatement>
 
-<ReturnStatement> ::= "return" <Expression> ";"
+<ReturnStatement> := "return" <Expression> ";"
   
-<ExpressionStatement> ::= <Expression> ";"
+<ExpressionStatement> := <Expression> ";"
   
-<Expression> ::= <AssignmentExpression> | <CallExpression>
+<Expression> := <AssignmentExpression> | <CallExpression>
 
-<AssignmentExpression> ::= <LogicalOrExpression> | <Identifier> <AssignmentOperator> <Expression>
+<AssignmentExpression> := <LogicalOrExpression> | <Identifier> <AssignmentOperator> <Expression>
 
-<AssignmentOperator> ::= "=" | "+=" | "-="
+<AssignmentOperator> := "=" | "+=" | "-="
 
-<LogicalOrExpression> ::= <LogicalAndExpression> ( "||" <LogicalAndExpression> )*
+<LogicalOrExpression> := <LogicalAndExpression> ( "||" <LogicalAndExpression> )*
 
-<LogicalAndExpression> ::= <EqualityExpression> ( "&&" <EqualityExpression> )*
+<LogicalAndExpression> := <EqualityExpression> ( "&&" <EqualityExpression> )*
 
-<EqualityExpression> ::= <ComparisonExpression> ( ( "!=" | "==" ) <ComparisonExpression> )*
+<EqualityExpression> := <ComparisonExpression> ( ( "!=" | "==" ) <ComparisonExpression> )*
 
-<ComparisonExpression> ::= <AdditiveExpression> ( ( ">" | ">=" | "<" | "<=" ) <AdditiveExpression> )*
+<ComparisonExpression> := <AdditiveExpression> ( ( ">" | ">=" | "<" | "<=" ) <AdditiveExpression> )*
 
-<AdditiveExpression> ::= <MultiplicativeExpression> ( ( "+" | "-" ) <MultiplicativeExpression> )*
+<AdditiveExpression> := <MultiplicativeExpression> ( ( "+" | "-" ) <MultiplicativeExpression> )*
 
-<MultiplicativeExpression> ::= <UnaryExpression> ( ( "*" | "/" ) <UnaryExpression> )*
+<MultiplicativeExpression> := <UnaryExpression> ( ( "*" | "/" ) <UnaryExpression> )*
 
-<UnaryExpression> ::= ( "!" | "-" ) <UnaryExpression> | <PrimaryExpression>
+<UnaryExpression> := ( "!" | "-" ) <UnaryExpression> | <PrimaryExpression>
 
-<PrimaryExpression> ::= <ParenthesizedExpression> | <BoolLiteral> | <IntLiteral> | <StringLiteral> | 
+<PrimaryExpression> := <ParenthesizedExpression> | <BoolLiteral> | <IntLiteral> | <StringLiteral> | 
 
-<ParenthesizedExpression> ::= "(" <Expression> ")"
+<ParenthesizedExpression> := "(" <Expression> ")"
 
-<CallExpression> ::= <Expression> "(" <Expression>? ("," <Expression>)* ")"
+<CallExpression> := <Expression> "(" <Expression>? ("," <Expression>)* ")"
 
-<BoolLiteral> ::= "true" | "false"
+<BoolLiteral> := "true" | "false"
 
-<IntLiteral> ::= <digit>*
+<IntLiteral> := <digit>*
 
-<StringLiteral> ::= "\"" ( <letter> | <digit> )* "\""
+<StringLiteral> := "\"" ( <letter> | <digit> )* "\""
 
-<Identifier> ::= ( <letter> | <identifierSymbol> ) ( <letter> | <digit> | <identifierSymbol> )*
+<Identifier> := ( <letter> | <identifierSymbol> ) ( <letter> | <digit> | <identifierSymbol> )*
 
-<identifierSymbol ::= "_"
+<identifierSymbol := "_"
   
-<letter> ::= "[A-Za-z]"
+<letter> := "[A-Za-z]"
   
-<digit> ::= "[0-9]"
+<digit> := "[0-9]"
   
 
 

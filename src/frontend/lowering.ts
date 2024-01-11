@@ -1,25 +1,34 @@
-import { DeferStatement, ExpressionStatement, FuncDeclaration, ReturnStatement, SourceFile, Statement, StatementBlock, SyntaxKind } from "./ast.ts";
+import {
+  DeferStatement,
+  ExpressionStatement,
+  FunctionDeclaration,
+  ReturnStatement,
+  SourceFile,
+  Statement,
+  StatementBlock,
+  SyntaxKind,
+} from "./ast.ts";
 
 export function lower(sourceFile: SourceFile): SourceFile {
   return {
     ...sourceFile,
-    statements: sourceFile.statements.map(lowerTopLevelStatement)
+    statements: sourceFile.statements.map(lowerTopLevelStatement),
   };
 }
 
 function lowerTopLevelStatement(statement: Statement): Statement {
   switch (statement.kind) {
     case SyntaxKind.FuncDeclaration:
-      return lowerFunctionDeclaration(<FuncDeclaration>statement);
+      return lowerFunctionDeclaration(<FunctionDeclaration>statement);
   }
-  
+
   return statement;
 }
 
-function lowerFunctionDeclaration(functionDeclaration: FuncDeclaration): FuncDeclaration {
+function lowerFunctionDeclaration(functionDeclaration: FunctionDeclaration): FunctionDeclaration {
   return {
     ...functionDeclaration,
-    body: lowerStatementBlock(functionDeclaration.body)
+    body: lowerStatementBlock(functionDeclaration.body),
   };
 }
 
@@ -28,7 +37,7 @@ function lowerStatementBlock(statementBlock: StatementBlock): StatementBlock {
     ...statementBlock,
     statements: [],
   };
-  
+
   const deferedStatements: Array<DeferStatement> = [];
   for (const statement of statementBlock.statements) {
     if (statement.kind == SyntaxKind.DeferStatement) {
@@ -40,14 +49,16 @@ function lowerStatementBlock(statementBlock: StatementBlock): StatementBlock {
 
   // Reinsert defered statements
   let returnStatement: ReturnStatement | null = null;
-  if (loweredStatementBlock.statements[loweredStatementBlock.statements.length - 1].kind == SyntaxKind.ReturnStatement) {
+  if (
+    loweredStatementBlock.statements[loweredStatementBlock.statements.length - 1].kind == SyntaxKind.ReturnStatement
+  ) {
     returnStatement = <ReturnStatement>loweredStatementBlock.statements.pop();
-  }  
+  }
 
   for (let i = deferedStatements.length - 1; i >= 0; i -= 1) {
     loweredStatementBlock.statements.push(<ExpressionStatement>{
       kind: SyntaxKind.ExpressionStatement,
-      expression: deferedStatements[i].expression
+      expression: deferedStatements[i].expression,
     });
   }
 
@@ -57,4 +68,3 @@ function lowerStatementBlock(statementBlock: StatementBlock): StatementBlock {
 
   return loweredStatementBlock;
 }
-

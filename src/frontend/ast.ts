@@ -5,7 +5,9 @@ export enum SyntaxKind {
 
   AssignmentExpression,
 
-  BoolLiteral,
+  ArrayLiteral,
+
+  BooleanLiteral,
 
   CallExpression,
 
@@ -45,7 +47,9 @@ export enum SyntaxKind {
 
   StringLiteral,
 
-  TypeName,
+  ArrayType,
+
+  TypeReference,
 
   UnaryExpression,
 
@@ -108,17 +112,17 @@ export interface Statement extends SyntaxNode {
   readonly kind: SyntaxKind;
 }
 
-export interface VarDeclaration extends Statement {
+export interface VariableDeclaration extends Statement {
   readonly kind: SyntaxKind.VarDeclaration;
 
   readonly name: Identifier;
 
-  readonly type: TypeName;
+  readonly type: TypeReference;
 
   readonly expression?: Expression;
 }
 
-export interface FuncDeclaration extends Statement {
+export interface FunctionDeclaration extends Statement {
   readonly kind: SyntaxKind.FuncDeclaration;
 
   readonly body: StatementBlock;
@@ -127,7 +131,7 @@ export interface FuncDeclaration extends Statement {
 
   readonly arguments: Array<FunctionArgument>;
 
-  readonly returnType: TypeName;
+  readonly returnType: TypeReference;
 }
 
 export interface FunctionArgument extends SyntaxNode {
@@ -269,8 +273,16 @@ export interface CallExpression extends Expression {
   readonly arguments: Array<Expression>;
 }
 
-export interface TypeName extends SyntaxNode {
-  readonly kind: SyntaxKind.TypeName;
+export interface TypeNode {}
+
+export interface ArrayType extends TypeNode {
+  readonly kind: SyntaxKind.ArrayType;
+
+  readonly elementType: TypeNode;
+}
+
+export interface TypeReference extends TypeNode {
+  readonly kind: SyntaxKind.TypeReference;
 
   readonly name: Identifier;
 }
@@ -281,8 +293,14 @@ export interface Identifier extends SyntaxNode {
   readonly value: string;
 }
 
-export interface BoolLiteral extends Expression {
-  readonly kind: SyntaxKind.BoolLiteral;
+export interface ArrayLiteral extends Expression {
+  readonly kind: SyntaxKind.BooleanLiteral;
+
+  readonly value: boolean;
+}
+
+export interface BooleanLiteral extends Expression {
+  readonly kind: SyntaxKind.BooleanLiteral;
 
   readonly value: boolean;
 }
