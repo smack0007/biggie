@@ -1,9 +1,8 @@
 import * as process from "node:process";
 import { readFile } from "node:fs/promises";
-import { SourceFile } from "./frontend/ast.ts";
-import { outputCpp } from "./backend/clangBackend.ts";
+import { emitCpp } from "./backend/cppBackend.ts";
 //import { outputJS } from "./backend/jsBackend.ts";
-import { scan, Token, TokenType } from "./frontend/scanner.ts";
+import { scan } from "./frontend/scanner.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
 import { lower } from "./frontend/lowering.ts";
 
@@ -20,7 +19,7 @@ async function main(argv: string[]): Promise<i32> {
   //   );
   // }
 
-  let sourceFile = parse(fileName, lexemes, {
+  const sourceFile = parse(fileName, lexemes, {
     enter: (name: string) => {},
     // enter: (name: string, token: Token) =>
     //   console.info(`/* ${name} (${token.line}, ${token.column}) <${token.text}> */`),
@@ -37,7 +36,7 @@ async function main(argv: string[]): Promise<i32> {
   } else {
     let buffer = "";
 
-    outputCpp(sourceFile.value!, {
+    emitCpp(sourceFile.value!, {
       append: (value: string) => {
         buffer += value;
       },
