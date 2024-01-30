@@ -1,36 +1,39 @@
+import { Result, bool, int } from "../shims.ts";
 import {
-  StatementBlock,
+  AdditiveExpression,
+  ArrayLiteral,
+  ArrayType,
+  AssignmentExpression,
+  BooleanLiteral,
+  CallExpression,
+  ComparisonExpression,
+  DeferStatement,
+  EqualityExpression,
+  Expression,
+  ExpressionStatement,
+  FunctionArgument,
   FunctionDeclaration,
   Identifier,
+  IfStatement,
+  IntegerLiteral,
+  LogicalExpression,
+  MultiplcativeExpression,
+  Operator,
+  ParenthesizedExpression,
+  ReturnStatement,
   SourceFile,
   Statement,
-  SyntaxKind,
-  TypeReference,
-  Expression,
-  ReturnStatement,
-  ExpressionStatement,
-  IntegerLiteral,
+  StatementBlock,
   StringLiteral,
-  CallExpression,
-  FunctionArgument,
-  DeferStatement,
-  VariableDeclaration,
-  EqualityExpression,
-  ComparisonExpression,
-  Operator,
-  BooleanLiteral,
-  AdditiveExpression,
-  UnaryExpression,
-  MultiplcativeExpression,
-  ParenthesizedExpression,
-  AssignmentExpression,
-  IfStatement,
-  WhileStatement,
-  LogicalExpression,
+  SyntaxKind,
   TypeNode,
+  TypeReference,
+  UnaryExpression,
+  VariableDeclaration,
+  WhileStatement,
 } from "./ast.ts";
 import { Token, TokenType } from "./scanner.ts";
-import { bool, Result, int } from "../shims.ts";
+import { Mutable } from "../utils.ts";
 
 export interface ParserLogger {
   enter(name: string, token: Token): void;
@@ -199,7 +202,7 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
       break;
 
     case TokenType.Func:
-      result = parseFuncDeclaration(context);
+      result = parseFunctionDeclaration(context);
       break;
 
     default:
@@ -264,7 +267,7 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
 
   return {
     value: {
-      kind: SyntaxKind.VarDeclaration,
+      kind: SyntaxKind.VariableDeclaration,
       name: identifier.value!,
       type: type.value!,
       expression: expression.value!,
@@ -272,9 +275,9 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
   };
 }
 
-function parseFuncDeclaration(context: ParserContext): Result<FunctionDeclaration, ParserError> {
-  context.logger.enter(parseFuncDeclaration.name);
-  let token = expect(context, TokenType.Func, parseFuncDeclaration.name);
+function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclaration, ParserError> {
+  context.logger.enter(parseFunctionDeclaration.name);
+  let token = expect(context, TokenType.Func, parseFunctionDeclaration.name);
 
   if (token.error != null) {
     return { error: token.error };
@@ -287,7 +290,7 @@ function parseFuncDeclaration(context: ParserContext): Result<FunctionDeclaratio
     return { error: identifier.error };
   }
 
-  token = expect(context, TokenType.OpenParen, parseFuncDeclaration.name);
+  token = expect(context, TokenType.OpenParen, parseFunctionDeclaration.name);
 
   if (token.error != null) {
     return { error: token.error };
@@ -306,14 +309,14 @@ function parseFuncDeclaration(context: ParserContext): Result<FunctionDeclaratio
     args.push(<FunctionArgument>arg.value);
   }
 
-  token = expect(context, TokenType.CloseParen, parseFuncDeclaration.name);
+  token = expect(context, TokenType.CloseParen, parseFunctionDeclaration.name);
 
   if (token.error != null) {
     return { error: token.error };
   }
 
   advance(context);
-  token = expect(context, TokenType.Colon, parseFuncDeclaration.name);
+  token = expect(context, TokenType.Colon, parseFunctionDeclaration.name);
 
   if (token.error != null) {
     return { error: token.error };
@@ -321,6 +324,10 @@ function parseFuncDeclaration(context: ParserContext): Result<FunctionDeclaratio
 
   advance(context);
   const returnType = parseType(context);
+
+  if (returnType.error != null) {
+    return { error: returnType.error };
+  }
 
   const body = parseStatementBlock(context);
 
@@ -944,21 +951,25 @@ function parsePrimaryExpression(context: ParserContext): Result<Expression, Pars
   const token = peek(context);
 
   switch (token.type) {
-    case TokenType.OpenParen:
-      result = parseParenthesizedExpression(context);
-      break;
-
     case TokenType.Identifier:
       result = parseIdentifier(context);
+      break;
+
+    case TokenType.Integer:
+      result = parseIntegerLiteral(context);
+      break;
+
+    case TokenType.OpenBracket:
+      result = parseArrayLiteral(context);
+      break;
+
+    case TokenType.OpenParen:
+      result = parseParenthesizedExpression(context);
       break;
 
     case TokenType.True:
     case TokenType.False:
       result = parseBoolLiteral(context);
-      break;
-
-    case TokenType.Integer:
-      result = parseIntegerLiteral(context);
       break;
 
     case TokenType.String:
@@ -970,7 +981,7 @@ function parsePrimaryExpression(context: ParserContext): Result<Expression, Pars
         error: createError(
           token,
           ParserErrorKind.UnknownExpression,
-          `Token type ${TokenType[token.type]} unexpected in ${parseExpression.name}`
+          `Token type ${TokenType[token.type]} unexpected in ${parsePrimaryExpression.name}`
         ),
       };
   }
@@ -1073,21 +1084,45 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
 function parseType(context: ParserContext): Result<TypeNode, ParserError> {
   context.logger.enter(parseType.name);
 
-  let result: TypeNode | null = null;
+  const token = peek(context);
+  if (token.type === TokenType.OpenBracket) {
+    return parseArrayType(context);
+  } else {
+    return parseTypeReference(context);
+  }
+}
 
-  let token = peek(context);
-  while (token.type === TokenType.OpenBracket) {
-    advance(context);
-    const expectResult = expect(context, TokenType.CloseBracket, parseType.name);
+function parseArrayType(context: ParserContext): Result<ArrayType, ParserError> {
+  let expected = expect(context, TokenType.OpenBracket, parseArrayType.name);
 
-    if (expectResult.error) {
-      return { error: expectResult.error };
-    }
-
-    advance(context);
-    token = peek(context);
+  if (expected.error) {
+    return { error: expected.error };
   }
 
+  advance(context);
+  expected = expect(context, TokenType.CloseBracket, parseArrayType.name);
+
+  if (expected.error) {
+    return { error: expected.error };
+  }
+
+  advance(context);
+
+  const elementType = parseType(context);
+
+  if (elementType.error) {
+    return { error: elementType.error };
+  }
+
+  return {
+    value: {
+      kind: SyntaxKind.ArrayType,
+      elementType: elementType.value!,
+    },
+  };
+}
+
+function parseTypeReference(context: ParserContext): Result<TypeReference, ParserError> {
   const name = parseIdentifier(context);
 
   if (name.error != null) {
@@ -1116,6 +1151,63 @@ function parseIdentifier(context: ParserContext): Result<Identifier, ParserError
     value: {
       kind: SyntaxKind.Identifier,
       value: token.value!.text!,
+    },
+  };
+}
+
+function parseArrayLiteral(context: ParserContext): Result<ArrayLiteral, ParserError> {
+  context.logger.enter(parseArrayLiteral.name);
+
+  let expectedToken = expect(context, TokenType.OpenBracket, parseArrayLiteral.name);
+
+  if (expectedToken.error != null) {
+    return { error: expectedToken.error };
+  }
+
+  advance(context);
+
+  const elements: Expression[] = [];
+  let token = peek(context);
+  while (token.type != TokenType.CloseBracket) {
+    if (elements.length > 0) {
+      expectedToken = expect(context, TokenType.Comma, parseArrayLiteral.name);
+
+      if (expectedToken.error != null) {
+        return { error: expectedToken.error };
+      }
+
+      advance(context);
+
+      // Handle hanging commas
+      token = peek(context);
+      if (token.type == TokenType.CloseBracket) {
+        break;
+      }
+    }
+
+    const expression = parseExpression(context);
+
+    if (expression.error != null) {
+      return { error: expression.error };
+    }
+
+    elements.push(expression.value!);
+
+    token = peek(context);
+  }
+
+  expectedToken = expect(context, TokenType.CloseBracket, parseArrayLiteral.name);
+
+  if (expectedToken.error != null) {
+    return { error: expectedToken.error };
+  }
+
+  advance(context);
+
+  return {
+    value: {
+      kind: SyntaxKind.ArrayLiteral,
+      elements,
     },
   };
 }

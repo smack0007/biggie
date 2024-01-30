@@ -150,7 +150,7 @@ function outputStatementBlock(context: JSBackendContext, sourceFile: SourceFile,
 
 function outputBlockLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode) {
   switch (node.kind) {
-    case SyntaxKind.VarDeclaration:
+    case SyntaxKind.VariableDeclaration:
       outputVarDeclaration(context, sourceFile, <VariableDeclaration>node);
       break;
 

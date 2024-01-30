@@ -53,7 +53,7 @@ export enum SyntaxKind {
 
   UnaryExpression,
 
-  VarDeclaration,
+  VariableDeclaration,
 
   WhileStatement,
 }
@@ -113,11 +113,11 @@ export interface Statement extends SyntaxNode {
 }
 
 export interface VariableDeclaration extends Statement {
-  readonly kind: SyntaxKind.VarDeclaration;
+  readonly kind: SyntaxKind.VariableDeclaration;
 
   readonly name: Identifier;
 
-  readonly type: TypeReference;
+  readonly type: TypeNode;
 
   readonly expression?: Expression;
 }
@@ -273,7 +273,7 @@ export interface CallExpression extends Expression {
   readonly arguments: Array<Expression>;
 }
 
-export interface TypeNode {}
+export interface TypeNode extends SyntaxNode {}
 
 export interface ArrayType extends TypeNode {
   readonly kind: SyntaxKind.ArrayType;
@@ -294,9 +294,9 @@ export interface Identifier extends SyntaxNode {
 }
 
 export interface ArrayLiteral extends Expression {
-  readonly kind: SyntaxKind.BooleanLiteral;
+  readonly kind: SyntaxKind.ArrayLiteral;
 
-  readonly value: boolean;
+  readonly elements: Expression[];
 }
 
 export interface BooleanLiteral extends Expression {

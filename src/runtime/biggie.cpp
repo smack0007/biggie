@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <vector>
 #define FMT_HEADER_ONLY
 #include <fmt/core.h>
 

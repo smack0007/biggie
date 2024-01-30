@@ -1,6 +1,8 @@
 import {
   AdditiveExpression,
   AssignmentExpression,
+  ArrayLiteral,
+  ArrayType,
   BooleanLiteral,
   CallExpression,
   ComparisonExpression,
@@ -22,6 +24,8 @@ import {
   StringLiteral,
   SyntaxKind,
   SyntaxNode,
+  TypeNode,
+  TypeReference,
   UnaryExpression,
   VariableDeclaration,
   WhileStatement,
@@ -149,7 +153,7 @@ function emitBlockLevelStatement(context: CppBackendContext, sourceFile: SourceF
       emitStatementBlock(context, sourceFile, <StatementBlock>node);
       break;
 
-    case SyntaxKind.VarDeclaration:
+    case SyntaxKind.VariableDeclaration:
       emitVarDeclaration(context, sourceFile, <VariableDeclaration>node);
       break;
 
@@ -213,14 +217,14 @@ function emitReturnStatement(context: CppBackendContext, sourceFile: SourceFile,
   context.append(";\n");
 }
 
-function emitVarDeclaration(context: CppBackendContext, sourceFile: SourceFile, varDeclaration: VariableDeclaration) {
-  emitIdentifier(context, sourceFile, varDeclaration.type.name);
+function emitVarDeclaration(context: CppBackendContext, sourceFile: SourceFile, variableDeclaration: VariableDeclaration) {
+  emitType(context, sourceFile, variableDeclaration.type);
   context.append(" ");
-  emitIdentifier(context, sourceFile, varDeclaration.name);
+  emitIdentifier(context, sourceFile, variableDeclaration.name);
 
-  if (varDeclaration.expression != null) {
+  if (variableDeclaration.expression != null) {
     context.append(" = ");
-    emitExpression(context, sourceFile, varDeclaration.expression);
+    emitExpression(context, sourceFile, variableDeclaration.expression);
   }
 
   context.append(";\n");
@@ -234,10 +238,36 @@ function emitWhileStatement(context: CppBackendContext, sourceFile: SourceFile, 
   context.append("\n");
 }
 
+function emitType(context: CppBackendContext, sourceFile: SourceFile, type: TypeNode) {
+  switch (type.kind) {
+    case SyntaxKind.ArrayType:
+      emitArrayType(context, sourceFile, type as ArrayType);
+      break;
+
+    case SyntaxKind.TypeReference:
+      emitTypeReference(context, sourceFile, type as TypeReference);
+      break;
+  }
+}
+
+function emitArrayType(context: CppBackendContext, sourceFile: SourceFile, arrayType: ArrayType) {
+  context.append("std::vector<");
+  emitType(context, sourceFile, arrayType.elementType);
+  context.append(">");
+}
+
+function emitTypeReference(context: CppBackendContext, sourceFile: SourceFile, typeReference: TypeReference) {
+  emitIdentifier(context, sourceFile, typeReference.name);
+}
+
 function emitExpression(context: CppBackendContext, sourceFile: SourceFile, expression: Expression) {
   switch (expression.kind) {
     case SyntaxKind.AdditiveExpression:
       emitAdditiveExpression(context, sourceFile, <AdditiveExpression>expression);
+      break;
+
+    case SyntaxKind.ArrayLiteral:
+      emitArrayLiteral(context, sourceFile, <ArrayLiteral>expression);
       break;
 
     case SyntaxKind.AssignmentExpression:
@@ -245,7 +275,7 @@ function emitExpression(context: CppBackendContext, sourceFile: SourceFile, expr
       break;
 
     case SyntaxKind.BooleanLiteral:
-      emitBoolLiteral(context, sourceFile, <BooleanLiteral>expression);
+      emitBooleanLiteral(context, sourceFile, <BooleanLiteral>expression);
       break;
 
     case SyntaxKind.CallExpression:
@@ -337,8 +367,22 @@ function emitAdditiveExpression(
   emitExpression(context, sourceFile, expression.rhs);
 }
 
-function emitBoolLiteral(context: CppBackendContext, sourceFile: SourceFile, boolLiteral: BooleanLiteral) {
-  context.append(boolLiteral.value ? "true" : "false");
+function emitArrayLiteral(context: CppBackendContext, sourceFile: SourceFile, arrayLiteral: ArrayLiteral) {
+  context.append("{");
+
+  for (let i = 0; i < arrayLiteral.elements.length; i += 1) {
+    if (i != 0) {
+      context.append(", ");
+    }
+
+    emitExpression(context, sourceFile, arrayLiteral.elements[i]);
+  }
+
+  context.append("}");
+}
+
+function emitBooleanLiteral(context: CppBackendContext, sourceFile: SourceFile, booleanLiteral: BooleanLiteral) {
+  context.append(booleanLiteral.value ? "true" : "false");
 }
 
 function emitCallExpression(context: CppBackendContext, sourceFile: SourceFile, callExpression: CallExpression) {

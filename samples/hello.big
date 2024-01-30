@@ -62,8 +62,8 @@ func main(): i32 {
     println("count = {0}", count);
   }
 
-  var data: []i32 = [ 1, 2, 3, 4];
-  println("{0}", data);
+  var data: []i32 = [ 1, 2, 3, 4, ];
+  // println("{0}", data);
 
   return 0;
 }
