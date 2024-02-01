@@ -1,6 +1,6 @@
 import * as process from "node:process";
 import { readFile } from "node:fs/promises";
-import { emitCpp } from "./backend/cppBackend.ts";
+import { emitJs } from "./backend/jsBackend.ts";
 //import { outputJS } from "./backend/jsBackend.ts";
 import { scan } from "./frontend/scanner.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
@@ -36,7 +36,7 @@ async function main(argv: string[]): Promise<i32> {
   } else {
     let buffer = "";
 
-    emitCpp(sourceFile.value!, {
+    emitJs(sourceFile.value!, {
       append: (value: string) => {
         buffer += value;
       },
