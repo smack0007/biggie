@@ -25,7 +25,7 @@ export enum SyntaxKind {
 
   FuncArgument,
 
-  FuncDeclaration,
+  FunctionDeclaration,
 
   IfStatement,
 
@@ -123,7 +123,7 @@ export interface VariableDeclaration extends Statement {
 }
 
 export interface FunctionDeclaration extends Statement {
-  readonly kind: SyntaxKind.FuncDeclaration;
+  readonly kind: SyntaxKind.FunctionDeclaration;
 
   readonly body: StatementBlock;
 

@@ -1,0 +1,7 @@
+{
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "20.11.16",
+    "tsx": "4.7.0"
+  }
+}

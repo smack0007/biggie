@@ -95,7 +95,7 @@ function outputUnexpectedNode(
 
 function outputTopLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
-    case SyntaxKind.FuncDeclaration:
+    case SyntaxKind.FunctionDeclaration:
       outputFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
       break;
 

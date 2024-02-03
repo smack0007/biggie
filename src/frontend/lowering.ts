@@ -18,7 +18,7 @@ export function lower(sourceFile: SourceFile): SourceFile {
 
 function lowerTopLevelStatement(statement: Statement): Statement {
   switch (statement.kind) {
-    case SyntaxKind.FuncDeclaration:
+    case SyntaxKind.FunctionDeclaration:
       return lowerFunctionDeclaration(<FunctionDeclaration>statement);
   }
 

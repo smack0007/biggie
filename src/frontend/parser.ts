@@ -337,7 +337,7 @@ function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclar
 
   return {
     value: {
-      kind: SyntaxKind.FuncDeclaration,
+      kind: SyntaxKind.FunctionDeclaration,
       body: <StatementBlock>body.value,
       name: <Identifier>identifier.value,
       arguments: args,

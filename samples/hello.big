@@ -1,6 +1,10 @@
 func main(): i32 {
-  var x: u8 = 5;
-  var y: u8 = 7;
-  var z: u8 = x + y;
-  println(z);
+  var x: i32 = 5;
+  println("Hello");
+  
+  // var y: i32 = 7;
+  // var z: i32 = x + y;
+  // println(z);
+
+  return 42;
 }

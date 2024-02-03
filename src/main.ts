@@ -1,10 +1,9 @@
 import * as process from "node:process";
 import { readFile } from "node:fs/promises";
-import { emitJs } from "./backend/jsBackend.ts";
-//import { outputJS } from "./backend/jsBackend.ts";
 import { scan } from "./frontend/scanner.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
-import { lower } from "./frontend/lowering.ts";
+import { createBackendContext } from "./backend/backend.ts";
+import { emitWat } from "./backend/watBackend.ts";
 
 main(process.argv.slice(2)).then(process.exit);
 
@@ -34,29 +33,11 @@ async function main(argv: string[]): Promise<i32> {
 
     return 1;
   } else {
-    let buffer = "";
+    const output = createBackendContext();
 
-    emitJs(sourceFile.value!, {
-      append: (value: string) => {
-        buffer += value;
-      },
-      prepend: (value: string) => {
-        buffer = value + buffer;
-      },
-      remove: (count: u64) => {
-        buffer = buffer.substring(0, buffer.length - count);
-      },
-    });
-    // outputWat(<SourceFile>sourceFile.value, {
-    //   append: (value: string) => {
-    //     buffer += value;
-    //   },
-    //   prepend: (value: string) => {
-    //     buffer = value + buffer;
-    //   },
-    // });
+    emitWat(sourceFile.value!, output);
 
-    console.info(buffer);
+    console.info(output.buffer);
   }
 
   return 0;

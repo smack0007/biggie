@@ -78,7 +78,7 @@ function emitUnexpectedNode(
 
 function emitTopLevelStatement(context: CppBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
-    case SyntaxKind.FuncDeclaration:
+    case SyntaxKind.FunctionDeclaration:
       emitFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
       break;
 
@@ -217,7 +217,11 @@ function emitReturnStatement(context: CppBackendContext, sourceFile: SourceFile,
   context.append(";\n");
 }
 
-function emitVarDeclaration(context: CppBackendContext, sourceFile: SourceFile, variableDeclaration: VariableDeclaration) {
+function emitVarDeclaration(
+  context: CppBackendContext,
+  sourceFile: SourceFile,
+  variableDeclaration: VariableDeclaration
+) {
   emitType(context, sourceFile, variableDeclaration.type);
   context.append(" ");
   emitIdentifier(context, sourceFile, variableDeclaration.name);
