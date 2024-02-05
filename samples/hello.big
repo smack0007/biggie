@@ -1,6 +1,8 @@
 func main(): i32 {
   var x: i32 = 5;
   println("Hello");
+  println("This is a really long string...");
+  println("World!");
   
   // var y: i32 = 7;
   // var z: i32 = x + y;

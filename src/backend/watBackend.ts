@@ -36,6 +36,8 @@ interface WatBackendContext {
   output: BackendContext;
 
   imports: Array<WasmImport>;
+
+  nextDataOffset: number;
   data: Array<WasmData>;
 }
 
@@ -49,6 +51,7 @@ export function emitWat(sourceFile: SourceFile, output: BackendContext): void {
       },
     ],
 
+    nextDataOffset: 0,
     data: [],
   };
 
@@ -74,7 +77,7 @@ export function emitWat(sourceFile: SourceFile, output: BackendContext): void {
 function stringData(context: WatBackendContext, value: string): WasmData {
   // TODO: Check if the given data already exists
 
-  const offset = context.data.length * 4;
+  const offset = context.nextDataOffset;
 
   const data = {
     offset,
@@ -84,6 +87,7 @@ function stringData(context: WatBackendContext, value: string): WasmData {
   };
 
   context.data.push(data);
+  context.nextDataOffset += value.length;
 
   return data;
 }
