@@ -1,489 +1,503 @@
 import {
-  AdditiveExpression,
-  AssignmentExpression,
-  ArrayLiteral,
-  ArrayType,
-  BooleanLiteral,
-  CallExpression,
-  ComparisonExpression,
-  DeferStatement,
-  EqualityExpression,
-  Expression,
-  ExpressionStatement,
-  FunctionDeclaration,
-  Identifier,
-  IfStatement,
-  IntegerLiteral,
-  LogicalExpression,
-  MultiplcativeExpression,
-  Operator,
-  ParenthesizedExpression,
-  ReturnStatement,
-  SourceFile,
-  StatementBlock,
-  StringLiteral,
-  SyntaxKind,
-  SyntaxNode,
-  TypeNode,
-  TypeReference,
-  UnaryExpression,
-  VariableDeclaration,
-  WhileStatement,
+	AdditiveExpression,
+	AssignmentExpression,
+	ArrayLiteral,
+	ArrayType,
+	BooleanLiteral,
+	CallExpression,
+	ComparisonExpression,
+	DeferStatement,
+	EqualityExpression,
+	Expression,
+	ExpressionStatement,
+	FunctionDeclaration,
+	Identifier,
+	IfStatement,
+	IntegerLiteral,
+	LogicalExpression,
+	MultiplcativeExpression,
+	Operator,
+	ParenthesizedExpression,
+	ReturnStatement,
+	SourceFile,
+	StatementBlock,
+	StringLiteral,
+	SyntaxKind,
+	SyntaxNode,
+	TypeNode,
+	TypeReference,
+	UnaryExpression,
+	VariableDeclaration,
+	WhileStatement,
+	ElementAccessExpression,
 } from "../frontend/ast.ts";
 import { int } from "../shims.ts";
 import { BackendContext } from "./backend.ts";
 
 interface CppBackendContext extends BackendContext {
-  indentLevel: int;
-  indent: () => void;
+	indentLevel: int;
+	indent: () => void;
 }
 
 export function emitCpp(sourceFile: SourceFile, baseContext: BackendContext): void {
-  const context: CppBackendContext = {
-    ...baseContext,
+	const context: CppBackendContext = {
+		...baseContext,
 
-    indentLevel: 0,
+		indentLevel: 0,
 
-    indent: () => {
-      for (let i = 0; i < context.indentLevel; i++) {
-        baseContext.append("\t");
-      }
-    },
-  };
+		indent: () => {
+			for (let i = 0; i < context.indentLevel; i++) {
+				baseContext.append("\t");
+			}
+		},
+	};
 
-  emitPreamble(context);
+	emitPreamble(context);
 
-  for (const statement of sourceFile.statements) {
-    emitTopLevelStatement(context, sourceFile, statement);
-  }
+	for (const statement of sourceFile.statements) {
+		emitTopLevelStatement(context, sourceFile, statement);
+	}
 }
 
 function emitPreamble(context: CppBackendContext): void {
-  context.append("#include <biggie.cpp>\n");
-  context.append("\n");
+	context.append("#include <biggie.cpp>\n");
+	context.append("\n");
 }
 
 function emitUnexpectedNode(
-  context: CppBackendContext,
-  functionName: string,
-  sourceFile: SourceFile,
-  node: SyntaxNode
+	context: CppBackendContext,
+	functionName: string,
+	sourceFile: SourceFile,
+	node: SyntaxNode
 ): void {
-  context.append(`/* Unexpected node in ${functionName}:\n`);
-  // const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-  // context.output(`${sourceFile.fileName} (${line + 1},${character + 1}) ${SyntaxKind[node.kind]} ${message}`);
-  context.append(`${sourceFile.fileName} ${SyntaxKind[node.kind]}`);
-  context.append("*/\n");
+	context.append(`/* Unexpected node in ${functionName}:\n`);
+	// const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+	// context.output(`${sourceFile.fileName} (${line + 1},${character + 1}) ${SyntaxKind[node.kind]} ${message}`);
+	context.append(`${sourceFile.fileName} ${SyntaxKind[node.kind]}`);
+	context.append("*/\n");
 }
 
 function emitTopLevelStatement(context: CppBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
-  switch (node.kind) {
-    case SyntaxKind.FuncDeclaration:
-      emitFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
-      break;
+	switch (node.kind) {
+		case SyntaxKind.FuncDeclaration:
+			emitFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
+			break;
 
-    default:
-      emitUnexpectedNode(context, emitTopLevelStatement.name, sourceFile, node);
-      break;
-  }
+		default:
+			emitUnexpectedNode(context, emitTopLevelStatement.name, sourceFile, node);
+			break;
+	}
 }
 
 function emitFunctionDeclaration(
-  context: CppBackendContext,
-  sourceFile: SourceFile,
-  functionDeclaration: FunctionDeclaration
+	context: CppBackendContext,
+	sourceFile: SourceFile,
+	functionDeclaration: FunctionDeclaration
 ): void {
-  const returnType: string = functionDeclaration.returnType.name.value;
-  const name: string = functionDeclaration.name.value;
+	const returnType: string = functionDeclaration.returnType.name.value;
+	const name: string = functionDeclaration.name.value;
 
-  context.append(`${returnType} ${name}(`);
+	context.append(`${returnType} ${name}(`);
 
-  for (let i = 0; i < functionDeclaration.arguments.length; i++) {
-    const arg = functionDeclaration.arguments[i];
-    const argType = arg.type.value;
-    const argName = arg.name.value;
+	for (let i = 0; i < functionDeclaration.arguments.length; i++) {
+		const arg = functionDeclaration.arguments[i];
+		const argType = arg.type.value;
+		const argName = arg.name.value;
 
-    if (i != 0) {
-      context.append(", ");
-    }
+		if (i != 0) {
+			context.append(", ");
+		}
 
-    context.append(`${argType} ${argName}`);
-  }
+		context.append(`${argType} ${argName}`);
+	}
 
-  context.append(") ");
+	context.append(") ");
 
-  emitStatementBlock(context, sourceFile, functionDeclaration.body);
+	emitStatementBlock(context, sourceFile, functionDeclaration.body);
 
-  context.append("\n\n");
+	context.append("\n\n");
 }
 
 function emitStatementBlock(context: CppBackendContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
-  context.append("{\n");
-  context.indentLevel += 1;
+	context.append("{\n");
+	context.indentLevel += 1;
 
-  for (const statement of statementBlock.statements) {
-    context.indent();
-    emitBlockLevelStatement(context, sourceFile, statement);
-  }
+	for (const statement of statementBlock.statements) {
+		context.indent();
+		emitBlockLevelStatement(context, sourceFile, statement);
+	}
 
-  context.indentLevel -= 1;
-  context.indent();
-  context.append("}");
+	context.indentLevel -= 1;
+	context.indent();
+	context.append("}");
 }
 
 function emitBlockLevelStatement(context: CppBackendContext, sourceFile: SourceFile, node: SyntaxNode) {
-  switch (node.kind) {
-    case SyntaxKind.DeferStatement:
-      emitDeferStatement(context, sourceFile, <DeferStatement>node);
-      break;
+	switch (node.kind) {
+		case SyntaxKind.DeferStatement:
+			emitDeferStatement(context, sourceFile, <DeferStatement>node);
+			break;
 
-    case SyntaxKind.ExpressionStatement:
-      emitExpressionStatement(context, sourceFile, <ExpressionStatement>node);
-      break;
+		case SyntaxKind.ExpressionStatement:
+			emitExpressionStatement(context, sourceFile, <ExpressionStatement>node);
+			break;
 
-    case SyntaxKind.IfStatement:
-      emitIfStatement(context, sourceFile, <IfStatement>node);
-      break;
+		case SyntaxKind.IfStatement:
+			emitIfStatement(context, sourceFile, <IfStatement>node);
+			break;
 
-    case SyntaxKind.ReturnStatement:
-      emitReturnStatement(context, sourceFile, <ReturnStatement>node);
-      break;
+		case SyntaxKind.ReturnStatement:
+			emitReturnStatement(context, sourceFile, <ReturnStatement>node);
+			break;
 
-    case SyntaxKind.StatementBlock:
-      emitStatementBlock(context, sourceFile, <StatementBlock>node);
-      break;
+		case SyntaxKind.StatementBlock:
+			emitStatementBlock(context, sourceFile, <StatementBlock>node);
+			break;
 
-    case SyntaxKind.VariableDeclaration:
-      emitVarDeclaration(context, sourceFile, <VariableDeclaration>node);
-      break;
+		case SyntaxKind.VariableDeclaration:
+			emitVarDeclaration(context, sourceFile, <VariableDeclaration>node);
+			break;
 
-    case SyntaxKind.WhileStatement:
-      emitWhileStatement(context, sourceFile, <WhileStatement>node);
-      break;
+		case SyntaxKind.WhileStatement:
+			emitWhileStatement(context, sourceFile, <WhileStatement>node);
+			break;
 
-    default:
-      emitUnexpectedNode(context, emitBlockLevelStatement.name, sourceFile, node);
-      break;
-  }
+		default:
+			emitUnexpectedNode(context, emitBlockLevelStatement.name, sourceFile, node);
+			break;
+	}
 }
 
 function emitDeferStatement(context: CppBackendContext, sourceFile: SourceFile, deferStatement: DeferStatement) {
-  context.append("defer ");
+	context.append("defer ");
 
-  if (deferStatement.body.kind !== SyntaxKind.StatementBlock) {
-    context.append("{ ");
-  }
+	if (deferStatement.body.kind !== SyntaxKind.StatementBlock) {
+		context.append("{ ");
+	}
 
-  emitBlockLevelStatement(context, sourceFile, deferStatement.body);
+	emitBlockLevelStatement(context, sourceFile, deferStatement.body);
 
-  if (deferStatement.body.kind !== SyntaxKind.StatementBlock) {
-    context.remove(1);
-    context.append(" }");
-  }
+	if (deferStatement.body.kind !== SyntaxKind.StatementBlock) {
+		context.remove(1);
+		context.append(" }");
+	}
 
-  context.append(";\n");
+	context.append(";\n");
 }
 
 function emitExpressionStatement(
-  context: CppBackendContext,
-  sourceFile: SourceFile,
-  expressionStatement: ExpressionStatement
+	context: CppBackendContext,
+	sourceFile: SourceFile,
+	expressionStatement: ExpressionStatement
 ) {
-  emitExpression(context, sourceFile, expressionStatement.expression);
-  context.append(";\n");
+	emitExpression(context, sourceFile, expressionStatement.expression);
+	context.append(";\n");
 }
 
 function emitIfStatement(context: CppBackendContext, sourceFile: SourceFile, ifStatement: IfStatement) {
-  context.append("if (");
-  emitExpression(context, sourceFile, ifStatement.condition);
-  context.append(") ");
-  emitBlockLevelStatement(context, sourceFile, ifStatement.then);
+	context.append("if (");
+	emitExpression(context, sourceFile, ifStatement.condition);
+	context.append(") ");
+	emitBlockLevelStatement(context, sourceFile, ifStatement.then);
 
-  if (ifStatement.else != null) {
-    context.append(" else ");
-    emitBlockLevelStatement(context, sourceFile, ifStatement.else);
-  }
+	if (ifStatement.else != null) {
+		context.append(" else ");
+		emitBlockLevelStatement(context, sourceFile, ifStatement.else);
+	}
 
-  context.append("\n");
+	context.append("\n");
 }
 
 function emitReturnStatement(context: CppBackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
-  context.append("return ");
+	context.append("return ");
 
-  if (returnStatement.expression != null) {
-    emitExpression(context, sourceFile, returnStatement.expression);
-  }
+	if (returnStatement.expression != null) {
+		emitExpression(context, sourceFile, returnStatement.expression);
+	}
 
-  context.append(";\n");
+	context.append(";\n");
 }
 
 function emitVarDeclaration(context: CppBackendContext, sourceFile: SourceFile, variableDeclaration: VariableDeclaration) {
-  emitType(context, sourceFile, variableDeclaration.type);
-  context.append(" ");
-  emitIdentifier(context, sourceFile, variableDeclaration.name);
+	emitType(context, sourceFile, variableDeclaration.type);
+	context.append(" ");
+	emitIdentifier(context, sourceFile, variableDeclaration.name);
 
-  if (variableDeclaration.expression != null) {
-    context.append(" = ");
-    emitExpression(context, sourceFile, variableDeclaration.expression);
-  }
+	if (variableDeclaration.expression != null) {
+		context.append(" = ");
+		emitExpression(context, sourceFile, variableDeclaration.expression);
+	}
 
-  context.append(";\n");
+	context.append(";\n");
 }
 
 function emitWhileStatement(context: CppBackendContext, sourceFile: SourceFile, whileStatement: WhileStatement) {
-  context.append("while (");
-  emitExpression(context, sourceFile, whileStatement.condition);
-  context.append(") ");
-  emitBlockLevelStatement(context, sourceFile, whileStatement.body);
-  context.append("\n");
+	context.append("while (");
+	emitExpression(context, sourceFile, whileStatement.condition);
+	context.append(") ");
+	emitBlockLevelStatement(context, sourceFile, whileStatement.body);
+	context.append("\n");
 }
 
 function emitType(context: CppBackendContext, sourceFile: SourceFile, type: TypeNode) {
-  switch (type.kind) {
-    case SyntaxKind.ArrayType:
-      emitArrayType(context, sourceFile, type as ArrayType);
-      break;
+	switch (type.kind) {
+		case SyntaxKind.ArrayType:
+			emitArrayType(context, sourceFile, type as ArrayType);
+			break;
 
-    case SyntaxKind.TypeReference:
-      emitTypeReference(context, sourceFile, type as TypeReference);
-      break;
-  }
+		case SyntaxKind.TypeReference:
+			emitTypeReference(context, sourceFile, type as TypeReference);
+			break;
+	}
 }
 
 function emitArrayType(context: CppBackendContext, sourceFile: SourceFile, arrayType: ArrayType) {
-  context.append("std::vector<");
-  emitType(context, sourceFile, arrayType.elementType);
-  context.append(">");
+	context.append("Array<");
+	emitType(context, sourceFile, arrayType.elementType);
+	context.append(">");
 }
 
 function emitTypeReference(context: CppBackendContext, sourceFile: SourceFile, typeReference: TypeReference) {
-  emitIdentifier(context, sourceFile, typeReference.name);
+	emitIdentifier(context, sourceFile, typeReference.name);
 }
 
 function emitExpression(context: CppBackendContext, sourceFile: SourceFile, expression: Expression) {
-  switch (expression.kind) {
-    case SyntaxKind.AdditiveExpression:
-      emitAdditiveExpression(context, sourceFile, <AdditiveExpression>expression);
-      break;
+	switch (expression.kind) {
+		case SyntaxKind.AdditiveExpression:
+			emitAdditiveExpression(context, sourceFile, <AdditiveExpression>expression);
+			break;
 
-    case SyntaxKind.ArrayLiteral:
-      emitArrayLiteral(context, sourceFile, <ArrayLiteral>expression);
-      break;
+		case SyntaxKind.ArrayLiteral:
+			emitArrayLiteral(context, sourceFile, <ArrayLiteral>expression);
+			break;
 
-    case SyntaxKind.AssignmentExpression:
-      emitAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);
-      break;
+		case SyntaxKind.AssignmentExpression:
+			emitAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);
+			break;
 
-    case SyntaxKind.BooleanLiteral:
-      emitBooleanLiteral(context, sourceFile, <BooleanLiteral>expression);
-      break;
+		case SyntaxKind.BooleanLiteral:
+			emitBooleanLiteral(context, sourceFile, <BooleanLiteral>expression);
+			break;
 
-    case SyntaxKind.CallExpression:
-      emitCallExpression(context, sourceFile, <CallExpression>expression);
-      break;
+		case SyntaxKind.CallExpression:
+			emitCallExpression(context, sourceFile, <CallExpression>expression);
+			break;
 
-    case SyntaxKind.ComparisonExpression:
-      emitComparisonExpression(context, sourceFile, <ComparisonExpression>expression);
-      break;
+		case SyntaxKind.ComparisonExpression:
+			emitComparisonExpression(context, sourceFile, <ComparisonExpression>expression);
+			break;
 
-    case SyntaxKind.EqualityExpression:
-      emitEqualityExpression(context, sourceFile, <EqualityExpression>expression);
-      break;
+		case SyntaxKind.ElementAccessExpression:
+			emitElementAccessExpression(context, sourceFile, <ElementAccessExpression>expression);
+			break;
 
-    case SyntaxKind.Identifier:
-      emitIdentifier(context, sourceFile, <Identifier>expression);
-      break;
+		case SyntaxKind.EqualityExpression:
+			emitEqualityExpression(context, sourceFile, <EqualityExpression>expression);
+			break;
 
-    case SyntaxKind.IntegerLiteral:
-      emitIntegerLiteral(context, sourceFile, <IntegerLiteral>expression);
-      break;
+		case SyntaxKind.Identifier:
+			emitIdentifier(context, sourceFile, <Identifier>expression);
+			break;
 
-    case SyntaxKind.LogicalExpression:
-      emitLogicalExpression(context, sourceFile, <LogicalExpression>expression);
-      break;
+		case SyntaxKind.IntegerLiteral:
+			emitIntegerLiteral(context, sourceFile, <IntegerLiteral>expression);
+			break;
 
-    case SyntaxKind.MultiplicativeExpression:
-      emitMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
-      break;
+		case SyntaxKind.LogicalExpression:
+			emitLogicalExpression(context, sourceFile, <LogicalExpression>expression);
+			break;
 
-    case SyntaxKind.ParenthesizedExpression:
-      emitParenthesizedExpression(context, sourceFile, <ParenthesizedExpression>expression);
-      break;
+		case SyntaxKind.MultiplicativeExpression:
+			emitMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
+			break;
 
-    case SyntaxKind.StringLiteral:
-      emitStringLiteral(context, sourceFile, <StringLiteral>expression);
-      break;
+		case SyntaxKind.ParenthesizedExpression:
+			emitParenthesizedExpression(context, sourceFile, <ParenthesizedExpression>expression);
+			break;
 
-    case SyntaxKind.UnaryExpression:
-      emitUnaryExpression(context, sourceFile, <UnaryExpression>expression);
-      break;
+		case SyntaxKind.StringLiteral:
+			emitStringLiteral(context, sourceFile, <StringLiteral>expression);
+			break;
 
-    default:
-      emitUnexpectedNode(context, emitExpression.name, sourceFile, expression);
-      break;
-  }
+		case SyntaxKind.UnaryExpression:
+			emitUnaryExpression(context, sourceFile, <UnaryExpression>expression);
+			break;
+
+		default:
+			emitUnexpectedNode(context, emitExpression.name, sourceFile, expression);
+			break;
+	}
 }
 
 function emitAssignmentExpression(
-  context: CppBackendContext,
-  sourceFile: SourceFile,
-  expression: AssignmentExpression
+	context: CppBackendContext,
+	sourceFile: SourceFile,
+	expression: AssignmentExpression
 ): void {
-  emitIdentifier(context, sourceFile, expression.name);
+	emitIdentifier(context, sourceFile, expression.name);
 
-  let operator = "=";
-  switch (expression.operator) {
-    case Operator.PlusEquals:
-      operator = "+=";
-      break;
+	let operator = "=";
+	switch (expression.operator) {
+		case Operator.PlusEquals:
+			operator = "+=";
+			break;
 
-    case Operator.MinusEquals:
-      operator = "-=";
-      break;
+		case Operator.MinusEquals:
+			operator = "-=";
+			break;
 
-    case Operator.AsteriskEquals:
-      operator = "*=";
-      break;
+		case Operator.AsteriskEquals:
+			operator = "*=";
+			break;
 
-    case Operator.SlashEquals:
-      operator = "/=";
-      break;
-  }
+		case Operator.SlashEquals:
+			operator = "/=";
+			break;
+	}
 
-  context.append(` ${operator} `);
+	context.append(` ${operator} `);
 
-  emitExpression(context, sourceFile, expression.value);
+	emitExpression(context, sourceFile, expression.value);
 }
 
 function emitAdditiveExpression(
-  context: CppBackendContext,
-  sourceFile: SourceFile,
-  expression: AdditiveExpression
+	context: CppBackendContext,
+	sourceFile: SourceFile,
+	expression: AdditiveExpression
 ): void {
-  emitExpression(context, sourceFile, expression.lhs);
+	emitExpression(context, sourceFile, expression.lhs);
 
-  context.append(` ${expression.operator == Operator.Plus ? "+" : "-"} `);
+	context.append(` ${expression.operator == Operator.Plus ? "+" : "-"} `);
 
-  emitExpression(context, sourceFile, expression.rhs);
+	emitExpression(context, sourceFile, expression.rhs);
 }
 
 function emitArrayLiteral(context: CppBackendContext, sourceFile: SourceFile, arrayLiteral: ArrayLiteral) {
-  context.append("{");
+	context.append("{");
 
-  for (let i = 0; i < arrayLiteral.elements.length; i += 1) {
-    if (i != 0) {
-      context.append(", ");
-    }
+	for (let i = 0; i < arrayLiteral.elements.length; i += 1) {
+		if (i != 0) {
+			context.append(", ");
+		}
 
-    emitExpression(context, sourceFile, arrayLiteral.elements[i]);
-  }
+		emitExpression(context, sourceFile, arrayLiteral.elements[i]);
+	}
 
-  context.append("}");
+	context.append("}");
 }
 
 function emitBooleanLiteral(context: CppBackendContext, sourceFile: SourceFile, booleanLiteral: BooleanLiteral) {
-  context.append(booleanLiteral.value ? "true" : "false");
+	context.append(booleanLiteral.value ? "true" : "false");
 }
 
 function emitCallExpression(context: CppBackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
-  emitExpression(context, sourceFile, callExpression.expression);
-  context.append("(");
+	emitExpression(context, sourceFile, callExpression.expression);
+	context.append("(");
 
-  for (let i = 0; i < callExpression.arguments.length; i++) {
-    if (i != 0) {
-      context.append(", ");
-    }
+	for (let i = 0; i < callExpression.arguments.length; i++) {
+		if (i != 0) {
+			context.append(", ");
+		}
 
-    emitExpression(context, sourceFile, callExpression.arguments[i]);
-  }
+		emitExpression(context, sourceFile, callExpression.arguments[i]);
+	}
 
-  context.append(")");
+	context.append(")");
+}
+
+function emitElementAccessExpression(context: CppBackendContext, sourceFile: SourceFile, elementAccessExpression: ElementAccessExpression) {
+	emitExpression(context, sourceFile, elementAccessExpression.expression);
+	context.append("[");
+
+	emitExpression(context, sourceFile, elementAccessExpression.argumentExpression);
+
+	context.append("]");
 }
 
 function emitComparisonExpression(
-  context: CppBackendContext,
-  sourceFile: SourceFile,
-  expression: ComparisonExpression
+	context: CppBackendContext,
+	sourceFile: SourceFile,
+	expression: ComparisonExpression
 ) {
-  emitExpression(context, sourceFile, expression.lhs);
+	emitExpression(context, sourceFile, expression.lhs);
 
-  let operator = ">";
+	let operator = ">";
 
-  switch (expression.operator) {
-    case Operator.GreaterThan:
-      operator = ">";
-      break;
+	switch (expression.operator) {
+		case Operator.GreaterThan:
+			operator = ">";
+			break;
 
-    case Operator.GreaterThanEquals:
-      operator = ">=";
-      break;
+		case Operator.GreaterThanEquals:
+			operator = ">=";
+			break;
 
-    case Operator.LessThan:
-      operator = "<";
-      break;
+		case Operator.LessThan:
+			operator = "<";
+			break;
 
-    case Operator.LessThanEquals:
-      operator = "<=";
-      break;
-  }
+		case Operator.LessThanEquals:
+			operator = "<=";
+			break;
+	}
 
-  context.append(` ${operator} `);
+	context.append(` ${operator} `);
 
-  emitExpression(context, sourceFile, expression.rhs);
+	emitExpression(context, sourceFile, expression.rhs);
 }
 
 function emitEqualityExpression(context: CppBackendContext, sourceFile: SourceFile, expression: EqualityExpression) {
-  emitExpression(context, sourceFile, expression.lhs);
+	emitExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == Operator.EqualsEquals ? " == " : " != ");
+	context.append(expression.operator == Operator.EqualsEquals ? " == " : " != ");
 
-  emitExpression(context, sourceFile, expression.rhs);
+	emitExpression(context, sourceFile, expression.rhs);
 }
 
 function emitIdentifier(context: CppBackendContext, sourceFile: SourceFile, identifier: Identifier) {
-  context.append(identifier.value);
+	context.append(identifier.value);
 }
 
 function emitIntegerLiteral(context: CppBackendContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
-  context.append(integerLiteral.value);
+	context.append(integerLiteral.value);
 }
 
 function emitLogicalExpression(context: CppBackendContext, sourceFile: SourceFile, expression: LogicalExpression) {
-  emitExpression(context, sourceFile, expression.lhs);
+	emitExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == Operator.AmpersandAmpersand ? " && " : " || ");
+	context.append(expression.operator == Operator.AmpersandAmpersand ? " && " : " || ");
 
-  emitExpression(context, sourceFile, expression.rhs);
+	emitExpression(context, sourceFile, expression.rhs);
 }
 
 function emitMultiplicativeExpression(
-  context: CppBackendContext,
-  sourceFile: SourceFile,
-  expression: MultiplcativeExpression
+	context: CppBackendContext,
+	sourceFile: SourceFile,
+	expression: MultiplcativeExpression
 ) {
-  emitExpression(context, sourceFile, expression.lhs);
+	emitExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == Operator.Asterisk ? " * " : " / ");
+	context.append(expression.operator == Operator.Asterisk ? " * " : " / ");
 
-  emitExpression(context, sourceFile, expression.rhs);
+	emitExpression(context, sourceFile, expression.rhs);
 }
 
 function emitParenthesizedExpression(
-  context: CppBackendContext,
-  sourceFile: SourceFile,
-  expression: ParenthesizedExpression
+	context: CppBackendContext,
+	sourceFile: SourceFile,
+	expression: ParenthesizedExpression
 ) {
-  context.append("(");
-  emitExpression(context, sourceFile, expression.expression);
-  context.append(")");
+	context.append("(");
+	emitExpression(context, sourceFile, expression.expression);
+	context.append(")");
 }
 
 function emitStringLiteral(context: CppBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
-  context.append(`"${stringLiteral.value}"`);
+	context.append(`"${stringLiteral.value}"`);
 }
 
 function emitUnaryExpression(context: CppBackendContext, sourceFile: SourceFile, expression: UnaryExpression) {
-  context.append(expression.operator == Operator.Exclamation ? "!" : "-");
+	context.append(expression.operator == Operator.Exclamation ? "!" : "-");
 
-  emitExpression(context, sourceFile, expression.expression);
+	emitExpression(context, sourceFile, expression.expression);
 }

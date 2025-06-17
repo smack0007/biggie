@@ -8,6 +8,7 @@ import {
   CallExpression,
   ComparisonExpression,
   DeferStatement,
+  ElementAccessExpression,
   EqualityExpression,
   Expression,
   ExpressionStatement,
@@ -644,7 +645,9 @@ function parseExpression(context: ParserContext): Result<Expression, ParserError
   const token = peek(context);
   if (token.type == TokenType.OpenParen) {
     result = parseCallExpression(context, <Expression>result.value);
-  }
+  } else if (token.type == TokenType.OpenBracket) {
+		result = parseElementAccessExpression(context, <Expression>result.value);
+	}
 
   return result;
 }
@@ -1049,6 +1052,38 @@ function parseCallExpression(context: ParserContext, expression: Expression): Re
       kind: SyntaxKind.CallExpression,
       expression,
       arguments: args.value!,
+    },
+  };
+}
+
+function parseElementAccessExpression(context: ParserContext, expression: Expression): Result<ElementAccessExpression, ParserError> {
+  context.logger.enter(parseElementAccessExpression.name);
+  let token = expect(context, TokenType.OpenBracket, parseElementAccessExpression.name);
+
+  if (token.error != null) {
+    return { error: token.error };
+  }
+
+  advance(context);
+  const argumentExpression = parseExpression(context);
+
+  if (argumentExpression.error != null) {
+    return { error: token.error };
+  }
+
+  token = expect(context, TokenType.CloseBracket, parseElementAccessExpression.name);
+
+  if (token.error != null) {
+    return { error: token.error };
+  }
+
+  advance(context);
+
+  return {
+    value: {
+      kind: SyntaxKind.ElementAccessExpression,
+      expression,
+    	argumentExpression: argumentExpression.value!,
     },
   };
 }

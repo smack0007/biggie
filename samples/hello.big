@@ -63,7 +63,7 @@ func main(): i32 {
   }
 
   var data: []i32 = [ 1, 2, 3, 4, ];
-  // println("{0}", data);
+  println("{0}", data);
 
   return 0;
 }

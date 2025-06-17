@@ -25,4 +25,5 @@ void println(fmt::format_string<T...> format, T &&...args) {
   fmt::println(format, std::forward<T>(args)...);
 }
 
+#include "array.cpp"
 #include "defer.cpp"
