@@ -32,7 +32,7 @@ import {
 	ElementAccessExpression,
 	PropertyAccessExpression,
 } from "../frontend/ast.ts";
-import { int } from "../shims.ts";
+import { int, nameof } from "../shims.ts";
 import { BackendContext } from "./backend.ts";
 
 interface CppBackendContext extends BackendContext {
@@ -85,7 +85,7 @@ function emitTopLevelStatement(context: CppBackendContext, sourceFile: SourceFil
 			break;
 
 		default:
-			emitUnexpectedNode(context, emitTopLevelStatement.name, sourceFile, node);
+			emitUnexpectedNode(context, nameof(emitTopLevelStatement), sourceFile, node);
 			break;
 	}
 }
@@ -164,7 +164,7 @@ function emitBlockLevelStatement(context: CppBackendContext, sourceFile: SourceF
 			break;
 
 		default:
-			emitUnexpectedNode(context, emitBlockLevelStatement.name, sourceFile, node);
+			emitUnexpectedNode(context, nameof(emitBlockLevelStatement), sourceFile, node);
 			break;
 	}
 }
@@ -329,7 +329,7 @@ function emitExpression(context: CppBackendContext, sourceFile: SourceFile, expr
 			break;
 
 		default:
-			emitUnexpectedNode(context, emitExpression.name, sourceFile, expression);
+			emitUnexpectedNode(context, nameof(emitExpression), sourceFile, expression);
 			break;
 	}
 }

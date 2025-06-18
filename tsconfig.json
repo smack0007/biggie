@@ -1,7 +1,12 @@
 {
 	"compilerOptions": {
+		"lib": [
+			"ES2024"
+		],
 		"strict": true,
 		"noImplicitAny": true,
 		"noImplicitReturns": true,
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
 	}
 }

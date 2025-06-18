@@ -1,4 +1,4 @@
-import { Result, bool, int } from "../shims.ts";
+import { Result, bool, int, nameof } from "../shims.ts";
 import {
 	AdditiveExpression,
 	ArrayLiteral,
@@ -35,7 +35,6 @@ import {
 	WhileStatement,
 } from "./ast.ts";
 import { Token, TokenType } from "./scanner.ts";
-import { Mutable } from "../utils.ts";
 
 export interface ParserLogger {
 	enter(name: string, token: Token): void;
@@ -53,6 +52,8 @@ interface ParserContext {
 
 export enum ParserErrorKind {
 	InvalidAssignmentTarget,
+
+	TokenTextIsNull,
 
 	UnexpectedTokenType,
 	UnknownTopLevelStatement,
@@ -164,7 +165,7 @@ export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLog
 		index: 0,
 	};
 
-	context.logger.enter(parse.name);
+	context.logger.enter(nameof(parse));
 
 	while (!isEOF(context)) {
 		const statement = parseTopLevelStatement(context);
@@ -173,10 +174,10 @@ export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLog
 			return { error: statement.error };
 		}
 
-		statements.push(statement.value!);
+		statements.push(statement.value);
 	}
 
-	const eof = expect(context, TokenType.EndOfFile, parse.name);
+	const eof = expect(context, TokenType.EndOfFile, nameof(parse));
 
 	if (eof.error != null) {
 		return { error: eof.error };
@@ -192,7 +193,7 @@ export function parse(fileName: string, tokens: Array<Token>, logger?: ParserLog
 }
 
 function parseTopLevelStatement(context: ParserContext): Result<Statement, ParserError> {
-	context.logger.enter(parseTopLevelStatement.name);
+	context.logger.enter(nameof(parseTopLevelStatement));
 	const token = peek(context);
 
 	let result: Result<Statement, ParserError>;
@@ -210,7 +211,7 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 				error: createError(
 					token,
 					ParserErrorKind.UnknownTopLevelStatement,
-					`Token type ${TokenType[token.type]} unexpected in ${parseTopLevelStatement.name}`
+					`Token type ${TokenType[token.type]} unexpected in ${nameof(parseTopLevelStatement)}`
 				),
 			};
 	}
@@ -219,8 +220,8 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 }
 
 function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration, ParserError> {
-	context.logger.enter(parseVarDeclaration.name);
-	let token = expect(context, TokenType.Var, parseVarDeclaration.name);
+	context.logger.enter(nameof(parseVarDeclaration));
+	let token = expect(context, TokenType.Var, nameof(parseVarDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -233,7 +234,7 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
 		return { error: identifier.error };
 	}
 
-	token = expect(context, TokenType.Colon, parseVarDeclaration.name);
+	token = expect(context, TokenType.Colon, nameof(parseVarDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -246,7 +247,7 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
 		return { error: type.error };
 	}
 
-	let expression: Result<Expression, ParserError> = {};
+	let expression: Result<Expression, ParserError> = {} as Result<Expression, ParserError>;
 
 	if (check(context, TokenType.Equals)) {
 		advance(context);
@@ -257,7 +258,7 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
 		}
 	}
 
-	token = expect(context, TokenType.EndStatement, parseVarDeclaration.name);
+	token = expect(context, TokenType.EndStatement, nameof(parseVarDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -276,8 +277,8 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
 }
 
 function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclaration, ParserError> {
-	context.logger.enter(parseFunctionDeclaration.name);
-	let token = expect(context, TokenType.Func, parseFunctionDeclaration.name);
+	context.logger.enter(nameof(parseFunctionDeclaration));
+	let token = expect(context, TokenType.Func, nameof(parseFunctionDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -290,7 +291,7 @@ function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclar
 		return { error: identifier.error };
 	}
 
-	token = expect(context, TokenType.OpenParen, parseFunctionDeclaration.name);
+	token = expect(context, TokenType.OpenParen, nameof(parseFunctionDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -309,14 +310,14 @@ function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclar
 		args.push(<FunctionArgument>arg.value);
 	}
 
-	token = expect(context, TokenType.CloseParen, parseFunctionDeclaration.name);
+	token = expect(context, TokenType.CloseParen, nameof(parseFunctionDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
 	}
 
 	advance(context);
-	token = expect(context, TokenType.Colon, parseFunctionDeclaration.name);
+	token = expect(context, TokenType.Colon, nameof(parseFunctionDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -347,7 +348,7 @@ function parseFunctionDeclaration(context: ParserContext): Result<FunctionDeclar
 }
 
 function parseFunctionArgument(context: ParserContext): Result<FunctionArgument, ParserError> {
-	context.logger.enter(parseFunctionArgument.name);
+	context.logger.enter(nameof(parseFunctionArgument));
 
 	const name = parseIdentifier(context);
 
@@ -355,7 +356,7 @@ function parseFunctionArgument(context: ParserContext): Result<FunctionArgument,
 		return { error: name.error };
 	}
 
-	const token = expect(context, TokenType.Colon, parseFunctionArgument.name);
+	const token = expect(context, TokenType.Colon, nameof(parseFunctionArgument));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -379,8 +380,8 @@ function parseFunctionArgument(context: ParserContext): Result<FunctionArgument,
 }
 
 function parseStatementBlock(context: ParserContext): Result<StatementBlock, ParserError> {
-	context.logger.enter(parseStatementBlock.name);
-	let token = expect(context, TokenType.OpenBrace, parseStatementBlock.name);
+	context.logger.enter(nameof(parseStatementBlock));
+	let token = expect(context, TokenType.OpenBrace, nameof(parseStatementBlock));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -399,7 +400,7 @@ function parseStatementBlock(context: ParserContext): Result<StatementBlock, Par
 		statements.push(statement.value!);
 	}
 
-	token = expect(context, TokenType.CloseBrace, parseStatementBlock.name);
+	token = expect(context, TokenType.CloseBrace, nameof(parseStatementBlock));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -416,7 +417,7 @@ function parseStatementBlock(context: ParserContext): Result<StatementBlock, Par
 }
 
 function parseBlockLevelStatement(context: ParserContext): Result<Statement, ParserError> {
-	context.logger.enter(parseBlockLevelStatement.name);
+	context.logger.enter(nameof(parseBlockLevelStatement));
 	const token = peek(context);
 
 	let result: Result<Statement, ParserError>;
@@ -454,14 +455,14 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
 }
 
 function parseExpressionStatement(context: ParserContext): Result<ExpressionStatement, ParserError> {
-	context.logger.enter(parseExpressionStatement.name);
+	context.logger.enter(nameof(parseExpressionStatement));
 	const expression = parseExpression(context);
 
 	if (expression.error != null) {
 		return { error: expression.error };
 	}
 
-	const token = expect(context, TokenType.EndStatement, parseExpressionStatement.name);
+	const token = expect(context, TokenType.EndStatement, nameof(parseExpressionStatement));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -478,8 +479,8 @@ function parseExpressionStatement(context: ParserContext): Result<ExpressionStat
 }
 
 function parseDeferStatement(context: ParserContext): Result<DeferStatement, ParserError> {
-	context.logger.enter(parseDeferStatement.name);
-	const token = expect(context, TokenType.Defer, parseDeferStatement.name);
+	context.logger.enter(nameof(parseDeferStatement));
+	const token = expect(context, TokenType.Defer, nameof(parseDeferStatement));
 
 	if (token.error) {
 		return { error: token.error };
@@ -501,8 +502,8 @@ function parseDeferStatement(context: ParserContext): Result<DeferStatement, Par
 }
 
 function parseIfStatement(context: ParserContext): Result<IfStatement, ParserError> {
-	context.logger.enter(parseIfStatement.name);
-	let token = expect(context, TokenType.If, parseIfStatement.name);
+	context.logger.enter(nameof(parseIfStatement));
+	let token = expect(context, TokenType.If, nameof(parseIfStatement));
 
 	if (token.error) {
 		return { error: token.error };
@@ -510,7 +511,7 @@ function parseIfStatement(context: ParserContext): Result<IfStatement, ParserErr
 
 	advance(context);
 
-	token = expect(context, TokenType.OpenParen, parseIfStatement.name);
+	token = expect(context, TokenType.OpenParen, nameof(parseIfStatement));
 
 	if (token.error) {
 		return { error: token.error };
@@ -524,7 +525,7 @@ function parseIfStatement(context: ParserContext): Result<IfStatement, ParserErr
 		return { error: condition.error };
 	}
 
-	token = expect(context, TokenType.CloseParen, parseIfStatement.name);
+	token = expect(context, TokenType.CloseParen, nameof(parseIfStatement));
 
 	if (token.error) {
 		return { error: token.error };
@@ -561,15 +562,15 @@ function parseIfStatement(context: ParserContext): Result<IfStatement, ParserErr
 }
 
 function parseWhileStatement(context: ParserContext): Result<WhileStatement, ParserError> {
-	context.logger.enter(parseWhileStatement.name);
-	let token = expect(context, TokenType.While, parseWhileStatement.name);
+	context.logger.enter(nameof(parseWhileStatement));
+	let token = expect(context, TokenType.While, nameof(parseWhileStatement));
 
 	if (token.error) {
 		return { error: token.error };
 	}
 
 	advance(context);
-	token = expect(context, TokenType.OpenParen, parseWhileStatement.name);
+	token = expect(context, TokenType.OpenParen, nameof(parseWhileStatement));
 
 	if (token.error) {
 		return { error: token.error };
@@ -583,7 +584,7 @@ function parseWhileStatement(context: ParserContext): Result<WhileStatement, Par
 		return { error: condition.error };
 	}
 
-	token = expect(context, TokenType.CloseParen, parseWhileStatement.name);
+	token = expect(context, TokenType.CloseParen, nameof(parseWhileStatement));
 
 	if (token.error) {
 		return { error: token.error };
@@ -607,8 +608,8 @@ function parseWhileStatement(context: ParserContext): Result<WhileStatement, Par
 }
 
 function parseReturnStatement(context: ParserContext): Result<ReturnStatement, ParserError> {
-	context.logger.enter(parseReturnStatement.name);
-	const token = expect(context, TokenType.Return, parseReturnStatement.name);
+	context.logger.enter(nameof(parseReturnStatement));
+	const token = expect(context, TokenType.Return, nameof(parseReturnStatement));
 
 	if (token.error) {
 		return { error: token.error };
@@ -621,7 +622,7 @@ function parseReturnStatement(context: ParserContext): Result<ReturnStatement, P
 		return { error: expression.error };
 	}
 
-	expect(context, TokenType.EndStatement, parseReturnStatement.name);
+	expect(context, TokenType.EndStatement, nameof(parseReturnStatement));
 	advance(context);
 
 	return {
@@ -633,7 +634,7 @@ function parseReturnStatement(context: ParserContext): Result<ReturnStatement, P
 }
 
 function parseExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseExpression.name);
+	context.logger.enter(nameof(parseExpression));
 
 	let result: Result<Expression, ParserError> = parseAssignmentExpression(context);
 
@@ -670,7 +671,7 @@ const ASSIGNMENT_OPERATORS_MAP: Partial<Record<TokenType, Operator>> = {
 };
 
 function parseAssignmentExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseAssignmentExpression.name);
+	context.logger.enter(nameof(parseAssignmentExpression));
 
 	const startToken = peek(context);
 	const expression = parseLogicalOrExpression(context);
@@ -694,7 +695,7 @@ function parseAssignmentExpression(context: ParserContext): Result<Expression, P
 		const result: Result<AssignmentExpression, ParserError> = {
 			value: {
 				kind: SyntaxKind.AssignmentExpression,
-				name: <Identifier>expression.value!,
+				name: <Identifier>expression.value,
 				operator: ASSIGNMENT_OPERATORS_MAP[operatorToken.type] as any,
 				value: value.value!,
 			},
@@ -707,7 +708,7 @@ function parseAssignmentExpression(context: ParserContext): Result<Expression, P
 }
 
 function parseLogicalOrExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseLogicalOrExpression.name);
+	context.logger.enter(nameof(parseLogicalOrExpression));
 
 	let result = parseLogicalAndExpression(context);
 
@@ -724,9 +725,9 @@ function parseLogicalOrExpression(context: ParserContext): Result<Expression, Pa
 
 		const expression: LogicalExpression = {
 			kind: SyntaxKind.LogicalExpression,
-			lhs: result.value!,
+			lhs: result.value,
 			operator: Operator.BarBar,
-			rhs: rhs.value!,
+			rhs: rhs.value,
 		};
 
 		result = { value: expression };
@@ -736,7 +737,7 @@ function parseLogicalOrExpression(context: ParserContext): Result<Expression, Pa
 }
 
 function parseLogicalAndExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseLogicalAndExpression.name);
+	context.logger.enter(nameof(parseLogicalAndExpression));
 
 	let result = parseEqualityExpression(context);
 
@@ -753,9 +754,9 @@ function parseLogicalAndExpression(context: ParserContext): Result<Expression, P
 
 		const expression: LogicalExpression = {
 			kind: SyntaxKind.LogicalExpression,
-			lhs: result.value!,
+			lhs: result.value,
 			operator: Operator.AmpersandAmpersand,
-			rhs: rhs.value!,
+			rhs: rhs.value,
 		};
 
 		result = { value: expression };
@@ -765,7 +766,7 @@ function parseLogicalAndExpression(context: ParserContext): Result<Expression, P
 }
 
 function parseEqualityExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseEqualityExpression.name);
+	context.logger.enter(nameof(parseEqualityExpression));
 
 	let result = parseComparisonExpression(context);
 
@@ -784,9 +785,9 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
 
 		const expression: EqualityExpression = {
 			kind: SyntaxKind.EqualityExpression,
-			lhs: result.value!,
+			lhs: result.value,
 			operator: operatorToken.type == TokenType.EqualsEquals ? Operator.EqualsEquals : Operator.ExclamationEquals,
-			rhs: rhs.value!,
+			rhs: rhs.value,
 		};
 
 		result = { value: expression };
@@ -796,7 +797,7 @@ function parseEqualityExpression(context: ParserContext): Result<Expression, Par
 }
 
 function parseComparisonExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseComparisonExpression.name);
+	context.logger.enter(nameof(parseComparisonExpression));
 
 	const lhs = parseAdditiveExpression(context);
 
@@ -841,9 +842,9 @@ function parseComparisonExpression(context: ParserContext): Result<Expression, P
 		const result: Result<ComparisonExpression, ParserError> = {
 			value: {
 				kind: SyntaxKind.ComparisonExpression,
-				lhs: lhs.value!,
+				lhs: lhs.value,
 				operator,
-				rhs: rhs.value!,
+				rhs: rhs.value,
 			},
 		};
 
@@ -854,7 +855,7 @@ function parseComparisonExpression(context: ParserContext): Result<Expression, P
 }
 
 function parseAdditiveExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseAdditiveExpression.name);
+	context.logger.enter(nameof(parseAdditiveExpression));
 
 	const lhs = parseMultiplicativeExpression(context);
 
@@ -875,9 +876,9 @@ function parseAdditiveExpression(context: ParserContext): Result<Expression, Par
 		const result: Result<AdditiveExpression, ParserError> = {
 			value: {
 				kind: SyntaxKind.AdditiveExpression,
-				lhs: lhs.value!,
+				lhs: lhs.value,
 				operator: operatorToken.type == TokenType.Plus ? Operator.Plus : Operator.Minus,
-				rhs: rhs.value!,
+				rhs: rhs.value,
 			},
 		};
 
@@ -888,7 +889,7 @@ function parseAdditiveExpression(context: ParserContext): Result<Expression, Par
 }
 
 function parseMultiplicativeExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseMultiplicativeExpression.name);
+	context.logger.enter(nameof(parseMultiplicativeExpression));
 
 	const lhs = parseUnaryExpression(context);
 
@@ -909,9 +910,9 @@ function parseMultiplicativeExpression(context: ParserContext): Result<Expressio
 		const result: Result<MultiplcativeExpression, ParserError> = {
 			value: {
 				kind: SyntaxKind.MultiplicativeExpression,
-				lhs: lhs.value!,
+				lhs: lhs.value,
 				operator: operatorToken.type == TokenType.Asterisk ? Operator.Asterisk : Operator.Slash,
-				rhs: rhs.value!,
+				rhs: rhs.value,
 			},
 		};
 
@@ -922,7 +923,7 @@ function parseMultiplicativeExpression(context: ParserContext): Result<Expressio
 }
 
 function parseUnaryExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parseUnaryExpression.name);
+	context.logger.enter(nameof(parseUnaryExpression));
 
 	const operatorToken = peek(context);
 	if (operatorToken.type == TokenType.Exclamation || operatorToken.type == TokenType.Minus) {
@@ -938,7 +939,7 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
 			value: {
 				kind: SyntaxKind.UnaryExpression,
 				operator: operatorToken.type == TokenType.Exclamation ? Operator.Exclamation : Operator.Minus,
-				expression: expression.value!,
+				expression: expression.value,
 			},
 		};
 
@@ -949,7 +950,7 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
 }
 
 function parsePrimaryExpression(context: ParserContext): Result<Expression, ParserError> {
-	context.logger.enter(parsePrimaryExpression.name);
+	context.logger.enter(nameof(parsePrimaryExpression));
 
 	let result: Result<Expression, ParserError>;
 	const token = peek(context);
@@ -985,7 +986,7 @@ function parsePrimaryExpression(context: ParserContext): Result<Expression, Pars
 				error: createError(
 					token,
 					ParserErrorKind.UnknownExpression,
-					`Token type ${TokenType[token.type]} unexpected in ${parsePrimaryExpression.name}`
+					`Token type ${TokenType[token.type]} unexpected in ${nameof(parsePrimaryExpression)}`
 				),
 			};
 	}
@@ -994,9 +995,9 @@ function parsePrimaryExpression(context: ParserContext): Result<Expression, Pars
 }
 
 function parseParenthesizedExpression(context: ParserContext): Result<ParenthesizedExpression, ParserError> {
-	context.logger.enter(parseParenthesizedExpression.name);
+	context.logger.enter(nameof(parseParenthesizedExpression));
 
-	const openParenToken = expect(context, TokenType.OpenParen, parseParenthesizedExpression.name);
+	const openParenToken = expect(context, TokenType.OpenParen, nameof(parseParenthesizedExpression));
 
 	if (openParenToken.error != null) {
 		return { error: openParenToken.error };
@@ -1009,7 +1010,7 @@ function parseParenthesizedExpression(context: ParserContext): Result<Parenthesi
 		return { error: expression.error };
 	}
 
-	const closeParenToken = expect(context, TokenType.CloseParen, parseParenthesizedExpression.name);
+	const closeParenToken = expect(context, TokenType.CloseParen, nameof(parseParenthesizedExpression));
 
 	if (closeParenToken.error != null) {
 		return { error: closeParenToken.error };
@@ -1020,14 +1021,14 @@ function parseParenthesizedExpression(context: ParserContext): Result<Parenthesi
 	return {
 		value: {
 			kind: SyntaxKind.ParenthesizedExpression,
-			expression: expression.value!,
+			expression: expression.value,
 		},
 	};
 }
 
 function parseCallExpression(context: ParserContext, expression: Expression): Result<CallExpression, ParserError> {
-	context.logger.enter(parseCallExpression.name);
-	let token = expect(context, TokenType.OpenParen, parseCallExpression.name);
+	context.logger.enter(nameof(parseCallExpression));
+	let token = expect(context, TokenType.OpenParen, nameof(parseCallExpression));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -1037,10 +1038,10 @@ function parseCallExpression(context: ParserContext, expression: Expression): Re
 	const args = parseCallExpressionArguments(context);
 
 	if (args.error != null) {
-		return { error: token.error };
+		return { error: args.error };
 	}
 
-	token = expect(context, TokenType.CloseParen, parseCallExpression.name);
+	token = expect(context, TokenType.CloseParen, nameof(parseCallExpression));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -1052,14 +1053,14 @@ function parseCallExpression(context: ParserContext, expression: Expression): Re
 		value: {
 			kind: SyntaxKind.CallExpression,
 			expression,
-			arguments: args.value!,
+			arguments: args.value,
 		},
 	};
 }
 
 function parseElementAccessExpression(context: ParserContext, expression: Expression): Result<ElementAccessExpression, ParserError> {
-	context.logger.enter(parseElementAccessExpression.name);
-	let token = expect(context, TokenType.OpenBracket, parseElementAccessExpression.name);
+	context.logger.enter(nameof(parseElementAccessExpression));
+	let token = expect(context, TokenType.OpenBracket, nameof(parseElementAccessExpression));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -1069,10 +1070,10 @@ function parseElementAccessExpression(context: ParserContext, expression: Expres
 	const argumentExpression = parseExpression(context);
 
 	if (argumentExpression.error != null) {
-		return { error: token.error };
+		return { error: argumentExpression.error };
 	}
 
-	token = expect(context, TokenType.CloseBracket, parseElementAccessExpression.name);
+	token = expect(context, TokenType.CloseBracket, nameof(parseElementAccessExpression));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -1084,14 +1085,14 @@ function parseElementAccessExpression(context: ParserContext, expression: Expres
 		value: {
 			kind: SyntaxKind.ElementAccessExpression,
 			expression,
-			argumentExpression: argumentExpression.value!,
+			argumentExpression: argumentExpression.value,
 		},
 	};
 }
 
 function parsePropertyAccessExpression(context: ParserContext, expression: Expression): Result<PropertyAccessExpression, ParserError> {
-	context.logger.enter(parsePropertyAccessExpression.name);
-	let token = expect(context, TokenType.Dot, parsePropertyAccessExpression.name);
+	context.logger.enter(nameof(parsePropertyAccessExpression));
+	let token = expect(context, TokenType.Dot, nameof(parsePropertyAccessExpression));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -1108,13 +1109,13 @@ function parsePropertyAccessExpression(context: ParserContext, expression: Expre
 		value: {
 			kind: SyntaxKind.PropertyAccessExpression,
 			expression,
-			name: name.value!,
+			name: name.value,
 		},
 	};
 }
 
 function parseCallExpressionArguments(context: ParserContext): Result<Array<Expression>, ParserError> {
-	context.logger.enter(parseCallExpressionArguments.name);
+	context.logger.enter(nameof(parseCallExpressionArguments));
 	const args: Array<Expression> = [];
 
 	let token = peek(context);
@@ -1127,7 +1128,7 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
 			return { error: expression.error };
 		}
 
-		args.push(expression.value!);
+		args.push(expression.value);
 		token = peek(context);
 
 		if (token.type == TokenType.Comma) {
@@ -1142,7 +1143,7 @@ function parseCallExpressionArguments(context: ParserContext): Result<Array<Expr
 }
 
 function parseType(context: ParserContext): Result<TypeNode, ParserError> {
-	context.logger.enter(parseType.name);
+	context.logger.enter(nameof(parseType));
 
 	const token = peek(context);
 	if (token.type === TokenType.OpenBracket) {
@@ -1153,14 +1154,16 @@ function parseType(context: ParserContext): Result<TypeNode, ParserError> {
 }
 
 function parseArrayType(context: ParserContext): Result<ArrayType, ParserError> {
-	let expected = expect(context, TokenType.OpenBracket, parseArrayType.name);
+	context.logger.enter(nameof(parseArrayType));
+
+	let expected = expect(context, TokenType.OpenBracket, nameof(parseArrayType));
 
 	if (expected.error) {
 		return { error: expected.error };
 	}
 
 	advance(context);
-	expected = expect(context, TokenType.CloseBracket, parseArrayType.name);
+	expected = expect(context, TokenType.CloseBracket, nameof(parseArrayType));
 
 	if (expected.error) {
 		return { error: expected.error };
@@ -1177,12 +1180,14 @@ function parseArrayType(context: ParserContext): Result<ArrayType, ParserError> 
 	return {
 		value: {
 			kind: SyntaxKind.ArrayType,
-			elementType: elementType.value!,
+			elementType: elementType.value,
 		},
 	};
 }
 
 function parseTypeReference(context: ParserContext): Result<TypeReference, ParserError> {
+	context.logger.enter(nameof(parseTypeReference));
+
 	const name = parseIdentifier(context);
 
 	if (name.error != null) {
@@ -1192,17 +1197,22 @@ function parseTypeReference(context: ParserContext): Result<TypeReference, Parse
 	return {
 		value: {
 			kind: SyntaxKind.TypeReference,
-			name: name.value!,
+			name: name.value,
 		},
 	};
 }
 
 function parseIdentifier(context: ParserContext): Result<Identifier, ParserError> {
-	context.logger.enter(parseIdentifier.name);
-	const token = expect(context, TokenType.Identifier, parseIdentifier.name);
+	context.logger.enter(nameof(parseIdentifier));
+
+	const token = expect(context, TokenType.Identifier, nameof(parseIdentifier));
 
 	if (token.error != null) {
 		return { error: token.error };
+	}
+
+	if (token.value.text == null) {
+		return { error: createError(token.value, ParserErrorKind.TokenTextIsNull, `Expected token to have text value in ${nameof(parseIdentifier)}.`) }
 	}
 
 	advance(context);
@@ -1210,15 +1220,15 @@ function parseIdentifier(context: ParserContext): Result<Identifier, ParserError
 	return {
 		value: {
 			kind: SyntaxKind.Identifier,
-			value: token.value!.text!,
+			value: token.value.text
 		},
 	};
 }
 
 function parseArrayLiteral(context: ParserContext): Result<ArrayLiteral, ParserError> {
-	context.logger.enter(parseArrayLiteral.name);
+	context.logger.enter(nameof(parseArrayLiteral));
 
-	let expectedToken = expect(context, TokenType.OpenBracket, parseArrayLiteral.name);
+	let expectedToken = expect(context, TokenType.OpenBracket, nameof(parseArrayLiteral));
 
 	if (expectedToken.error != null) {
 		return { error: expectedToken.error };
@@ -1230,7 +1240,7 @@ function parseArrayLiteral(context: ParserContext): Result<ArrayLiteral, ParserE
 	let token = peek(context);
 	while (token.type != TokenType.CloseBracket) {
 		if (elements.length > 0) {
-			expectedToken = expect(context, TokenType.Comma, parseArrayLiteral.name);
+			expectedToken = expect(context, TokenType.Comma, nameof(parseArrayLiteral));
 
 			if (expectedToken.error != null) {
 				return { error: expectedToken.error };
@@ -1251,12 +1261,12 @@ function parseArrayLiteral(context: ParserContext): Result<ArrayLiteral, ParserE
 			return { error: expression.error };
 		}
 
-		elements.push(expression.value!);
+		elements.push(expression.value);
 
 		token = peek(context);
 	}
 
-	expectedToken = expect(context, TokenType.CloseBracket, parseArrayLiteral.name);
+	expectedToken = expect(context, TokenType.CloseBracket, nameof(parseArrayLiteral));
 
 	if (expectedToken.error != null) {
 		return { error: expectedToken.error };
@@ -1273,8 +1283,8 @@ function parseArrayLiteral(context: ParserContext): Result<ArrayLiteral, ParserE
 }
 
 function parseBoolLiteral(context: ParserContext): Result<BooleanLiteral, ParserError> {
-	context.logger.enter(parseBoolLiteral.name);
-	const token = expect(context, [TokenType.True, TokenType.False], parseBoolLiteral.name);
+	context.logger.enter(nameof(parseBoolLiteral));
+	const token = expect(context, [TokenType.True, TokenType.False], nameof(parseBoolLiteral));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -1285,17 +1295,21 @@ function parseBoolLiteral(context: ParserContext): Result<BooleanLiteral, Parser
 	return {
 		value: {
 			kind: SyntaxKind.BooleanLiteral,
-			value: token.value?.type == TokenType.True,
+			value: token.value.type == TokenType.True,
 		},
 	};
 }
 
 function parseIntegerLiteral(context: ParserContext): Result<IntegerLiteral, ParserError> {
-	context.logger.enter(parseIntegerLiteral.name);
-	const token = expect(context, TokenType.Integer, parseIntegerLiteral.name);
+	context.logger.enter(nameof(parseIntegerLiteral));
+	const token = expect(context, TokenType.Integer, nameof(parseIntegerLiteral));
 
 	if (token.error != null) {
 		return { error: token.error };
+	}
+
+	if (token.value.text == null) {
+		return { error: createError(token.value, ParserErrorKind.TokenTextIsNull, `Expected token to have text value in ${nameof(parseIntegerLiteral)}.`) }
 	}
 
 	advance(context);
@@ -1303,17 +1317,21 @@ function parseIntegerLiteral(context: ParserContext): Result<IntegerLiteral, Par
 	return {
 		value: {
 			kind: SyntaxKind.IntegerLiteral,
-			value: <string>token.value?.text,
+			value: token.value.text,
 		},
 	};
 }
 
 function parseStringLiteral(context: ParserContext): Result<StringLiteral, ParserError> {
-	context.logger.enter(parseStringLiteral.name);
-	const token = expect(context, TokenType.String, parseIntegerLiteral.name);
+	context.logger.enter(nameof(parseStringLiteral));
+	const token = expect(context, TokenType.String, nameof(parseIntegerLiteral));
 
 	if (token.error != null) {
 		return { error: token.error };
+	}
+
+	if (token.value.text == null) {
+		return { error: createError(token.value, ParserErrorKind.TokenTextIsNull, `Expected token to have text value in ${nameof(parseStringLiteral)}.`) }
 	}
 
 	advance(context);
@@ -1321,7 +1339,7 @@ function parseStringLiteral(context: ParserContext): Result<StringLiteral, Parse
 	return {
 		value: {
 			kind: SyntaxKind.StringLiteral,
-			value: token.value!.text!,
+			value: token.value.text,
 		},
 	};
 }
