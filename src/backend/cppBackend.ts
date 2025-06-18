@@ -30,6 +30,7 @@ import {
 	VariableDeclaration,
 	WhileStatement,
 	ElementAccessExpression,
+	PropertyAccessExpression,
 } from "../frontend/ast.ts";
 import { int } from "../shims.ts";
 import { BackendContext } from "./backend.ts";
@@ -315,6 +316,10 @@ function emitExpression(context: CppBackendContext, sourceFile: SourceFile, expr
 			emitParenthesizedExpression(context, sourceFile, <ParenthesizedExpression>expression);
 			break;
 
+		case SyntaxKind.PropertyAccessExpression:
+			emitPropertyAccessExpression(context, sourceFile, <PropertyAccessExpression>expression);
+			break;
+
 		case SyntaxKind.StringLiteral:
 			emitStringLiteral(context, sourceFile, <StringLiteral>expression);
 			break;
@@ -408,10 +413,19 @@ function emitCallExpression(context: CppBackendContext, sourceFile: SourceFile, 
 function emitElementAccessExpression(context: CppBackendContext, sourceFile: SourceFile, elementAccessExpression: ElementAccessExpression) {
 	emitExpression(context, sourceFile, elementAccessExpression.expression);
 	context.append("[");
-
 	emitExpression(context, sourceFile, elementAccessExpression.argumentExpression);
-
 	context.append("]");
+}
+
+function emitPropertyAccessExpression(context: CppBackendContext, sourceFile: SourceFile, propertyAccessExpression: PropertyAccessExpression) {
+	emitExpression(context, sourceFile, propertyAccessExpression.expression);
+	context.append(".");
+	emitIdentifier(context, sourceFile, propertyAccessExpression.name);
+
+	// HACK: For now emit parenthesis if length.
+	if (propertyAccessExpression.name.value == "length") {
+		context.append("()");
+	}
 }
 
 function emitComparisonExpression(

@@ -56,6 +56,10 @@
 
 <CallExpression> := <Expression> "(" <Expression>? ("," <Expression>)* ")"
 
+<ElementAccessExpression> := <Expression> "[" <Expression> "]"
+
+<PropertyAccessExpression> := <Expression> "." <Identifier>
+
 <BoolLiteral> := "true" | "false"
 
 <IntLiteral> := <digit>*

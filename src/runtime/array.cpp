@@ -12,7 +12,7 @@ public:
   Array(Array &&source) { _data = source._data; }
 
   T operator[](size_t i) const { return _data[i]; }
-  T *operator&() const { return const_cast<T *>(&_data[0]); }
+  T* operator&() const { return const_cast<T *>(&_data[0]); }
 
   size_t length() const { return _data.size(); }
 

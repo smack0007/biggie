@@ -39,6 +39,8 @@ export enum SyntaxKind {
 
 	ParenthesizedExpression,
 
+	PropertyAccessExpression,
+
 	ReturnStatement,
 
 	SourceFile,
@@ -281,6 +283,14 @@ export interface ElementAccessExpression extends Expression {
 	readonly expression: Expression;
 
 	readonly argumentExpression: Expression;
+}
+
+export interface PropertyAccessExpression extends Expression {
+	readonly kind: SyntaxKind.PropertyAccessExpression;
+
+	readonly expression: Expression;
+
+	readonly name: Identifier;
 }
 
 export interface TypeNode extends SyntaxNode { }
