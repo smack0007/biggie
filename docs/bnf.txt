@@ -3,7 +3,7 @@
 <TopLevelStatement> := <VarDeclaration> |
                         <FuncDeclaration>
 
-<VarDeclaration> := "var" <Identifier> ":" <TypeName> ( "=" <Expression> ) ";"
+<VarDeclaration> := ( "const" | "let" ) <Identifier> ":" <TypeName> ( "=" <Expression> ) ";"
 
 <FuncDeclaration> := "function" <Identifier> "(" <FuncParameters> ")" ":" <TypeName> <StatementBlock>
 

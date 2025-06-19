@@ -198,8 +198,9 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 
 	let result: Result<Statement, ParserError>;
 	switch (token.type) {
-		case TokenType.Var:
-			result = parseVarDeclaration(context);
+		case TokenType.Const:
+		case TokenType.Let:
+			result = parseVariableDeclaration(context);
 			break;
 
 		case TokenType.Func:
@@ -219,9 +220,9 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 	return result;
 }
 
-function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration, ParserError> {
-	context.logger.enter(nameof(parseVarDeclaration));
-	let token = expect(context, TokenType.Var, nameof(parseVarDeclaration));
+function parseVariableDeclaration(context: ParserContext): Result<VariableDeclaration, ParserError> {
+	context.logger.enter(nameof(parseVariableDeclaration));
+	let token = expect(context, [TokenType.Const, TokenType.Let], nameof(parseVariableDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -234,7 +235,7 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
 		return { error: identifier.error };
 	}
 
-	token = expect(context, TokenType.Colon, nameof(parseVarDeclaration));
+	token = expect(context, TokenType.Colon, nameof(parseVariableDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -258,7 +259,7 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
 		}
 	}
 
-	token = expect(context, TokenType.EndStatement, nameof(parseVarDeclaration));
+	token = expect(context, TokenType.EndStatement, nameof(parseVariableDeclaration));
 
 	if (token.error != null) {
 		return { error: token.error };
@@ -269,8 +270,9 @@ function parseVarDeclaration(context: ParserContext): Result<VariableDeclaration
 	return {
 		value: {
 			kind: SyntaxKind.VariableDeclaration,
-			name: identifier.value!,
-			type: type.value!,
+			isConst: token.value.type == TokenType.Const,
+			name: identifier.value,
+			type: type.value,
 			expression: expression.value!,
 		},
 	};
@@ -422,8 +424,9 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
 
 	let result: Result<Statement, ParserError>;
 	switch (token.type) {
-		case TokenType.Var:
-			result = parseVarDeclaration(context);
+		case TokenType.Const:
+		case TokenType.Let:
+			result = parseVariableDeclaration(context);
 			break;
 
 		case TokenType.Defer:
