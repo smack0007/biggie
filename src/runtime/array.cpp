@@ -1,7 +1,8 @@
 #include <fmt/format.h>
 #include <vector>
 
-template <typename T> class Array {
+template <typename T>
+class Array {
   std::vector<T> _data;
 
 public:
@@ -12,7 +13,7 @@ public:
   Array(Array &&source) { _data = source._data; }
 
   T operator[](size_t i) const { return _data[i]; }
-  T* operator&() const { return const_cast<T *>(&_data[0]); }
+  T *operator&() const { return const_cast<T *>(&_data[0]); }
 
   size_t length() const { return _data.size(); }
 
@@ -28,10 +29,15 @@ public:
   }
 };
 
-template <typename T> struct fmt::formatter<Array<T>> {
-  template <typename ParseContext> constexpr auto parse(ParseContext &ctx) { return ctx.begin(); }
+template <typename T>
+struct fmt::formatter<Array<T>> {
+  template <typename ParseContext>
+  constexpr auto parse(ParseContext &ctx) {
+    return ctx.begin();
+  }
 
-  template <typename FormatContext> auto format(Array<T> const &array, FormatContext &ctx) {
+  template <typename FormatContext>
+  auto format(Array<T> const &array, FormatContext &ctx) {
     fmt::format_to(ctx.out(), "[");
 
     for (size_t i = 0; i < array.length(); i++) {

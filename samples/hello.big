@@ -1,5 +1,10 @@
-func sayHello(name: string): void {
-  println("Hello {0}!", name);
+struct Person {
+  name: string;
+  age: int32;
+}
+
+func sayHello(person: Person): void {
+  println("Hello {0}, you are {1} years old!", person.name, person.age);
 }
 
 func sayGoodbye(name: string): void {
@@ -10,8 +15,8 @@ func main(): int32 {
   defer sayGoodbye("Lamp");
   defer sayGoodbye("World");
   
-  const name: string = "Bobby";
-  sayHello(name);
+  const person: Person = { "Buddy", 42 };
+  sayHello(person);
 
 	let value: int32 = 42;
   println("{} == 42 = {}", value, value == 42);

@@ -1,10 +1,14 @@
 template <typename T>
 struct __DeferFunc {
   T func;
+
   __DeferFunc(T func) : func(func) {}
+
   ~__DeferFunc() { func(); }
+
   __DeferFunc(const __DeferFunc &other) : func(other.func) {}
-  __DeferFunc &operator=(const __DeferFunc &other) { func = other.lamda; };
+
+  __DeferFunc &operator=(const __DeferFunc &other) { func = other.func; };
 };
 
 struct __CaptureDeferFunc {
