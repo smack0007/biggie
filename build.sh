@@ -1,16 +1,11 @@
 #!/bin/bash
-ROOT_PATH=$(dirname $0)
-BIN_PATH="./bin"
-SAMPLES_PATH="./samples"
-SRC_PATH="./src"
-set -e
+set -eu
 
-cd ${ROOT_PATH}
-mkdir -p ${BIN_PATH}
+SRC_PATH="$(dirname $0)/src"
 
-mkdir -p ${BIN_PATH}/hello
-deno run -q --allow-read ${SRC_PATH}/main.ts ${SAMPLES_PATH}/hello.big > ${BIN_PATH}/hello/hello.cpp
-# deno run ${BIN_PATH}/hello/hello.mjs
+mkdir -p $(dirname ${2})
 
-clang++ -std=c++20 -D_CRT_SECURE_NO_WARNINGS -I ./ext/fmt/include -I ./src/runtime  ${BIN_PATH}/hello/hello.cpp -o ${BIN_PATH}/hello/hello
-${BIN_PATH}/hello/hello
+deno run -q --allow-read ${SRC_PATH}/main.ts ${1} > ${2}.cpp
+
+clang++ -std=c++20 -D_CRT_SECURE_NO_WARNINGS -I ./ext/fmt/include -I ./src/runtime  ${2}.cpp -o ${2}
+

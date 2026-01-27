@@ -5,7 +5,6 @@ import { emitCpp } from "./backend/cppBackend.ts";
 import { scan } from "./frontend/scanner.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
 import { lower } from "./frontend/lowering.ts";
-import { BackendContext } from "./backend/backend.ts";
 
 main(process.argv.slice(2)).then(process.exit);
 

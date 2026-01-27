@@ -1,0 +1,27 @@
+func main(): int32 {
+  println("{0}", 1 + 2);
+  println("{0}", 2 - 1);
+  println("{0}", 21 * 2);
+  println("{0}", 42 / 2);
+  println("{0}", 1 + 2 * 3);
+  println("{0}", 4 * (2 + 3));
+
+  let value: int32 = 42;
+
+  value += 12;
+  println("{0}", value);
+
+  value -= 24;
+  println("{0}", value);
+
+  value *= 2;
+  println("{0}", value);
+
+  value /= 6;
+  println("{0}", value);
+
+  value = -value;
+  println("{0}", value);
+
+  return 0;
+}
