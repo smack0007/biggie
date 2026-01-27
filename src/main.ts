@@ -5,6 +5,7 @@ import { emitCpp } from "./backend/cppBackend.ts";
 import { scan } from "./frontend/scanner.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
 import { lower } from "./frontend/lowering.ts";
+import { BackendContext } from "./backend/backend.ts";
 
 main(process.argv.slice(2)).then(process.exit);
 
@@ -29,7 +30,7 @@ async function main(argv: string[]): Promise<i32> {
     process.stderr.write(
       `Error: (${sourceFile.error.line}, ${sourceFile.error.column}) ${ParserErrorKind[sourceFile.error.kind]} ${
         sourceFile.error.message
-      }\n`
+      }\n`,
     );
 
     return 1;
@@ -37,13 +38,19 @@ async function main(argv: string[]): Promise<i32> {
     let buffer = "";
 
     emitCpp(sourceFile.value!, {
-      append: (value: string) => {
+      indentLevel: 0,
+      append: function (value: string) {
+        if (buffer.length == 0 || buffer[buffer.length - 1] == "\n") {
+          for (let i = 0; i < this.indentLevel; i++) {
+            buffer += "\t";
+          }
+        }
         buffer += value;
       },
-      prepend: (value: string) => {
+      prepend: function (value: string) {
         buffer = value + buffer;
       },
-      remove: (count: u64) => {
+      remove: function (count: u64) {
         buffer = buffer.substring(0, buffer.length - count);
       },
     });

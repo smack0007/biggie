@@ -34,25 +34,14 @@ import {
   StructDeclaration,
   StructLiteral,
 } from "../frontend/ast.ts";
-import { int, nameof } from "../shims.ts";
+import { nameof } from "../shims.ts";
 import { BackendContext } from "./backend.ts";
 
-interface CppBackendContext extends BackendContext {
-  indentLevel: int;
-  indent: () => void;
-}
+interface CppBackendContext extends BackendContext {}
 
 export function emitCpp(sourceFile: SourceFile, baseContext: BackendContext): void {
   const context: CppBackendContext = {
     ...baseContext,
-
-    indentLevel: 0,
-
-    indent: () => {
-      for (let i = 0; i < context.indentLevel; i++) {
-        baseContext.append("\t");
-      }
-    },
   };
 
   emitPreamble(context);
@@ -137,7 +126,6 @@ function emitStructDeclaration(
     const member = structDeclaration.members[i];
     const memberType = member.type.value;
     const memberName = member.name.value;
-    context.indent();
     context.append(`${memberType} ${memberName};\n`);
   }
   context.indentLevel -= 1;
@@ -150,12 +138,10 @@ function emitStatementBlock(context: CppBackendContext, sourceFile: SourceFile, 
   context.indentLevel += 1;
 
   for (const statement of statementBlock.statements) {
-    context.indent();
     emitBlockLevelStatement(context, sourceFile, statement);
   }
 
   context.indentLevel -= 1;
-  context.indent();
   context.append("}");
 }
 
@@ -557,7 +543,6 @@ function emitStructLiteral(context: CppBackendContext, sourceFile: SourceFile, s
   context.indentLevel += 1;
 
   for (const element of structLiteral.elements) {
-    context.indent();
     if (element.name) {
       context.append(`${element.name}: `);
     }

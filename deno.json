@@ -1,1 +1,8 @@
-{}
+{
+  "compilerOptions": {
+    "lib": ["deno.window", "deno.unstable", "node"],
+    "strict": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true
+  }
+}
