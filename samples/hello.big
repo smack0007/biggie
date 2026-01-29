@@ -18,30 +18,6 @@ func main(): int32 {
   const person: Person = { "Buddy", 42 };
   sayHello(person);
 
-	let value: int32 = 42;
-  println("{} == 42 = {}", value, value == 42);
-  println("{0} > 42 = {1}", value, value > 42);
-  println("1 + 2 = {0}", 1 + 2);
-  println("3 * 4 = {0}", 3 * 4);
-  println("!true = {0}", !true);
-  println("1 + 2 * 3 = {0}", 1 + 2 * 3);
-  println("4 * (2 + 3) = {0}", 4 * (2 + 3));
-
-  value += 12;
-  println("value = 54, value = {0}", value);
-
-  value -= 24;
-  println("value = 30, value = {0}", value);
-
-  value *= 2;
-  println("value = 60, value = {0}", value);
-
-  value /= 6;
-  println("value = 10, value = {0}", value);
-
-  value = -value;
-  println("value = -10, value = {0}", value);
-
   let x: int32 = 0;
   let y: int32 = 0;
   let z: int32 = 0;

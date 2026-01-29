@@ -21,7 +21,7 @@ typedef uint64_t uint64;
 typedef std::string string;
 
 template <typename... T>
-void println(fmt::format_string<T...> format, T &&...args) {
+void println(fmt::format_string<T...> format, T&&... args) {
   fmt::println(format, std::forward<T>(args)...);
 }
 

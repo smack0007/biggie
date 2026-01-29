@@ -15,6 +15,7 @@ export type Result<Value, Error> =
 
 export type OrNull<T> = T | null;
 
+// deno-lint-ignore ban-types
 export function nameof(value: Function): string {
   return (value as unknown as { name: string }).name;
 }

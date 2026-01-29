@@ -35,7 +35,9 @@ async function build(file: string): Promise<string> {
   return outputFile;
 }
 
-for (const file of (await fs.readdir(path.join(dirname, "output"))).filter((file) => file.endsWith(".big"))) {
+const sourceFiles = (await fs.readdir(path.join(dirname, "output"))).filter((file) => file.endsWith(".big")).sort();
+
+for (const file of sourceFiles) {
   Deno.test(file, async () => {
     const filePath = path.join(dirname, "output", file);
 

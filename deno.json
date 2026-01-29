@@ -4,5 +4,8 @@
     "strict": true,
     "noImplicitAny": true,
     "noImplicitReturns": true
+  },
+  "fmt": {
+    "lineWidth": 120
   }
 }

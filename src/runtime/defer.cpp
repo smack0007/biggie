@@ -6,9 +6,9 @@ struct __DeferFunc {
 
   ~__DeferFunc() { func(); }
 
-  __DeferFunc(const __DeferFunc &other) : func(other.func) {}
+  __DeferFunc(const __DeferFunc& other) : func(other.func) {}
 
-  __DeferFunc &operator=(const __DeferFunc &other) { func = other.func; };
+  __DeferFunc& operator=(const __DeferFunc& other) { func = other.func; };
 };
 
 struct __CaptureDeferFunc {
@@ -18,4 +18,4 @@ struct __CaptureDeferFunc {
   }
 };
 
-#define defer const auto &CONCAT(__defer_, __LINE__) = __CaptureDeferFunc() + [&]()
+#define defer const auto& CONCAT(__defer_, __LINE__) = __CaptureDeferFunc() + [&]()

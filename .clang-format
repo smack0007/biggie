@@ -8,4 +8,5 @@ UseTab: Never
 AlwaysBreakTemplateDeclarations: true
 AllowShortIfStatementsOnASingleLine: false
 AlignTrailingComments: true
+PointerAlignment: Left
 SpacesBeforeTrailingComments: 1

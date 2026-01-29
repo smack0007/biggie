@@ -544,7 +544,7 @@ function emitStructLiteral(context: CppBackendContext, sourceFile: SourceFile, s
 
   for (const element of structLiteral.elements) {
     if (element.name) {
-      context.append(`${element.name}: `);
+      context.append(`.${element.name.value} = `);
     }
 
     emitExpression(context, sourceFile, element.expression);
