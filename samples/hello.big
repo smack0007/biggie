@@ -1,48 +1,19 @@
 struct Person {
   name: string;
-  age: int32;
+  age: int;
 }
 
 func sayHello(person: Person): void {
-  println("Hello {0}, you are {1} years old!", person.name, person.age);
+  println("Hello %s, you are %d years old!", person.name, person.age);
 }
 
-func sayGoodbye(name: string): void {
-  println("Goodbye {0}!", name);
-}
-
-func main(): int32 {  
+func main(): int {  
   var person: Person = { "Buddy", 42 };
   sayHello(person);
 
-  var x: int32 = 0;
-  var y: int32 = 0;
-  var z: int32 = 0;
-  x = y = z = 99;
-  println("x = {0}, y = {1}, z = {2}", x, y, z);
-  println("x == y == true := {0}", x == y == true);
-  println("x == y && x == z := {0}", x == y && x == z);
-  println("x == y || y == z := {0}", x == y || x == z);
-
-  if (z == 99) {
-    println("z == 99");
-  }
-
-  if (x == 55) {
-    println("x == 55");
-  } else {
-    println("x != 55");
-  }
-
-  var count: int32 = 0;
-  while (count < 3) {
-    count += 1;
-    println("count = {0}", count);
-  }
-  
-  var data: []int32 = [ 1, 2, 3, 4, ];
-  var ptr: *int32 = &data;
-  println("{0}", *ptr);
+  var data: []int = [ 1, 2, 3, 4 ];
+  var ptr: *int = &data[1];
+  println("%d", *ptr);
 
   return 0;
 }

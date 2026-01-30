@@ -5,10 +5,10 @@ struct Person {
 
 func main(): int {
   var person1: Person = { "Buddy", 42 };
-  println("Name: {0}, Age: {1}", person1.name, person1.age);
+  println("Name: %s, Age: %d", person1.name, person1.age);
 
   var person2: Person = { age: 12, name: "Tommy" };
-  println("Name: {0}, Age: {1}", person2.name, person2.age);
+  println("Name: %s, Age: %d", person2.name, person2.age);
 
   return 0;
 }

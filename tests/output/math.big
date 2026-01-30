@@ -1,27 +1,27 @@
 func main(): int32 {
-  println("{0}", 1 + 2);
-  println("{0}", 2 - 1);
-  println("{0}", 21 * 2);
-  println("{0}", 42 / 2);
-  println("{0}", 1 + 2 * 3);
-  println("{0}", 4 * (2 + 3));
+  println("%d", 1 + 2);
+  println("%d", 2 - 1);
+  println("%d", 21 * 2);
+  println("%d", 42 / 2);
+  println("%d", 1 + 2 * 3);
+  println("%d", 4 * (2 + 3));
 
   var value: int32 = 42;
 
   value += 12;
-  println("{0}", value);
+  println("%d", value);
 
   value -= 24;
-  println("{0}", value);
+  println("%d", value);
 
   value *= 2;
-  println("{0}", value);
+  println("%d", value);
 
   value /= 6;
-  println("{0}", value);
+  println("%d", value);
 
   value = -value;
-  println("{0}", value);
+  println("%d", value);
 
   return 0;
 }

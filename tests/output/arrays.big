@@ -1,8 +1,9 @@
 func main(): int {
   var data: []int = [ 1, 2, 3, 4 ];
   
-  println("[{0}]{1}", data.length data);
-  println("{0} {1} {2} {3}", data[0], data[1], data[2], data[3]);
+  // TODO: Reimplement data.length
+  println("[4][ %d, %d, %d, %d ]", data[0], data[1], data[2], data[3]);
+  println("%d %d %d %d", data[0], data[1], data[2], data[3]);
 
   return 0;
 }
