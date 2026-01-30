@@ -103,11 +103,11 @@ export enum TokenType {
   // =
   Equals,
 
-  // !
-  Exclamation,
-
   // ==
   EqualsEquals,
+
+  // !
+  Exclamation,
 
   // !=
   ExclamationEquals,
@@ -148,8 +148,14 @@ export enum TokenType {
   // /=
   SlashEquals,
 
+  // &
+  Ampersand,
+
   // &&
   AmpersandAmpersand,
+
+  // |
+  Bar,
 
   // ||
   BarBar,
@@ -351,19 +357,26 @@ export function scan(text: string): Array<Token> {
         } else {
           token.push({ type: TokenType.Slash, text: null, line: line, column: column });
         }
-      } else if (text[i] == "&" && i + 1 < text.length && text[i + 1] == "&") {
-        // And
-        token.push({ type: TokenType.AmpersandAmpersand, text: null, line: line, column: column });
-        i += 1;
-        curColumn += 1;
+      } else if (text[i] == "&") {
+        if (i + 1 < text.length && text[i + 1] == "&") {
+          // &&
+          token.push({ type: TokenType.AmpersandAmpersand, text: null, line: line, column: column });
+          i += 1;
+          curColumn += 1;
+        } else {
+          // &
+          token.push({ type: TokenType.Ampersand, text: null, line: line, column: column });
+        }
       } else if (text[i] == "|") {
         // LogicalOr or ClosePipeBracket
-        if (i + 1 < text.length) {
-          if (text[i + 1] == "|") {
-            token.push({ type: TokenType.BarBar, text: null, line: line, column: column });
-            i += 1;
-            curColumn += 1;
-          }
+        if (i + 1 < text.length && text[i + 1] == "|") {
+          // ||
+          token.push({ type: TokenType.BarBar, text: null, line: line, column: column });
+          i += 1;
+          curColumn += 1;
+        } else {
+          // |
+          token.push({ type: TokenType.Bar, text: null, line: line, column: column });
         }
       } else if (isLetter(text[i]) || text[i] == "_") {
         // Identifier

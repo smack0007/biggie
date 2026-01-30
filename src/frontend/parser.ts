@@ -21,6 +21,7 @@ import {
   MultiplcativeExpression,
   Operator,
   ParenthesizedExpression,
+  PointerType,
   PropertyAccessExpression,
   ReturnStatement,
   SourceFile,
@@ -1030,7 +1031,12 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
   context.logger.enter(nameof(parseUnaryExpression));
 
   const operatorToken = peek(context);
-  if (operatorToken.type == TokenType.Exclamation || operatorToken.type == TokenType.Minus) {
+  if (
+    operatorToken.type == TokenType.Ampersand ||
+    operatorToken.type == TokenType.Asterisk ||
+    operatorToken.type == TokenType.Exclamation ||
+    operatorToken.type == TokenType.Minus
+  ) {
     advance(context);
 
     const expression = parseUnaryExpression(context);
@@ -1039,10 +1045,29 @@ function parseUnaryExpression(context: ParserContext): Result<Expression, Parser
       return { error: expression.error };
     }
 
+    let operator: Operator = Operator.Asterisk;
+    switch (operatorToken.type) {
+      case TokenType.Ampersand:
+        operator = Operator.Ampersand;
+        break;
+
+      case TokenType.Asterisk:
+        operator = Operator.Asterisk;
+        break;
+
+      case TokenType.Exclamation:
+        operator = Operator.Exclamation;
+        break;
+
+      case TokenType.Minus:
+        operator = Operator.Minus;
+        break;
+    }
+
     const result: Result<UnaryExpression, ParserError> = {
       value: {
         kind: SyntaxKind.UnaryExpression,
-        operator: operatorToken.type == TokenType.Exclamation ? Operator.Exclamation : Operator.Minus,
+        operator,
         expression: expression.value,
       },
     };
@@ -1260,11 +1285,38 @@ function parseType(context: ParserContext): Result<TypeNode, ParserError> {
   context.logger.enter(nameof(parseType));
 
   const token = peek(context);
-  if (token.type === TokenType.OpenBracket) {
+  if (token.type == TokenType.Asterisk) {
+    return parsePointerType(context);
+  } else if (token.type == TokenType.OpenBracket) {
     return parseArrayType(context);
   } else {
     return parseTypeReference(context);
   }
+}
+
+function parsePointerType(context: ParserContext): Result<PointerType, ParserError> {
+  context.logger.enter(nameof(parsePointerType));
+
+  const expected = expect(context, TokenType.Asterisk, nameof(parsePointerType));
+
+  if (expected.error) {
+    return { error: expected.error };
+  }
+
+  advance(context);
+
+  const elementType = parseType(context);
+
+  if (elementType.error) {
+    return { error: elementType.error };
+  }
+
+  return {
+    value: {
+      kind: SyntaxKind.PointerType,
+      elementType: elementType.value,
+    },
+  };
 }
 
 function parseArrayType(context: ParserContext): Result<ArrayType, ParserError> {

@@ -33,6 +33,7 @@ import {
   PropertyAccessExpression,
   StructDeclaration,
   StructLiteral,
+  PointerType,
 } from "../frontend/ast.ts";
 import { nameof } from "../shims.ts";
 import { BackendContext } from "./backend.ts";
@@ -262,6 +263,10 @@ function emitType(context: CppBackendContext, sourceFile: SourceFile, type: Type
       emitArrayType(context, sourceFile, type as ArrayType);
       break;
 
+    case SyntaxKind.PointerType:
+      emitPointerType(context, sourceFile, type as PointerType);
+      break;
+
     case SyntaxKind.TypeReference:
       emitTypeReference(context, sourceFile, type as TypeReference);
       break;
@@ -272,6 +277,11 @@ function emitArrayType(context: CppBackendContext, sourceFile: SourceFile, array
   context.append("Array<");
   emitType(context, sourceFile, arrayType.elementType);
   context.append(">");
+}
+
+function emitPointerType(context: CppBackendContext, sourceFile: SourceFile, pointerType: PointerType) {
+  emitType(context, sourceFile, pointerType.elementType);
+  context.append("*");
 }
 
 function emitTypeReference(context: CppBackendContext, sourceFile: SourceFile, typeReference: TypeReference) {
@@ -557,7 +567,23 @@ function emitStructLiteral(context: CppBackendContext, sourceFile: SourceFile, s
 }
 
 function emitUnaryExpression(context: CppBackendContext, sourceFile: SourceFile, expression: UnaryExpression) {
-  context.append(expression.operator == Operator.Exclamation ? "!" : "-");
+  switch (expression.operator) {
+    case Operator.Ampersand:
+      context.append("&");
+      break;
+    case Operator.Asterisk:
+      context.append("*");
+      break;
+    case Operator.Exclamation:
+      context.append("!");
+      break;
+    case Operator.Minus:
+      context.append("-");
+      break;
+    default:
+      emitUnexpectedNode(context, nameof(emitUnaryExpression), sourceFile, expression);
+      break;
+  }
 
   emitExpression(context, sourceFile, expression.expression);
 }

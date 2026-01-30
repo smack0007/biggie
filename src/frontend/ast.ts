@@ -39,6 +39,8 @@ export enum SyntaxKind {
 
   ParenthesizedExpression,
 
+  PointerType,
+
   PropertyAccessExpression,
 
   ReturnStatement,
@@ -69,6 +71,8 @@ export enum SyntaxKind {
 }
 
 export enum Operator {
+  Ampersand,
+
   AmpersandAmpersand,
 
   Asterisk,
@@ -282,7 +286,7 @@ export interface MultiplcativeExpression extends Expression {
 export interface UnaryExpression extends Expression {
   readonly kind: SyntaxKind.UnaryExpression;
 
-  readonly operator: Operator.Exclamation | Operator.Minus;
+  readonly operator: Operator.Ampersand | Operator.Asterisk | Operator.Exclamation | Operator.Minus;
 
   readonly expression: Expression;
 }
@@ -318,6 +322,12 @@ export interface PropertyAccessExpression extends Expression {
 }
 
 export interface TypeNode extends SyntaxNode {}
+
+export interface PointerType extends TypeNode {
+  readonly kind: SyntaxKind.PointerType;
+
+  readonly elementType: TypeNode;
+}
 
 export interface ArrayType extends TypeNode {
   readonly kind: SyntaxKind.ArrayType;

@@ -11,10 +11,7 @@ func sayGoodbye(name: string): void {
   println("Goodbye {0}!", name);
 }
 
-func main(): int32 {
-  defer sayGoodbye("Lamp");
-  defer sayGoodbye("World");
-  
+func main(): int32 {  
   const person: Person = { "Buddy", 42 };
   sayHello(person);
 
@@ -42,10 +39,10 @@ func main(): int32 {
     count += 1;
     println("count = {0}", count);
   }
-
+  
   const data: []int32 = [ 1, 2, 3, 4, ];
-  println("data.length = {0}", data.length);
-	println("data = {0}", data);
+  const ptr: *int32 = &data;
+  println("{0}", *ptr);
 
   return 0;
 }
