@@ -67,11 +67,8 @@ export enum TokenType {
   // ;
   EndStatement,
 
-  // const
-  Const,
-
-  // let
-  Let,
+  // var
+  Var,
 
   // .
   Dot,
@@ -438,14 +435,6 @@ export function scan(text: string): Array<Token> {
             token.push({ type: TokenType.Import, text: null, line: line, column: column });
             break;
 
-          case "const":
-            token.push({ type: TokenType.Const, text: null, line: line, column: column });
-            break;
-
-          case "let":
-            token.push({ type: TokenType.Let, text: null, line: line, column: column });
-            break;
-
           case "func":
             token.push({ type: TokenType.Func, text: null, line: line, column: column });
             break;
@@ -492,6 +481,10 @@ export function scan(text: string): Array<Token> {
 
           case "false":
             token.push({ type: TokenType.False, text: null, line: line, column: column });
+            break;
+
+          case "var":
+            token.push({ type: TokenType.Var, text: null, line: line, column: column });
             break;
 
           default:

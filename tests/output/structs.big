@@ -4,10 +4,10 @@ struct Person {
 }
 
 func main(): int {
-  const person1: Person = { "Buddy", 42 };
+  var person1: Person = { "Buddy", 42 };
   println("Name: {0}, Age: {1}", person1.name, person1.age);
 
-  const person2: Person = { age: 12, name: "Tommy" };
+  var person2: Person = { age: 12, name: "Tommy" };
   println("Name: {0}, Age: {1}", person2.name, person2.age);
 
   return 0;

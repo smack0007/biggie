@@ -129,8 +129,6 @@ export interface Statement extends SyntaxNode {
 export interface VariableDeclaration extends Statement {
   readonly kind: SyntaxKind.VariableDeclaration;
 
-  readonly isConst: boolean;
-
   readonly name: Identifier;
 
   readonly type: TypeNode;

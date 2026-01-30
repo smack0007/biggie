@@ -205,8 +205,7 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 
   let result: Result<Statement, ParserError>;
   switch (token.type) {
-    case TokenType.Const:
-    case TokenType.Let:
+    case TokenType.Var:
       result = parseVariableDeclaration(context);
       break;
 
@@ -233,7 +232,7 @@ function parseTopLevelStatement(context: ParserContext): Result<Statement, Parse
 
 function parseVariableDeclaration(context: ParserContext): Result<VariableDeclaration, ParserError> {
   context.logger.enter(nameof(parseVariableDeclaration));
-  let token = expect(context, [TokenType.Const, TokenType.Let], nameof(parseVariableDeclaration));
+  let token = expect(context, TokenType.Var, nameof(parseVariableDeclaration));
 
   if (token.error != null) {
     return { error: token.error };
@@ -281,7 +280,6 @@ function parseVariableDeclaration(context: ParserContext): Result<VariableDeclar
   return {
     value: {
       kind: SyntaxKind.VariableDeclaration,
-      isConst: token.value.type == TokenType.Const,
       name: identifier.value,
       type: type.value,
       expression: expression.value!,
@@ -526,8 +524,7 @@ function parseBlockLevelStatement(context: ParserContext): Result<Statement, Par
 
   let result: Result<Statement, ParserError>;
   switch (token.type) {
-    case TokenType.Const:
-    case TokenType.Let:
+    case TokenType.Var:
       result = parseVariableDeclaration(context);
       break;
 

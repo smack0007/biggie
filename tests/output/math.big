@@ -6,7 +6,7 @@ func main(): int32 {
   println("{0}", 1 + 2 * 3);
   println("{0}", 4 * (2 + 3));
 
-  let value: int32 = 42;
+  var value: int32 = 42;
 
   value += 12;
   println("{0}", value);

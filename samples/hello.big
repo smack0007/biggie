@@ -12,12 +12,12 @@ func sayGoodbye(name: string): void {
 }
 
 func main(): int32 {  
-  const person: Person = { "Buddy", 42 };
+  var person: Person = { "Buddy", 42 };
   sayHello(person);
 
-  let x: int32 = 0;
-  let y: int32 = 0;
-  let z: int32 = 0;
+  var x: int32 = 0;
+  var y: int32 = 0;
+  var z: int32 = 0;
   x = y = z = 99;
   println("x = {0}, y = {1}, z = {2}", x, y, z);
   println("x == y == true := {0}", x == y == true);
@@ -34,14 +34,14 @@ func main(): int32 {
     println("x != 55");
   }
 
-  let count: int32 = 0;
+  var count: int32 = 0;
   while (count < 3) {
     count += 1;
     println("count = {0}", count);
   }
   
-  const data: []int32 = [ 1, 2, 3, 4, ];
-  const ptr: *int32 = &data;
+  var data: []int32 = [ 1, 2, 3, 4, ];
+  var ptr: *int32 = &data;
   println("{0}", *ptr);
 
   return 0;
