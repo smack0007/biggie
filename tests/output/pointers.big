@@ -1,0 +1,11 @@
+func main(): int {
+  var data: []int = [ 1, 2, 3, 4 ];
+  
+  var ptr1: *int = &data[0];
+  println("%d", *ptr1);  
+
+  var ptr2: *int = &data[1];
+  println("%d", *ptr2);  
+
+  return 0;
+}

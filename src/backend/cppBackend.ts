@@ -15,7 +15,7 @@ import {
   IfStatement,
   IntegerLiteral,
   LogicalExpression,
-  MultiplcativeExpression,
+  MultiplicativeExpression,
   Operator,
   ParenthesizedExpression,
   ReturnStatement,
@@ -335,7 +335,7 @@ function emitExpression(context: CppBackendContext, sourceFile: SourceFile, expr
       break;
 
     case SyntaxKind.MultiplicativeExpression:
-      emitMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
+      emitMultiplicativeExpression(context, sourceFile, <MultiplicativeExpression>expression);
       break;
 
     case SyntaxKind.ParenthesizedExpression:
@@ -525,7 +525,7 @@ function emitLogicalExpression(context: CppBackendContext, sourceFile: SourceFil
 function emitMultiplicativeExpression(
   context: CppBackendContext,
   sourceFile: SourceFile,
-  expression: MultiplcativeExpression,
+  expression: MultiplicativeExpression,
 ) {
   emitExpression(context, sourceFile, expression.lhs);
 

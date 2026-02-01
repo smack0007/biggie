@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { emitC } from "./backend/cBackend.ts";
 import { scan } from "./frontend/scanner.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
-import { int } from "./shims.ts";
+import { int, isError, isSuccess } from "./shims.ts";
 
 main(process.argv.slice(2)).then(process.exit);
 
@@ -24,18 +24,10 @@ async function main(argv: string[]): Promise<int> {
     //   console.info(`/* ${name} (${token.line}, ${token.column}) <${token.text}> */`),
   });
 
-  if (sourceFile.error != null) {
-    process.stderr.write(
-      `Error: (${sourceFile.error.line}, ${sourceFile.error.column}) ${ParserErrorKind[sourceFile.error.kind]} ${
-        sourceFile.error.message
-      }\n`,
-    );
-
-    return 1;
-  } else {
+  if (isSuccess(sourceFile)) {
     let buffer = "";
 
-    emitC(sourceFile.value!, {
+    emitC(sourceFile.value, {
       indentLevel: 0,
       append: function (value: string) {
         if (buffer.length == 0 || buffer[buffer.length - 1] == "\n") {
@@ -54,6 +46,14 @@ async function main(argv: string[]): Promise<int> {
     });
 
     console.info(buffer);
+  } else if (isError(sourceFile)) {
+    process.stderr.write(
+      `Error: (${sourceFile.error.line}, ${sourceFile.error.column}) ${ParserErrorKind[sourceFile.error.kind]} ${
+        sourceFile.error.message
+      }\n`,
+    );
+
+    return 1;
   }
 
   return 0;

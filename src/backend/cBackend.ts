@@ -15,7 +15,7 @@ import {
   IfStatement,
   IntegerLiteral,
   LogicalExpression,
-  MultiplcativeExpression,
+  MultiplicativeExpression,
   Operator,
   ParenthesizedExpression,
   ReturnStatement,
@@ -392,7 +392,7 @@ function emitExpression(context: CBackendContext, sourceFile: SourceFile, expres
       break;
 
     case SyntaxKind.MultiplicativeExpression:
-      emitMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
+      emitMultiplicativeExpression(context, sourceFile, <MultiplicativeExpression>expression);
       break;
 
     case SyntaxKind.ParenthesizedExpression:
@@ -578,7 +578,7 @@ function emitLogicalExpression(context: CBackendContext, sourceFile: SourceFile,
 function emitMultiplicativeExpression(
   context: CBackendContext,
   sourceFile: SourceFile,
-  expression: MultiplcativeExpression,
+  expression: MultiplicativeExpression,
 ) {
   emitExpression(context, sourceFile, expression.lhs);
 

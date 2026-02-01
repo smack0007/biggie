@@ -18,7 +18,7 @@ import {
   SyntaxNode,
   VariableDeclaration,
   AdditiveExpression,
-  MultiplcativeExpression,
+  MultiplicativeExpression,
   UnaryExpression,
   ParenthesizedExpression,
   AssignmentExpression,
@@ -88,7 +88,7 @@ function outputUnexpectedNode(
   context: JSBackendContext,
   functionName: string,
   sourceFile: SourceFile,
-  node: SyntaxNode
+  node: SyntaxNode,
 ): void {
   context.append(`/* Unexpected node in "${functionName}": ${SyntaxKind[node.kind]} ${sourceFile.fileName} */`);
 }
@@ -108,7 +108,7 @@ function outputTopLevelStatement(context: JSBackendContext, sourceFile: SourceFi
 function outputFunctionDeclaration(
   context: JSBackendContext,
   sourceFile: SourceFile,
-  functionDeclaration: FunctionDeclaration
+  functionDeclaration: FunctionDeclaration,
 ): void {
   const returnType: string = functionDeclaration.returnType.name.value;
   const name: string = functionDeclaration.name.value;
@@ -263,7 +263,7 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
       break;
 
     case SyntaxKind.MultiplicativeExpression:
-      outputMultiplicativeExpression(context, sourceFile, <MultiplcativeExpression>expression);
+      outputMultiplicativeExpression(context, sourceFile, <MultiplicativeExpression>expression);
       break;
 
     case SyntaxKind.ParenthesizedExpression:
@@ -287,7 +287,7 @@ function outputExpression(context: JSBackendContext, sourceFile: SourceFile, exp
 function outputAssignmentExpression(
   context: JSBackendContext,
   sourceFile: SourceFile,
-  expression: AssignmentExpression
+  expression: AssignmentExpression,
 ): void {
   outputIdentifier(context, sourceFile, expression.name);
 
@@ -318,7 +318,7 @@ function outputAssignmentExpression(
 function outputAdditiveExpression(
   context: JSBackendContext,
   sourceFile: SourceFile,
-  expression: AdditiveExpression
+  expression: AdditiveExpression,
 ): void {
   outputExpression(context, sourceFile, expression.lhs);
 
@@ -349,7 +349,7 @@ function outputCallExpression(context: JSBackendContext, sourceFile: SourceFile,
 function outputComparisonExpression(
   context: JSBackendContext,
   sourceFile: SourceFile,
-  expression: ComparisonExpression
+  expression: ComparisonExpression,
 ) {
   outputExpression(context, sourceFile, expression.lhs);
 
@@ -405,7 +405,7 @@ function outputLogicalExpression(context: JSBackendContext, sourceFile: SourceFi
 function outputMultiplicativeExpression(
   context: JSBackendContext,
   sourceFile: SourceFile,
-  expression: MultiplcativeExpression
+  expression: MultiplicativeExpression,
 ) {
   outputExpression(context, sourceFile, expression.lhs);
 
@@ -417,7 +417,7 @@ function outputMultiplicativeExpression(
 function outputParenthesizedExpression(
   context: JSBackendContext,
   sourceFile: SourceFile,
-  expression: ParenthesizedExpression
+  expression: ParenthesizedExpression,
 ) {
   context.append("(");
   outputExpression(context, sourceFile, expression.expression);

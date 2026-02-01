@@ -271,7 +271,7 @@ export interface AdditiveExpression extends Expression {
   readonly rhs: Expression;
 }
 
-export interface MultiplcativeExpression extends Expression {
+export interface MultiplicativeExpression extends Expression {
   readonly kind: SyntaxKind.MultiplicativeExpression;
 
   readonly lhs: Expression;
