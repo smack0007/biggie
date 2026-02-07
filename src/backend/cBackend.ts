@@ -34,22 +34,87 @@ import {
   StructDeclaration,
   StructLiteral,
   PointerType,
+  ImportStatement,
 } from "../frontend/ast.ts";
 import { int, nameof } from "../shims.ts";
 import { BackendContext } from "./backend.ts";
 
-interface CBackendContext extends BackendContext {}
+interface CBackendContext extends BackendContext {
+  sourceFiles: Record<string, SourceFile>;
+  namePrefixStack: string[];
+  // [moduleAlias] = SourceFile
+  importMap: Record<string, SourceFile>[];
+  // [SourceFile.fileName][typeName] = mappedTypeName
+  moduleTypeNameMap: Record<string, Record<string, string>>;
+}
 
-export function emitC(sourceFile: SourceFile, baseContext: BackendContext): void {
+export function emitC(
+  sourceFiles: Record<string, SourceFile>,
+  entryFileName: string,
+  baseContext: BackendContext,
+): void {
   const context: CBackendContext = {
     ...baseContext,
+    sourceFiles,
+    namePrefixStack: [],
+    importMap: [{}],
+    moduleTypeNameMap: {},
   };
 
   emitPreamble(context);
 
-  for (const statement of sourceFile.statements) {
-    emitTopLevelStatement(context, sourceFile, statement);
+  const sourceFile = sourceFiles[entryFileName];
+
+  emitSourceFile(context, sourceFile);
+}
+
+function pushNamePrefix(context: CBackendContext, prefix: string): void {
+  context.namePrefixStack.push(prefix);
+}
+
+function popNamePrefix(context: CBackendContext): void {
+  context.namePrefixStack.pop();
+}
+
+function getNamePrefix(context: CBackendContext): string {
+  return context.namePrefixStack.join("");
+}
+
+function pushImportMap(context: CBackendContext): void {
+  context.importMap.push({});
+}
+
+function popImportMap(context: CBackendContext): void {
+  context.importMap.pop();
+}
+
+function getImportedModuleByAlias(context: CBackendContext, moduleAlias: string): SourceFile | null {
+  return context.importMap[context.importMap.length - 1][moduleAlias] ?? null;
+}
+
+function setImportedModule(context: CBackendContext, moduleAlias: string, sourceFile: SourceFile): void {
+  context.importMap[context.importMap.length - 1][moduleAlias] = sourceFile;
+}
+
+function mapModuleTypeName(
+  context: CBackendContext,
+  sourceFile: SourceFile,
+  typeName: string,
+  mappedTypeName: string,
+): void {
+  if (!context.moduleTypeNameMap[sourceFile.fileName]) {
+    context.moduleTypeNameMap[sourceFile.fileName] = {};
   }
+
+  context.moduleTypeNameMap[sourceFile.fileName][typeName] = mappedTypeName;
+}
+
+function getMappedModuleTypeName(context: CBackendContext, sourceFile: SourceFile, typeName: string): string | null {
+  if (!context.moduleTypeNameMap[sourceFile.fileName]) {
+    return null;
+  }
+
+  return context.moduleTypeNameMap[sourceFile.fileName][typeName];
 }
 
 function emitPreamble(context: CBackendContext): void {
@@ -68,8 +133,28 @@ function emitUnexpectedNode(
   context.append("*/\n");
 }
 
+function emitSourceFile(context: CBackendContext, sourceFile: SourceFile): void {
+  pushImportMap(context);
+
+  // Emit import statements first.
+  for (const statement of sourceFile.statements.filter((s) => s.kind == SyntaxKind.ImportStatement)) {
+    emitTopLevelStatement(context, sourceFile, statement);
+  }
+
+  context.append(`/* SourceFile: ${sourceFile.fileName} */\n\n`);
+  for (const statement of sourceFile.statements.filter((s) => s.kind != SyntaxKind.ImportStatement)) {
+    emitTopLevelStatement(context, sourceFile, statement);
+  }
+
+  popImportMap(context);
+}
+
 function emitTopLevelStatement(context: CBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
+    case SyntaxKind.ImportStatement:
+      emitImportStatement(context, sourceFile, <ImportStatement>node);
+      break;
+
     case SyntaxKind.FuncDeclaration:
       emitFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
       break;
@@ -84,26 +169,38 @@ function emitTopLevelStatement(context: CBackendContext, sourceFile: SourceFile,
   }
 }
 
+function emitImportStatement(context: CBackendContext, sourceFile: SourceFile, importStatement: ImportStatement): void {
+  // TODO: Generate an alias when one is not provided.
+  const moduleAlias = importStatement.alias?.value ?? "";
+
+  pushNamePrefix(context, `_${moduleAlias}_`);
+  emitSourceFile(context, importStatement.resolvedSourceFile);
+  popNamePrefix(context);
+
+  setImportedModule(context, moduleAlias, importStatement.resolvedSourceFile);
+}
+
 function emitFunctionDeclaration(
   context: CBackendContext,
   sourceFile: SourceFile,
   functionDeclaration: FunctionDeclaration,
 ): void {
-  const returnType: string = functionDeclaration.returnType.name.value;
-  const name: string = functionDeclaration.name.value;
+  emitType(context, sourceFile, functionDeclaration.returnType);
 
-  context.append(`${returnType} ${name}(`);
+  const mappedFunctionName = getNamePrefix(context) + functionDeclaration.name.value;
+  mapModuleTypeName(context, sourceFile, functionDeclaration.name.value, mappedFunctionName);
+
+  context.append(` ${mappedFunctionName}(`);
 
   for (let i = 0; i < functionDeclaration.arguments.length; i++) {
     const arg = functionDeclaration.arguments[i];
-    const argType = arg.type.value;
-    const argName = arg.name.value;
 
     if (i != 0) {
       context.append(", ");
     }
 
-    context.append(`${argType} ${argName}`);
+    emitType(context, sourceFile, arg.type);
+    context.append(` ${arg.name.value}`);
   }
 
   context.append(") ");
@@ -118,9 +215,10 @@ function emitStructDeclaration(
   sourceFile: SourceFile,
   structDeclaration: StructDeclaration,
 ): void {
-  const name: string = structDeclaration.name.value;
+  const mappedStructName = getNamePrefix(context) + structDeclaration.name.value;
+  mapModuleTypeName(context, sourceFile, structDeclaration.name.value, mappedStructName);
 
-  context.append(`typedef struct ${name} {\n`);
+  context.append(`typedef struct ${mappedStructName} {\n`);
 
   context.indentLevel += 1;
   for (let i = 0; i < structDeclaration.members.length; i++) {
@@ -131,7 +229,7 @@ function emitStructDeclaration(
   }
   context.indentLevel -= 1;
 
-  context.append(`} ${name};\n\n`);
+  context.append(`} ${mappedStructName};\n\n`);
 }
 
 function emitStatementBlock(context: CBackendContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
@@ -340,7 +438,33 @@ function emitTypeReference(
     result = newEmitTypeResult();
   }
 
-  emitIdentifier(context, sourceFile, typeReference.name);
+  if (typeReference.typeName.kind == SyntaxKind.QualifiedName) {
+    const module = getImportedModuleByAlias(context, typeReference.typeName.left.value);
+
+    let typeIsMapped = false;
+    if (module != null) {
+      const mappedTypeName = getMappedModuleTypeName(context, module, typeReference.typeName.right.value);
+
+      if (mappedTypeName != null) {
+        context.append(mappedTypeName);
+        typeIsMapped = true;
+      }
+    }
+
+    if (!typeIsMapped) {
+      emitIdentifier(context, sourceFile, typeReference.typeName.left);
+      context.append(".");
+      emitIdentifier(context, sourceFile, typeReference.typeName.right);
+    }
+  } else {
+    const mappedTypeName = getMappedModuleTypeName(context, sourceFile, typeReference.typeName.value);
+
+    if (mappedTypeName != null) {
+      context.append(mappedTypeName);
+    } else {
+      emitIdentifier(context, sourceFile, typeReference.typeName);
+    }
+  }
 
   return result;
 }
@@ -513,6 +637,20 @@ function emitPropertyAccessExpression(
   sourceFile: SourceFile,
   propertyAccessExpression: PropertyAccessExpression,
 ) {
+  // NOTE: If expression (lhs) is an identifier then we are at the beginning of a property access chain.
+  if (propertyAccessExpression.expression.kind == SyntaxKind.Identifier) {
+    const module = getImportedModuleByAlias(context, (<Identifier>propertyAccessExpression.expression).value);
+
+    if (module != null) {
+      const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.name.value);
+
+      if (mappedTypeName != null) {
+        context.append(mappedTypeName);
+        return;
+      }
+    }
+  }
+
   emitExpression(context, sourceFile, propertyAccessExpression.expression);
   context.append(".");
   emitIdentifier(context, sourceFile, propertyAccessExpression.name);
@@ -553,7 +691,6 @@ function emitComparisonExpression(context: CBackendContext, sourceFile: SourceFi
 
 function emitEqualityExpression(context: CBackendContext, sourceFile: SourceFile, expression: EqualityExpression) {
   emitExpression(context, sourceFile, expression.lhs);
-
   context.append(expression.operator == Operator.EqualsEquals ? " == " : " != ");
 
   emitExpression(context, sourceFile, expression.rhs);

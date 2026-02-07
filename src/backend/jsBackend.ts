@@ -110,7 +110,7 @@ function outputFunctionDeclaration(
   sourceFile: SourceFile,
   functionDeclaration: FunctionDeclaration,
 ): void {
-  const returnType: string = functionDeclaration.returnType.name.value;
+  const returnType: string = functionDeclaration.returnType.typeName.value;
   const name: string = functionDeclaration.name.value;
 
   context.append(`function ${name}(`);

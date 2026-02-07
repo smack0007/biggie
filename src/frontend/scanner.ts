@@ -2,100 +2,55 @@ import { char, int } from "../shims.ts";
 
 export enum TokenType {
   // Used internally to indicate we're currently looking for a token.
-  Unknown = 0,
+  Unknown = -1,
 
-  // 'c'.
+  // Used to indicate the end of a list of tokens.
+  EOF,
+
+  // &
+  Ampersand,
+
+  // &&
+  AmpersandAmpersand,
+
+  // *
+  Asterisk,
+
+  // *=
+  AsteriskEquals,
+
+  // |
+  Bar,
+
+  // ||
+  BarBar,
+
+  // '
   Char,
-
-  // "String".
-  String,
-
-  // Identifier
-  Identifier,
-
-  // import
-  Import,
-
-  // func
-  Func,
-
-  // struct
-  Struct,
-
-  // defer
-  Defer,
-
-  // return
-  Return,
-
-  // if
-  If,
-
-  // else
-  Else,
-
-  // while
-  While,
-
-  // for
-  For,
-
-  // of
-  Of,
-
-  // null
-  Null,
-
-  // true
-  True,
-
-  // false
-  False,
-
-  // Unidentified numeric value. This should not be output.
-  Numeric,
-
-  // Integer value, i.e. "123".
-  Integer,
-
-  // Float value, i.e. "123.456f".
-  Float,
-
-  // Float value, i.e. "123.456".
-  Double,
-
-  // ;
-  EndStatement,
-
-  // var
-  Var,
-
-  // .
-  Dot,
-
-  // ,
-  Comma,
-
-  // (
-  OpenParen,
-
-  // )
-  CloseParen,
-
-  // [
-  OpenBracket,
-
-  // ]
-  CloseBracket,
-
-  // {
-  OpenBrace,
 
   // }
   CloseBrace,
 
-  // :
+  // ]
+  CloseBracket,
+
+  // )
+  CloseParen,
+
+  // ;
   Colon,
+
+  // ,
+  Comma,
+
+  // defer
+  Defer,
+
+  // .
+  Dot,
+
+  // else
+  Else,
 
   // =
   Equals,
@@ -109,11 +64,38 @@ export enum TokenType {
   // !=
   ExclamationEquals,
 
+  // export
+  Export,
+
+  // false
+  False,
+
+  // float literal
+  Float,
+
+  // for
+  For,
+
+  // func
+  Func,
+
   // >
   GreaterThan,
 
   // >=
   GreaterThanEqual,
+
+  // <identifier>
+  Identifier,
+
+  // if
+  If,
+
+  // import
+  Import,
+
+  // integer literal
+  Integer,
 
   // <
   LessThan,
@@ -121,23 +103,38 @@ export enum TokenType {
   // <=
   LessThanEqual,
 
-  // +
-  Plus,
-
-  // +=
-  PlusEquals,
-
   // -
   Minus,
 
   // -=
   MinusEquals,
 
-  // *
-  Asterisk,
+  // null
+  Null,
 
-  // *=
-  AsteriskEquals,
+  // numeric literal
+  Numeric,
+
+  // {
+  OpenBrace,
+
+  // [
+  OpenBracket,
+
+  // (
+  OpenParen,
+
+  // +
+  Plus,
+
+  // +=
+  PlusEquals,
+
+  // return
+  Return,
+
+  // ;
+  Semicolon,
 
   // /
   Slash,
@@ -145,20 +142,20 @@ export enum TokenType {
   // /=
   SlashEquals,
 
-  // &
-  Ampersand,
+  // string literal
+  String,
 
-  // &&
-  AmpersandAmpersand,
+  // struct
+  Struct,
 
-  // |
-  Bar,
+  // true
+  True,
 
-  // ||
-  BarBar,
+  // var
+  Var,
 
-  // Used to indicate the end of a list of tokens.
-  EndOfFile,
+  // while
+  While,
 }
 
 export interface Token {
@@ -230,7 +227,7 @@ export function scan(text: string): Array<Token> {
         type = TokenType.String;
       } else if (text[i] == ";") {
         // End Statement
-        token.push({ type: TokenType.EndStatement, text: null, line: line, column: column });
+        token.push({ type: TokenType.Semicolon, text: null, line: line, column: column });
       } else if (text[i] == ".") {
         // Period
         token.push({ type: TokenType.Dot, text: null, line: line, column: column });
@@ -431,60 +428,60 @@ export function scan(text: string): Array<Token> {
       // We've reached the end of a long token
       if (type == TokenType.Identifier) {
         switch (value) {
-          case "import":
-            token.push({ type: TokenType.Import, text: null, line: line, column: column });
-            break;
-
-          case "func":
-            token.push({ type: TokenType.Func, text: null, line: line, column: column });
-            break;
-
-          case "struct":
-            token.push({ type: TokenType.Struct, text: null, line: line, column: column });
-            break;
-
           case "defer":
             token.push({ type: TokenType.Defer, text: null, line: line, column: column });
-            break;
-
-          case "return":
-            token.push({ type: TokenType.Return, text: null, line: line, column: column });
-            break;
-
-          case "if":
-            token.push({ type: TokenType.If, text: null, line: line, column: column });
             break;
 
           case "else":
             token.push({ type: TokenType.Else, text: null, line: line, column: column });
             break;
 
-          case "while":
-            token.push({ type: TokenType.While, text: null, line: line, column: column });
-            break;
-
-          case "for":
-            token.push({ type: TokenType.For, text: null, line: line, column: column });
-            break;
-
-          case "of":
-            token.push({ type: TokenType.Of, text: null, line: line, column: column });
-            break;
-
-          case "null":
-            token.push({ type: TokenType.Null, text: null, line: line, column: column });
-            break;
-
-          case "true":
-            token.push({ type: TokenType.True, text: null, line: line, column: column });
+          case "export":
+            token.push({ type: TokenType.Export, text: null, line: line, column: column });
             break;
 
           case "false":
             token.push({ type: TokenType.False, text: null, line: line, column: column });
             break;
 
+          case "for":
+            token.push({ type: TokenType.For, text: null, line: line, column: column });
+            break;
+
+          case "func":
+            token.push({ type: TokenType.Func, text: null, line: line, column: column });
+            break;
+
+          case "if":
+            token.push({ type: TokenType.If, text: null, line: line, column: column });
+            break;
+
+          case "import":
+            token.push({ type: TokenType.Import, text: null, line: line, column: column });
+            break;
+
+          case "null":
+            token.push({ type: TokenType.Null, text: null, line: line, column: column });
+            break;
+
+          case "return":
+            token.push({ type: TokenType.Return, text: null, line: line, column: column });
+            break;
+
+          case "struct":
+            token.push({ type: TokenType.Struct, text: null, line: line, column: column });
+            break;
+
+          case "true":
+            token.push({ type: TokenType.True, text: null, line: line, column: column });
+            break;
+
           case "var":
             token.push({ type: TokenType.Var, text: null, line: line, column: column });
+            break;
+
+          case "while":
+            token.push({ type: TokenType.While, text: null, line: line, column: column });
             break;
 
           default:
@@ -493,13 +490,7 @@ export function scan(text: string): Array<Token> {
         }
       } else if (type == TokenType.Numeric) {
         if (isFloatingPoint) {
-          if (i + 1 < text.length && text[i + 1] == "f") {
-            type = TokenType.Float;
-            i += 1;
-            curColumn += 1;
-          } else {
-            type = TokenType.Double;
-          }
+          type = TokenType.Float;
         } else {
           type = TokenType.Integer;
         }
@@ -520,7 +511,7 @@ export function scan(text: string): Array<Token> {
 
   if (type == TokenType.Unknown) {
     // Add an EOF to mark the end of the script.
-    token.push({ type: TokenType.EndOfFile, text: null, line: line, column: column });
+    token.push({ type: TokenType.EOF, text: null, line: line, column: column });
   }
 
   return token;

@@ -1,4 +1,4 @@
-import greet "./greet.big"
+import greet "../shared/greet.big"
 
 func main(): int {  
   var person: greet.Person = { "Buddy", 42 };

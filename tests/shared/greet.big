@@ -1,0 +1,12 @@
+export struct Person {
+  name: string;
+  age: int;
+}
+
+export func sayHello(person: Person, count: int32): void {
+  var i: int32 = 0;
+  while (i < count) {
+    println("Hello %s, you are %d years old!", person.name, person.age);
+    i += 1;
+  }
+}

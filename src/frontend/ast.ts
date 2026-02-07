@@ -1,11 +1,11 @@
 export enum SyntaxKind {
   AdditiveExpression,
 
-  AssignmentExpression,
-
   ArrayLiteral,
 
   ArrayType,
+
+  AssignmentExpression,
 
   BooleanLiteral,
 
@@ -23,15 +23,17 @@ export enum SyntaxKind {
 
   ExpressionStatement,
 
-  IntegerLiteral,
+  FuncArgument,
 
   FuncDeclaration,
 
-  FuncArgument,
+  Identifier,
 
   IfStatement,
 
-  Identifier,
+  ImportStatement,
+
+  IntegerLiteral,
 
   LogicalExpression,
 
@@ -42,6 +44,8 @@ export enum SyntaxKind {
   PointerType,
 
   PropertyAccessExpression,
+
+  QualifiedName,
 
   ReturnStatement,
 
@@ -55,11 +59,11 @@ export enum SyntaxKind {
 
   StructDeclaration,
 
-  StructMember,
-
   StructLiteral,
 
   StructLiteralElement,
+
+  StructMember,
 
   TypeReference,
 
@@ -126,6 +130,16 @@ export interface Statement extends SyntaxNode {
   readonly kind: SyntaxKind;
 }
 
+export interface ImportStatement extends Statement {
+  readonly kind: SyntaxKind.ImportStatement;
+
+  readonly module: StringLiteral;
+
+  readonly alias?: Identifier;
+
+  readonly resolvedSourceFile: SourceFile;
+}
+
 export interface VariableDeclaration extends Statement {
   readonly kind: SyntaxKind.VariableDeclaration;
 
@@ -139,13 +153,15 @@ export interface VariableDeclaration extends Statement {
 export interface FunctionDeclaration extends Statement {
   readonly kind: SyntaxKind.FuncDeclaration;
 
-  readonly body: StatementBlock;
+  readonly isExported: boolean;
 
   readonly name: Identifier;
 
   readonly arguments: Array<FunctionArgument>;
 
-  readonly returnType: TypeReference;
+  readonly returnType: TypeNode;
+
+  readonly body: StatementBlock;
 }
 
 export interface FunctionArgument extends SyntaxNode {
@@ -153,11 +169,13 @@ export interface FunctionArgument extends SyntaxNode {
 
   readonly name: Identifier;
 
-  readonly type: Identifier;
+  readonly type: TypeNode;
 }
 
 export interface StructDeclaration extends Statement {
   readonly kind: SyntaxKind.StructDeclaration;
+
+  readonly isExported: boolean;
 
   readonly name: Identifier;
 
@@ -321,14 +339,14 @@ export interface PropertyAccessExpression extends Expression {
 
 export interface TypeNode extends SyntaxNode {}
 
-export interface PointerType extends TypeNode {
-  readonly kind: SyntaxKind.PointerType;
+export interface ArrayType extends TypeNode {
+  readonly kind: SyntaxKind.ArrayType;
 
   readonly elementType: TypeNode;
 }
 
-export interface ArrayType extends TypeNode {
-  readonly kind: SyntaxKind.ArrayType;
+export interface PointerType extends TypeNode {
+  readonly kind: SyntaxKind.PointerType;
 
   readonly elementType: TypeNode;
 }
@@ -336,7 +354,15 @@ export interface ArrayType extends TypeNode {
 export interface TypeReference extends TypeNode {
   readonly kind: SyntaxKind.TypeReference;
 
-  readonly name: Identifier;
+  readonly typeName: QualifiedType | Identifier;
+}
+
+export interface QualifiedType extends SyntaxNode {
+  readonly kind: SyntaxKind.QualifiedName;
+
+  readonly left: Identifier;
+
+  readonly right: Identifier;
 }
 
 export interface Identifier extends SyntaxNode {

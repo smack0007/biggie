@@ -89,7 +89,7 @@ function emitFunctionDeclaration(
   sourceFile: SourceFile,
   functionDeclaration: FunctionDeclaration,
 ): void {
-  const returnType: string = functionDeclaration.returnType.name.value;
+  const returnType: string = functionDeclaration.returnType.typeName.value;
   const name: string = functionDeclaration.name.value;
 
   context.append(`${returnType} ${name}(`);
@@ -285,7 +285,7 @@ function emitPointerType(context: CppBackendContext, sourceFile: SourceFile, poi
 }
 
 function emitTypeReference(context: CppBackendContext, sourceFile: SourceFile, typeReference: TypeReference) {
-  emitIdentifier(context, sourceFile, typeReference.name);
+  emitIdentifier(context, sourceFile, typeReference.typeName);
 }
 
 function emitExpression(context: CppBackendContext, sourceFile: SourceFile, expression: Expression) {
