@@ -295,6 +295,13 @@ async function parseImportStatement(context: ParserSourceFileContext): Promise<R
     }
   }
 
+  // TODO: Not sure if it should be done here or in a later phase but
+  // we should probably check for imports that result in conflicting aliases
+  // within the same file.
+  // i.e.:
+  // import "../v1/foo.big"
+  // import "../v2/foo.big"
+
   const module = parseStringLiteral(context);
 
   if (isError(module)) {

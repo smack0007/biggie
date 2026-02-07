@@ -1,8 +1,10 @@
-import greet "../shared/greet.big"
+import person "../shared/person.big"
+import greetEn "../shared/en/greet.big"
+import greetDe "../shared/de/greet.big"
 
 func main(): int {  
-  var person: greet.Person = { "Buddy", 42 };
-  greet.sayHello(person, 10);
-
+  var person: person.Person = { "Buddy", 42 };
+  greetEn.greet(person, 10);
+  greetDe.greet(person, 10);
   return 0;
 }

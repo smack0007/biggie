@@ -1,9 +1,6 @@
-export struct Person {
-  name: string;
-  age: int;
-}
+import "../person.big"
 
-export func sayHello(person: Person, count: int32): void {
+export func greet(person: person.Person, count: int32): void {
   var i: int32 = 0;
   while (i < count) {
     println("Hello %s, you are %d years old!", person.name, person.age);

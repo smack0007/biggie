@@ -1,3 +1,4 @@
+import { basename, extname } from "node:path";
 import {
   AdditiveExpression,
   AssignmentExpression,
@@ -41,6 +42,8 @@ import { BackendContext } from "./backend.ts";
 
 interface CBackendContext extends BackendContext {
   sourceFiles: Record<string, SourceFile>;
+  // Set<fileName>
+  emittedSourceFiles: Set<string>;
   namePrefixStack: string[];
   // [moduleAlias] = SourceFile
   importMap: Record<string, SourceFile>[];
@@ -56,6 +59,7 @@ export function emitC(
   const context: CBackendContext = {
     ...baseContext,
     sourceFiles,
+    emittedSourceFiles: new Set<string>(),
     namePrefixStack: [],
     importMap: [{}],
     moduleTypeNameMap: {},
@@ -77,7 +81,11 @@ function popNamePrefix(context: CBackendContext): void {
 }
 
 function getNamePrefix(context: CBackendContext): string {
-  return context.namePrefixStack.join("");
+  if (context.namePrefixStack.length == 0) {
+    return "";
+  }
+
+  return "_" + context.namePrefixStack.join("_") + "_";
 }
 
 function pushImportMap(context: CBackendContext): void {
@@ -147,6 +155,7 @@ function emitSourceFile(context: CBackendContext, sourceFile: SourceFile): void 
   }
 
   popImportMap(context);
+  context.emittedSourceFiles.add(sourceFile.fileName);
 }
 
 function emitTopLevelStatement(context: CBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
@@ -169,13 +178,19 @@ function emitTopLevelStatement(context: CBackendContext, sourceFile: SourceFile,
   }
 }
 
-function emitImportStatement(context: CBackendContext, sourceFile: SourceFile, importStatement: ImportStatement): void {
-  // TODO: Generate an alias when one is not provided.
-  const moduleAlias = importStatement.alias?.value ?? "";
+function calculateModuleAliasFromSourceFile(sourceFile: SourceFile): string {
+  return basename(sourceFile.fileName, extname(sourceFile.fileName));
+}
 
-  pushNamePrefix(context, `_${moduleAlias}_`);
-  emitSourceFile(context, importStatement.resolvedSourceFile);
-  popNamePrefix(context);
+function emitImportStatement(context: CBackendContext, sourceFile: SourceFile, importStatement: ImportStatement): void {
+  const moduleAlias =
+    importStatement.alias?.value ?? calculateModuleAliasFromSourceFile(importStatement.resolvedSourceFile);
+
+  if (!context.emittedSourceFiles.has(importStatement.resolvedSourceFile.fileName)) {
+    pushNamePrefix(context, moduleAlias);
+    emitSourceFile(context, importStatement.resolvedSourceFile);
+    popNamePrefix(context);
+  }
 
   setImportedModule(context, moduleAlias, importStatement.resolvedSourceFile);
 }

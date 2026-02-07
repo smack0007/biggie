@@ -1,0 +1,9 @@
+import "../person.big"
+
+export func greet(person: person.Person, count: int32): void {
+  var i: int32 = 0;
+  while (i < count) {
+    println("Hallo %s, du bist %d Jahre alt!", person.name, person.age);
+    i += 1;
+  }
+}
