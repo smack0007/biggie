@@ -1,10 +1,11 @@
 import assert from "node:assert";
-import fs from "node:fs/promises";
-import path from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import { basename, join, resolve } from "node:path";
+import { describe, it } from "node:test";
 
 const dirname = import.meta.dirname ?? "";
 
-const buildPath = path.resolve(path.join(dirname, "..", "build.sh"));
+const buildPath = resolve(join(dirname, "..", "build.sh"));
 const textDecoder = new TextDecoder();
 
 async function exec(command: string, args: string[] = []): Promise<[string, string]> {
@@ -20,9 +21,9 @@ async function exec(command: string, args: string[] = []): Promise<[string, stri
 }
 
 async function build(file: string): Promise<string> {
-  const outputFile = path.resolve(dirname, "tmp", path.basename(file));
+  const outputFile = resolve(dirname, "tmp", basename(file));
 
-  const [stdout, stderr] = await exec(buildPath, [path.resolve(file), outputFile]);
+  const [stdout, stderr] = await exec(buildPath, [resolve(file), outputFile]);
 
   if (stderr != "") {
     throw new Error(stderr);
@@ -35,17 +36,19 @@ async function build(file: string): Promise<string> {
   return outputFile;
 }
 
-const sourceFiles = (await fs.readdir(path.join(dirname, "output"))).filter((file) => file.endsWith(".big")).sort();
+const sourceFiles = (await readdir(join(dirname, "output"))).filter((file) => file.endsWith(".big")).sort();
 
-for (const file of sourceFiles) {
-  Deno.test(file, async () => {
-    const filePath = path.join(dirname, "output", file);
+describe("Biggie Output Tests", () => {
+  for (const file of sourceFiles) {
+    it(`${file}`, async () => {
+      const filePath = join(dirname, "output", file);
 
-    const expectedOutput = await fs.readFile(filePath + ".out", "utf-8");
+      const expectedOutput = await readFile(filePath + ".out", "utf-8");
 
-    const outputFile = await build(filePath);
-    const [stdout] = await exec(outputFile);
+      const outputFile = await build(filePath);
+      const [stdout] = await exec(outputFile);
 
-    assert.equal(stdout.trim(), expectedOutput.trim());
-  });
-}
+      assert.equal(stdout.trim(), expectedOutput.trim());
+    });
+  }
+});

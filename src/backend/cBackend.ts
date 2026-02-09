@@ -49,6 +49,8 @@ interface CBackendContext extends BackendContext {
   importMap: Record<string, SourceFile>[];
   // [SourceFile.fileName][typeName] = mappedTypeName
   moduleTypeNameMap: Record<string, Record<string, string>>;
+  // Counter used for generating temporary variable names.
+  tmpVariableIndex: int;
 }
 
 export function emitC(
@@ -63,6 +65,7 @@ export function emitC(
     namePrefixStack: [],
     importMap: [{}],
     moduleTypeNameMap: {},
+    tmpVariableIndex: 0,
   };
 
   emitPreamble(context);
@@ -622,15 +625,52 @@ function emitBooleanLiteral(context: CBackendContext, sourceFile: SourceFile, bo
 }
 
 function emitCallExpression(context: CBackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
+  // HACK: For now just check for the "println" function to treat it as a varadic function.
+  let isVaradicCall = false;
+  let beginVaradicArgs = callExpression.arguments.length;
+  let varadicArgsArrayName = "";
+  if (callExpression.expression.kind == SyntaxKind.Identifier) {
+    const functionName = (<Identifier>callExpression.expression).value;
+
+    if (functionName == "println") {
+      isVaradicCall = true;
+      beginVaradicArgs = 1;
+    }
+  }
+
+  if (isVaradicCall) {
+    const varadicVariableNames: string[] = [];
+    for (let i = beginVaradicArgs; i < callExpression.arguments.length; i++) {
+      const varadicVariableName = `__v${context.tmpVariableIndex++}`;
+      varadicVariableNames.push(varadicVariableName);
+      // TODO: Would be nice if we didn't have to use 'auto' here.
+      context.append(`auto ${varadicVariableName} = `);
+      emitExpression(context, sourceFile, callExpression.arguments[i]);
+      context.append(";\n");
+    }
+
+    varadicArgsArrayName = `__vargs${context.tmpVariableIndex++}`;
+    context.append(`void* ${varadicArgsArrayName}[] = {`);
+    context.append(varadicVariableNames.map((x) => `&${x}`).join(", "));
+    context.append("};\n");
+  }
+
   emitExpression(context, sourceFile, callExpression.expression);
   context.append("(");
 
-  for (let i = 0; i < callExpression.arguments.length; i++) {
+  for (let i = 0; i < beginVaradicArgs; i++) {
     if (i != 0) {
       context.append(", ");
     }
 
     emitExpression(context, sourceFile, callExpression.arguments[i]);
+  }
+
+  if (isVaradicCall) {
+    if (beginVaradicArgs != 0) {
+      context.append(", ");
+    }
+    context.append(varadicArgsArrayName);
   }
 
   context.append(")");
@@ -669,11 +709,6 @@ function emitPropertyAccessExpression(
   emitExpression(context, sourceFile, propertyAccessExpression.expression);
   context.append(".");
   emitIdentifier(context, sourceFile, propertyAccessExpression.name);
-
-  // HACK: For now emit parenthesis if length.
-  if (propertyAccessExpression.name.value == "length") {
-    context.append("()");
-  }
 }
 
 function emitComparisonExpression(context: CBackendContext, sourceFile: SourceFile, expression: ComparisonExpression) {
@@ -750,7 +785,7 @@ function emitParenthesizedExpression(
 }
 
 function emitStringLiteral(context: CBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
-  context.append(`"${stringLiteral.value}"`);
+  context.append(`STR("${stringLiteral.value}")`);
 }
 
 function emitStructLiteral(context: CBackendContext, sourceFile: SourceFile, structLiteral: StructLiteral) {

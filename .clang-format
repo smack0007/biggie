@@ -2,7 +2,7 @@
 # options: https://clang.llvm.org/docs/ClangFormatStyleOptions.html
 BasedOnStyle: LLVM
 IndentWidth: 2
-ColumnLimit: 120
+ColumnLimit: 80
 UseTab: Never
 
 AlwaysBreakTemplateDeclarations: true

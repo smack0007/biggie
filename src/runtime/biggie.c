@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -13,13 +14,31 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
-typedef const char* string;
 
-int println(const char* format, ...) {
-  va_list args;
-  va_start(args, format);
-  int result = vprintf(format, args);
-  printf("\n");
-  va_end(args);
-  return result;
+typedef struct String {
+  char* data;
+  ptrdiff_t length;
+} String;
+#define STR(str) ((String){str, sizeof(str) - 1})
+typedef String string;
+
+void println(string format, void* args[]) {
+  int argIndex = 0;
+  for (int i = 0; i < format.length; i += 1) {
+    if (format.data[i] == '%') {
+      i += 1;
+      if (format.data[i] == 's') {
+        char* str = (*(string*)args[argIndex]).data;
+        printf("%s", str);
+        argIndex += 1;
+      } else if (format.data[i] == 'd') {
+        int32 num = *(int32*)args[argIndex];
+        printf("%d", num);
+        argIndex += 1;
+      }
+    } else {
+      putchar(format.data[i]);
+    }
+  }
+  puts("");
 }

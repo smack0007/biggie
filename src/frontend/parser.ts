@@ -301,6 +301,9 @@ async function parseImportStatement(context: ParserSourceFileContext): Promise<R
   // i.e.:
   // import "../v1/foo.big"
   // import "../v2/foo.big"
+  // or:
+  // import foo "../v1/foo.big"
+  // import foo "../v2/foo.big"
 
   const module = parseStringLiteral(context);
 
@@ -1171,7 +1174,7 @@ function parsePrimaryExpression(context: ParserSourceFileContext): Result<Expres
 
     case TokenType.True:
     case TokenType.False:
-      result = parseBoolLiteral(context);
+      result = parseBooleanLiteral(context);
       break;
 
     case TokenType.String:
@@ -1606,9 +1609,9 @@ function parseArrayLiteral(context: ParserSourceFileContext): Result<ArrayLitera
   });
 }
 
-function parseBoolLiteral(context: ParserSourceFileContext): Result<BooleanLiteral, ParserError> {
-  context.logger.enter(nameof(parseBoolLiteral));
-  const token = expect(context, [TokenType.True, TokenType.False], nameof(parseBoolLiteral));
+function parseBooleanLiteral(context: ParserSourceFileContext): Result<BooleanLiteral, ParserError> {
+  context.logger.enter(nameof(parseBooleanLiteral));
+  const token = expect(context, [TokenType.True, TokenType.False], nameof(parseBooleanLiteral));
 
   if (isError(token)) {
     return token;
