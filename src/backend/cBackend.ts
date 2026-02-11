@@ -38,12 +38,17 @@ import {
   ImportStatement,
 } from "../frontend/ast.ts";
 import { int, nameof } from "../shims.ts";
-import { BackendContext } from "./backend.ts";
+import { OutputWriter } from "../outputWriter.ts";
 
-interface CBackendContext extends BackendContext {
+interface EmitContext {
+  output: OutputWriter;
+  outputStack: OutputWriter[];
+
+  // [SourceFile.fileName] = SourceFile
   sourceFiles: Record<string, SourceFile>;
   // Set<fileName>
   emittedSourceFiles: Set<string>;
+  // A stack of prefixes to attach to names.
   namePrefixStack: string[];
   // [moduleAlias] = SourceFile
   importMap: Record<string, SourceFile>[];
@@ -51,21 +56,25 @@ interface CBackendContext extends BackendContext {
   moduleTypeNameMap: Record<string, Record<string, string>>;
   // Counter used for generating temporary variable names.
   tmpVariableIndex: int;
+  // Placeholder for current block level statement
+  blockLevelStatementPlaceholderStack: OutputWriter[];
 }
 
-export function emitC(
-  sourceFiles: Record<string, SourceFile>,
-  entryFileName: string,
-  baseContext: BackendContext,
-): void {
-  const context: CBackendContext = {
-    ...baseContext,
+interface EmitResult {
+  code: string;
+}
+
+export function emitC(sourceFiles: Record<string, SourceFile>, entryFileName: string): EmitResult {
+  const context: EmitContext = {
+    output: new OutputWriter(),
+    outputStack: [],
     sourceFiles,
     emittedSourceFiles: new Set<string>(),
     namePrefixStack: [],
     importMap: [{}],
     moduleTypeNameMap: {},
     tmpVariableIndex: 0,
+    blockLevelStatementPlaceholderStack: [],
   };
 
   emitPreamble(context);
@@ -73,17 +82,46 @@ export function emitC(
   const sourceFile = sourceFiles[entryFileName];
 
   emitSourceFile(context, sourceFile);
+
+  return {
+    code: context.output.toString(),
+  };
 }
 
-function pushNamePrefix(context: CBackendContext, prefix: string): void {
+function pushOutput(context: EmitContext, newOutput?: OutputWriter): OutputWriter {
+  if (newOutput == undefined) {
+    newOutput = new OutputWriter();
+    newOutput.setIndentLevel(context.output.indentLevel);
+  }
+
+  context.outputStack.push(context.output);
+  context.output = newOutput;
+
+  return newOutput;
+}
+
+function popOutput(context: EmitContext): void {
+  if (context.outputStack.length == 0) {
+    throw new Error("context.outputStack is empty.");
+  }
+
+  const oldOutput = context.outputStack.pop() as OutputWriter;
+  context.output = oldOutput;
+}
+
+function pushNamePrefix(context: EmitContext, prefix: string): void {
   context.namePrefixStack.push(prefix);
 }
 
-function popNamePrefix(context: CBackendContext): void {
+function popNamePrefix(context: EmitContext): void {
+  if (context.namePrefixStack.length == 0) {
+    throw new Error("context.namePrefixStack is empty.");
+  }
+
   context.namePrefixStack.pop();
 }
 
-function getNamePrefix(context: CBackendContext): string {
+function getNamePrefix(context: EmitContext): string {
   if (context.namePrefixStack.length == 0) {
     return "";
   }
@@ -91,24 +129,24 @@ function getNamePrefix(context: CBackendContext): string {
   return "_" + context.namePrefixStack.join("_") + "_";
 }
 
-function pushImportMap(context: CBackendContext): void {
+function pushImportMap(context: EmitContext): void {
   context.importMap.push({});
 }
 
-function popImportMap(context: CBackendContext): void {
+function popImportMap(context: EmitContext): void {
   context.importMap.pop();
 }
 
-function getImportedModuleByAlias(context: CBackendContext, moduleAlias: string): SourceFile | null {
+function getImportedModuleByAlias(context: EmitContext, moduleAlias: string): SourceFile | null {
   return context.importMap[context.importMap.length - 1][moduleAlias] ?? null;
 }
 
-function setImportedModule(context: CBackendContext, moduleAlias: string, sourceFile: SourceFile): void {
+function setImportedModule(context: EmitContext, moduleAlias: string, sourceFile: SourceFile): void {
   context.importMap[context.importMap.length - 1][moduleAlias] = sourceFile;
 }
 
 function mapModuleTypeName(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   typeName: string,
   mappedTypeName: string,
@@ -120,7 +158,7 @@ function mapModuleTypeName(
   context.moduleTypeNameMap[sourceFile.fileName][typeName] = mappedTypeName;
 }
 
-function getMappedModuleTypeName(context: CBackendContext, sourceFile: SourceFile, typeName: string): string | null {
+function getMappedModuleTypeName(context: EmitContext, sourceFile: SourceFile, typeName: string): string | null {
   if (!context.moduleTypeNameMap[sourceFile.fileName]) {
     return null;
   }
@@ -128,23 +166,48 @@ function getMappedModuleTypeName(context: CBackendContext, sourceFile: SourceFil
   return context.moduleTypeNameMap[sourceFile.fileName][typeName];
 }
 
-function emitPreamble(context: CBackendContext): void {
-  context.append("#include <biggie.c>\n");
-  context.append("\n");
+function pushBlockLevelStatementPlaceholder(context: EmitContext): OutputWriter {
+  const newPlaceholder = new OutputWriter();
+  newPlaceholder.setIndentLevel(context.output.indentLevel);
+
+  context.blockLevelStatementPlaceholderStack.push(newPlaceholder);
+
+  return newPlaceholder;
+}
+
+function popBlockLevelStatementPlaceholder(context: EmitContext): void {
+  if (context.blockLevelStatementPlaceholderStack.length == 0) {
+    throw new Error("context.blockLevelStatementPlaceholderStack is empty.");
+  }
+
+  context.blockLevelStatementPlaceholderStack.pop();
+}
+
+function getBlockLevelStatementPlaceholder(context: EmitContext): OutputWriter {
+  if (context.blockLevelStatementPlaceholderStack.length == 0) {
+    throw new Error("context.blockLevelStatementPlaceholderStack is empty.");
+  }
+
+  return context.blockLevelStatementPlaceholderStack[context.blockLevelStatementPlaceholderStack.length - 1];
+}
+
+function emitPreamble(context: EmitContext): void {
+  context.output.appendLine("#include <biggie.c>");
+  context.output.appendLine();
 }
 
 function emitUnexpectedNode(
-  context: CBackendContext,
+  context: EmitContext,
   functionName: string,
   sourceFile: SourceFile,
   node: SyntaxNode,
 ): void {
-  context.append(`/* Unexpected node in ${functionName}:\n`);
-  context.append(`${sourceFile.fileName} ${SyntaxKind[node.kind]}`);
-  context.append("*/\n");
+  context.output.appendLine(`/* Unexpected node in ${functionName}:`);
+  context.output.append(`${sourceFile.fileName} ${SyntaxKind[node.kind]}`);
+  context.output.appendLine("*/");
 }
 
-function emitSourceFile(context: CBackendContext, sourceFile: SourceFile): void {
+function emitSourceFile(context: EmitContext, sourceFile: SourceFile): void {
   pushImportMap(context);
 
   // Emit import statements first.
@@ -152,7 +215,9 @@ function emitSourceFile(context: CBackendContext, sourceFile: SourceFile): void 
     emitTopLevelStatement(context, sourceFile, statement);
   }
 
-  context.append(`/* SourceFile: ${sourceFile.fileName} */\n\n`);
+  context.output.appendLine(`/* SourceFile: ${sourceFile.fileName} */`);
+  context.output.appendLine();
+
   for (const statement of sourceFile.statements.filter((s) => s.kind != SyntaxKind.ImportStatement)) {
     emitTopLevelStatement(context, sourceFile, statement);
   }
@@ -161,7 +226,7 @@ function emitSourceFile(context: CBackendContext, sourceFile: SourceFile): void 
   context.emittedSourceFiles.add(sourceFile.fileName);
 }
 
-function emitTopLevelStatement(context: CBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
+function emitTopLevelStatement(context: EmitContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
     case SyntaxKind.ImportStatement:
       emitImportStatement(context, sourceFile, <ImportStatement>node);
@@ -185,7 +250,7 @@ function calculateModuleAliasFromSourceFile(sourceFile: SourceFile): string {
   return basename(sourceFile.fileName, extname(sourceFile.fileName));
 }
 
-function emitImportStatement(context: CBackendContext, sourceFile: SourceFile, importStatement: ImportStatement): void {
+function emitImportStatement(context: EmitContext, sourceFile: SourceFile, importStatement: ImportStatement): void {
   const moduleAlias =
     importStatement.alias?.value ?? calculateModuleAliasFromSourceFile(importStatement.resolvedSourceFile);
 
@@ -199,7 +264,7 @@ function emitImportStatement(context: CBackendContext, sourceFile: SourceFile, i
 }
 
 function emitFunctionDeclaration(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   functionDeclaration: FunctionDeclaration,
 ): void {
@@ -208,61 +273,65 @@ function emitFunctionDeclaration(
   const mappedFunctionName = getNamePrefix(context) + functionDeclaration.name.value;
   mapModuleTypeName(context, sourceFile, functionDeclaration.name.value, mappedFunctionName);
 
-  context.append(` ${mappedFunctionName}(`);
+  context.output.append(` ${mappedFunctionName}(`);
 
   for (let i = 0; i < functionDeclaration.arguments.length; i++) {
     const arg = functionDeclaration.arguments[i];
 
     if (i != 0) {
-      context.append(", ");
+      context.output.append(", ");
     }
 
     emitType(context, sourceFile, arg.type);
-    context.append(` ${arg.name.value}`);
+    context.output.append(` ${arg.name.value}`);
   }
 
-  context.append(") ");
+  context.output.append(") ");
 
   emitStatementBlock(context, sourceFile, functionDeclaration.body);
 
-  context.append("\n\n");
+  context.output.appendLine();
 }
 
 function emitStructDeclaration(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   structDeclaration: StructDeclaration,
 ): void {
   const mappedStructName = getNamePrefix(context) + structDeclaration.name.value;
   mapModuleTypeName(context, sourceFile, structDeclaration.name.value, mappedStructName);
 
-  context.append(`typedef struct ${mappedStructName} {\n`);
+  context.output.appendLine(`typedef struct ${mappedStructName} {`);
 
-  context.indentLevel += 1;
+  context.output.indent();
   for (let i = 0; i < structDeclaration.members.length; i++) {
     const member = structDeclaration.members[i];
     const memberType = member.type.value;
     const memberName = member.name.value;
-    context.append(`${memberType} ${memberName};\n`);
+    context.output.appendLine(`${memberType} ${memberName};`);
   }
-  context.indentLevel -= 1;
+  context.output.unindent();
 
-  context.append(`} ${mappedStructName};\n\n`);
+  context.output.appendLine(`} ${mappedStructName};`);
+  context.output.appendLine();
 }
 
-function emitStatementBlock(context: CBackendContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
-  context.append("{\n");
-  context.indentLevel += 1;
+function emitStatementBlock(context: EmitContext, sourceFile: SourceFile, statementBlock: StatementBlock) {
+  context.output.appendLine("{");
+  context.output.indent();
 
   for (const statement of statementBlock.statements) {
     emitBlockLevelStatement(context, sourceFile, statement);
   }
 
-  context.indentLevel -= 1;
-  context.append("}");
+  context.output.unindent();
+  context.output.appendLine("}");
 }
 
-function emitBlockLevelStatement(context: CBackendContext, sourceFile: SourceFile, node: SyntaxNode) {
+function emitBlockLevelStatement(context: EmitContext, sourceFile: SourceFile, node: SyntaxNode) {
+  const placeholder = pushBlockLevelStatementPlaceholder(context);
+  const statementOutput = pushOutput(context);
+
   switch (node.kind) {
     case SyntaxKind.DeferStatement:
       emitDeferStatement(context, sourceFile, <DeferStatement>node);
@@ -296,85 +365,89 @@ function emitBlockLevelStatement(context: CBackendContext, sourceFile: SourceFil
       emitUnexpectedNode(context, nameof(emitBlockLevelStatement), sourceFile, node);
       break;
   }
+
+  popOutput(context);
+  popBlockLevelStatementPlaceholder(context);
+
+  if (placeholder.hasContents) {
+    context.output.appendLine(placeholder.toString().trim());
+  }
+
+  context.output.appendLine(statementOutput.toString().trim());
 }
 
-function emitDeferStatement(context: CBackendContext, sourceFile: SourceFile, deferStatement: DeferStatement) {
-  context.append("defer ");
+function emitDeferStatement(context: EmitContext, sourceFile: SourceFile, deferStatement: DeferStatement) {
+  context.output.append("defer ");
 
   if (deferStatement.body.kind !== SyntaxKind.StatementBlock) {
-    context.append("{ ");
+    context.output.append("{ ");
   }
 
   emitBlockLevelStatement(context, sourceFile, deferStatement.body);
 
   if (deferStatement.body.kind !== SyntaxKind.StatementBlock) {
-    context.remove(1);
-    context.append(" }");
+    //context.remove(1);
+    context.output.append(" }");
   }
 
-  context.append(";\n");
+  context.output.appendLine(";");
 }
 
 function emitExpressionStatement(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   expressionStatement: ExpressionStatement,
 ) {
   emitExpression(context, sourceFile, expressionStatement.expression);
-  context.append(";\n");
+  context.output.appendLine(";");
 }
 
-function emitIfStatement(context: CBackendContext, sourceFile: SourceFile, ifStatement: IfStatement) {
-  context.append("if (");
+function emitIfStatement(context: EmitContext, sourceFile: SourceFile, ifStatement: IfStatement) {
+  context.output.append("if (");
   emitExpression(context, sourceFile, ifStatement.condition);
-  context.append(") ");
+  context.output.append(") ");
   emitBlockLevelStatement(context, sourceFile, ifStatement.then);
 
   if (ifStatement.else != null) {
-    context.append(" else ");
+    context.output.append(" else ");
     emitBlockLevelStatement(context, sourceFile, ifStatement.else);
   }
 
-  context.append("\n");
+  context.output.appendLine();
 }
 
-function emitReturnStatement(context: CBackendContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
-  context.append("return ");
+function emitReturnStatement(context: EmitContext, sourceFile: SourceFile, returnStatement: ReturnStatement) {
+  context.output.append("return ");
 
   if (returnStatement.expression != null) {
     emitExpression(context, sourceFile, returnStatement.expression);
   }
 
-  context.append(";\n");
+  context.output.appendLine(";");
 }
 
-function emitVarDeclaration(
-  context: CBackendContext,
-  sourceFile: SourceFile,
-  variableDeclaration: VariableDeclaration,
-) {
+function emitVarDeclaration(context: EmitContext, sourceFile: SourceFile, variableDeclaration: VariableDeclaration) {
   const emitTypeResult = emitType(context, sourceFile, variableDeclaration.type);
-  context.append(" ");
+  context.output.append(" ");
   emitIdentifier(context, sourceFile, variableDeclaration.name);
 
   for (let i = 0; i < emitTypeResult.arrayDepth; i++) {
-    context.append("[]");
+    context.output.append("[]");
   }
 
   if (variableDeclaration.expression != null) {
-    context.append(" = ");
+    context.output.append(" = ");
     emitExpression(context, sourceFile, variableDeclaration.expression);
   }
 
-  context.append(";\n");
+  context.output.appendLine(";");
 }
 
-function emitWhileStatement(context: CBackendContext, sourceFile: SourceFile, whileStatement: WhileStatement) {
-  context.append("while (");
+function emitWhileStatement(context: EmitContext, sourceFile: SourceFile, whileStatement: WhileStatement) {
+  context.output.append("while (");
   emitExpression(context, sourceFile, whileStatement.condition);
-  context.append(") ");
+  context.output.append(") ");
   emitBlockLevelStatement(context, sourceFile, whileStatement.body);
-  context.append("\n");
 }
 
 interface EmitTypeResult {
@@ -388,7 +461,7 @@ function newEmitTypeResult(): EmitTypeResult {
 }
 
 function emitType(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   type: TypeNode,
   result: EmitTypeResult | undefined = undefined,
@@ -415,7 +488,7 @@ function emitType(
 }
 
 function emitArrayType(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   arrayType: ArrayType,
   result: EmitTypeResult | undefined = undefined,
@@ -431,7 +504,7 @@ function emitArrayType(
 }
 
 function emitPointerType(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   pointerType: PointerType,
   result: EmitTypeResult | undefined = undefined,
@@ -441,13 +514,13 @@ function emitPointerType(
   }
 
   emitType(context, sourceFile, pointerType.elementType, result);
-  context.append("*");
+  context.output.append("*");
 
   return result;
 }
 
 function emitTypeReference(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   typeReference: TypeReference,
   result: EmitTypeResult | undefined = undefined,
@@ -464,21 +537,21 @@ function emitTypeReference(
       const mappedTypeName = getMappedModuleTypeName(context, module, typeReference.typeName.right.value);
 
       if (mappedTypeName != null) {
-        context.append(mappedTypeName);
+        context.output.append(mappedTypeName);
         typeIsMapped = true;
       }
     }
 
     if (!typeIsMapped) {
       emitIdentifier(context, sourceFile, typeReference.typeName.left);
-      context.append(".");
+      context.output.append(".");
       emitIdentifier(context, sourceFile, typeReference.typeName.right);
     }
   } else {
     const mappedTypeName = getMappedModuleTypeName(context, sourceFile, typeReference.typeName.value);
 
     if (mappedTypeName != null) {
-      context.append(mappedTypeName);
+      context.output.append(mappedTypeName);
     } else {
       emitIdentifier(context, sourceFile, typeReference.typeName);
     }
@@ -487,7 +560,7 @@ function emitTypeReference(
   return result;
 }
 
-function emitExpression(context: CBackendContext, sourceFile: SourceFile, expression: Expression) {
+function emitExpression(context: EmitContext, sourceFile: SourceFile, expression: Expression) {
   switch (expression.kind) {
     case SyntaxKind.AdditiveExpression:
       emitAdditiveExpression(context, sourceFile, <AdditiveExpression>expression);
@@ -564,7 +637,7 @@ function emitExpression(context: CBackendContext, sourceFile: SourceFile, expres
 }
 
 function emitAssignmentExpression(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   expression: AssignmentExpression,
 ): void {
@@ -589,42 +662,38 @@ function emitAssignmentExpression(
       break;
   }
 
-  context.append(` ${operator} `);
+  context.output.append(` ${operator} `);
 
   emitExpression(context, sourceFile, expression.value);
 }
 
-function emitAdditiveExpression(
-  context: CBackendContext,
-  sourceFile: SourceFile,
-  expression: AdditiveExpression,
-): void {
+function emitAdditiveExpression(context: EmitContext, sourceFile: SourceFile, expression: AdditiveExpression): void {
   emitExpression(context, sourceFile, expression.lhs);
 
-  context.append(` ${expression.operator == Operator.Plus ? "+" : "-"} `);
+  context.output.append(` ${expression.operator == Operator.Plus ? "+" : "-"} `);
 
   emitExpression(context, sourceFile, expression.rhs);
 }
 
-function emitArrayLiteral(context: CBackendContext, sourceFile: SourceFile, arrayLiteral: ArrayLiteral) {
-  context.append("{");
+function emitArrayLiteral(context: EmitContext, sourceFile: SourceFile, arrayLiteral: ArrayLiteral) {
+  context.output.append("{");
 
   for (let i = 0; i < arrayLiteral.elements.length; i += 1) {
     if (i != 0) {
-      context.append(", ");
+      context.output.append(", ");
     }
 
     emitExpression(context, sourceFile, arrayLiteral.elements[i]);
   }
 
-  context.append("}");
+  context.output.append("}");
 }
 
-function emitBooleanLiteral(context: CBackendContext, sourceFile: SourceFile, booleanLiteral: BooleanLiteral) {
-  context.append(booleanLiteral.value ? "true" : "false");
+function emitBooleanLiteral(context: EmitContext, sourceFile: SourceFile, booleanLiteral: BooleanLiteral) {
+  context.output.append(booleanLiteral.value ? "true" : "false");
 }
 
-function emitCallExpression(context: CBackendContext, sourceFile: SourceFile, callExpression: CallExpression) {
+function emitCallExpression(context: EmitContext, sourceFile: SourceFile, callExpression: CallExpression) {
   // HACK: For now just check for the "println" function to treat it as a varadic function.
   let isVaradicCall = false;
   let beginVaradicArgs = callExpression.arguments.length;
@@ -639,28 +708,33 @@ function emitCallExpression(context: CBackendContext, sourceFile: SourceFile, ca
   }
 
   if (isVaradicCall) {
+    const placeholder = getBlockLevelStatementPlaceholder(context);
+    pushOutput(context, placeholder);
+
     const varadicVariableNames: string[] = [];
-    for (let i = beginVaradicArgs; i < callExpression.arguments.length; i++) {
+    for (let i = beginVaradicArgs; i < callExpression.arguments.length; i += 1) {
       const varadicVariableName = `__v${context.tmpVariableIndex++}`;
       varadicVariableNames.push(varadicVariableName);
       // TODO: Would be nice if we didn't have to use 'auto' here.
-      context.append(`auto ${varadicVariableName} = `);
+      context.output.append(`auto ${varadicVariableName} = `);
       emitExpression(context, sourceFile, callExpression.arguments[i]);
-      context.append(";\n");
+      context.output.appendLine(";");
     }
 
     varadicArgsArrayName = `__vargs${context.tmpVariableIndex++}`;
-    context.append(`void* ${varadicArgsArrayName}[] = {`);
-    context.append(varadicVariableNames.map((x) => `&${x}`).join(", "));
-    context.append("};\n");
+    context.output.append(`void* ${varadicArgsArrayName}[] = {`);
+    context.output.append(varadicVariableNames.map((x) => `&${x}`).join(", "));
+    context.output.appendLine("};");
+
+    popOutput(context);
   }
 
   emitExpression(context, sourceFile, callExpression.expression);
-  context.append("(");
+  context.output.append("(");
 
   for (let i = 0; i < beginVaradicArgs; i++) {
     if (i != 0) {
-      context.append(", ");
+      context.output.append(", ");
     }
 
     emitExpression(context, sourceFile, callExpression.arguments[i]);
@@ -668,27 +742,27 @@ function emitCallExpression(context: CBackendContext, sourceFile: SourceFile, ca
 
   if (isVaradicCall) {
     if (beginVaradicArgs != 0) {
-      context.append(", ");
+      context.output.append(", ");
     }
-    context.append(varadicArgsArrayName);
+    context.output.append(varadicArgsArrayName);
   }
 
-  context.append(")");
+  context.output.append(")");
 }
 
 function emitElementAccessExpression(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   elementAccessExpression: ElementAccessExpression,
 ) {
   emitExpression(context, sourceFile, elementAccessExpression.expression);
-  context.append("[");
+  context.output.append("[");
   emitExpression(context, sourceFile, elementAccessExpression.argumentExpression);
-  context.append("]");
+  context.output.append("]");
 }
 
 function emitPropertyAccessExpression(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   propertyAccessExpression: PropertyAccessExpression,
 ) {
@@ -700,18 +774,18 @@ function emitPropertyAccessExpression(
       const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.name.value);
 
       if (mappedTypeName != null) {
-        context.append(mappedTypeName);
+        context.output.append(mappedTypeName);
         return;
       }
     }
   }
 
   emitExpression(context, sourceFile, propertyAccessExpression.expression);
-  context.append(".");
+  context.output.append(".");
   emitIdentifier(context, sourceFile, propertyAccessExpression.name);
 }
 
-function emitComparisonExpression(context: CBackendContext, sourceFile: SourceFile, expression: ComparisonExpression) {
+function emitComparisonExpression(context: EmitContext, sourceFile: SourceFile, expression: ComparisonExpression) {
   emitExpression(context, sourceFile, expression.lhs);
 
   let operator = ">";
@@ -734,91 +808,91 @@ function emitComparisonExpression(context: CBackendContext, sourceFile: SourceFi
       break;
   }
 
-  context.append(` ${operator} `);
+  context.output.append(` ${operator} `);
 
   emitExpression(context, sourceFile, expression.rhs);
 }
 
-function emitEqualityExpression(context: CBackendContext, sourceFile: SourceFile, expression: EqualityExpression) {
+function emitEqualityExpression(context: EmitContext, sourceFile: SourceFile, expression: EqualityExpression) {
   emitExpression(context, sourceFile, expression.lhs);
-  context.append(expression.operator == Operator.EqualsEquals ? " == " : " != ");
+  context.output.append(expression.operator == Operator.EqualsEquals ? " == " : " != ");
 
   emitExpression(context, sourceFile, expression.rhs);
 }
 
-function emitIdentifier(context: CBackendContext, sourceFile: SourceFile, identifier: Identifier) {
-  context.append(identifier.value);
+function emitIdentifier(context: EmitContext, sourceFile: SourceFile, identifier: Identifier) {
+  context.output.append(identifier.value);
 }
 
-function emitIntegerLiteral(context: CBackendContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
-  context.append(integerLiteral.value);
+function emitIntegerLiteral(context: EmitContext, sourceFile: SourceFile, integerLiteral: IntegerLiteral) {
+  context.output.append(integerLiteral.value);
 }
 
-function emitLogicalExpression(context: CBackendContext, sourceFile: SourceFile, expression: LogicalExpression) {
+function emitLogicalExpression(context: EmitContext, sourceFile: SourceFile, expression: LogicalExpression) {
   emitExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == Operator.AmpersandAmpersand ? " && " : " || ");
+  context.output.append(expression.operator == Operator.AmpersandAmpersand ? " && " : " || ");
 
   emitExpression(context, sourceFile, expression.rhs);
 }
 
 function emitMultiplicativeExpression(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   expression: MultiplicativeExpression,
 ) {
   emitExpression(context, sourceFile, expression.lhs);
 
-  context.append(expression.operator == Operator.Asterisk ? " * " : " / ");
+  context.output.append(expression.operator == Operator.Asterisk ? " * " : " / ");
 
   emitExpression(context, sourceFile, expression.rhs);
 }
 
 function emitParenthesizedExpression(
-  context: CBackendContext,
+  context: EmitContext,
   sourceFile: SourceFile,
   expression: ParenthesizedExpression,
 ) {
-  context.append("(");
+  context.output.append("(");
   emitExpression(context, sourceFile, expression.expression);
-  context.append(")");
+  context.output.append(")");
 }
 
-function emitStringLiteral(context: CBackendContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
-  context.append(`STR("${stringLiteral.value}")`);
+function emitStringLiteral(context: EmitContext, sourceFile: SourceFile, stringLiteral: StringLiteral) {
+  context.output.append(`STR("${stringLiteral.value}")`);
 }
 
-function emitStructLiteral(context: CBackendContext, sourceFile: SourceFile, structLiteral: StructLiteral) {
-  context.append("{\n");
-  context.indentLevel += 1;
+function emitStructLiteral(context: EmitContext, sourceFile: SourceFile, structLiteral: StructLiteral) {
+  context.output.appendLine("{");
+  context.output.indent();
 
   for (const element of structLiteral.elements) {
     if (element.name) {
-      context.append(`.${element.name.value} = `);
+      context.output.append(`.${element.name.value} = `);
     }
 
     emitExpression(context, sourceFile, element.expression);
 
-    context.append(",\n");
+    context.output.appendLine(",");
   }
 
-  context.indentLevel -= 1;
-  context.append("}");
+  context.output.unindent();
+  context.output.append("}");
 }
 
-function emitUnaryExpression(context: CBackendContext, sourceFile: SourceFile, expression: UnaryExpression) {
+function emitUnaryExpression(context: EmitContext, sourceFile: SourceFile, expression: UnaryExpression) {
   switch (expression.operator) {
     case Operator.Ampersand:
-      context.append("&");
+      context.output.append("&");
       break;
     case Operator.Asterisk:
-      context.append("*");
+      context.output.append("*");
       break;
     case Operator.Exclamation:
-      context.append("!");
+      context.output.append("!");
       break;
     case Operator.Minus:
-      context.append("-");
+      context.output.append("-");
       break;
     default:
       emitUnexpectedNode(context, nameof(emitUnaryExpression), sourceFile, expression);

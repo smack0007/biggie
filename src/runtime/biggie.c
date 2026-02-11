@@ -28,17 +28,17 @@ void println(string format, void* args[]) {
     if (format.data[i] == '%') {
       i += 1;
       if (format.data[i] == 's') {
-        char* str = (*(string*)args[argIndex]).data;
-        printf("%s", str);
+        char* data = (*(string*)args[argIndex]).data;
+        printf("%s", data);
         argIndex += 1;
       } else if (format.data[i] == 'd') {
-        int32 num = *(int32*)args[argIndex];
-        printf("%d", num);
+        int32 data = *(int32*)args[argIndex];
+        printf("%d", data);
         argIndex += 1;
       }
     } else {
       putchar(format.data[i]);
     }
   }
-  puts("");
+  putchar('\n');
 }

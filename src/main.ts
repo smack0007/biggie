@@ -24,27 +24,9 @@ async function main(argv: string[]): Promise<int> {
       console.info("/* " + JSON.stringify(Object.keys(parseResult.value)) + " */");
     }
 
-    let buffer = "";
+    const emitResult = emitC(parseResult.value, entryFileName);
 
-    emitC(parseResult.value, entryFileName, {
-      indentLevel: 0,
-      append: function (value: string) {
-        if (buffer.length == 0 || buffer[buffer.length - 1] == "\n") {
-          for (let i = 0; i < this.indentLevel; i++) {
-            buffer += "\t";
-          }
-        }
-        buffer += value;
-      },
-      prepend: function (value: string) {
-        buffer = value + buffer;
-      },
-      remove: function (count: int) {
-        buffer = buffer.substring(0, buffer.length - count);
-      },
-    });
-
-    console.info(buffer);
+    console.info(emitResult.code);
   } else if (isError(parseResult)) {
     stderr.write(
       `Error: (${parseResult.error.line}, ${parseResult.error.column}) ${ParserErrorKind[parseResult.error.kind]} ${
