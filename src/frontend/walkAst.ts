@@ -39,10 +39,10 @@ export function walkAstChildren(
     case ast.SyntaxKind.ImportDeclaration:
       {
         const importDeclaration = <ast.ImportDeclaration> node;
-        walkAstParent(importDeclaration.module, <WalkAstCallback> callback, importDeclaration);
         if (importDeclaration.alias) {
           walkAstParent(importDeclaration.alias, <WalkAstCallback> callback, importDeclaration);
         }
+        walkAstParent(importDeclaration.module, <WalkAstCallback> callback, importDeclaration);
       }
       break;
     case ast.SyntaxKind.VariableDeclaration:
@@ -76,13 +76,6 @@ export function walkAstChildren(
         walkAstArrayParent(functionDeclaration.arguments, <WalkAstCallback> callback, functionDeclaration);
         walkAstParent(functionDeclaration.returnType, <WalkAstCallback> callback, functionDeclaration);
         walkAstParent(functionDeclaration.body, <WalkAstCallback> callback, functionDeclaration);
-      }
-      break;
-    case ast.SyntaxKind.FunctionArgument:
-      {
-        const functionArgument = <ast.FunctionArgument> node;
-        walkAstParent(functionArgument.name, <WalkAstCallback> callback, functionArgument);
-        walkAstParent(functionArgument.type, <WalkAstCallback> callback, functionArgument);
       }
       break;
     case ast.SyntaxKind.StructDeclaration:

@@ -84,6 +84,12 @@ function walkAstArrayParent(nodes: ast.SyntaxNode[], callback: WalkAstCallback, 
           continue;
         }
 
+        const type = parts[2].substring(0, parts[2].length - 1);
+
+        if (type == "string") {
+          continue;
+        }
+
         if (!caseBlockIsOutput) {
           outputWriter.appendLine(`case ast.SyntaxKind.${interfaceName}: {`);
           outputWriter.indent();
@@ -97,7 +103,7 @@ function walkAstArrayParent(nodes: ast.SyntaxNode[], callback: WalkAstCallback, 
         }
 
         let walkFunc = "walkAstParent";
-        if (parts[2].endsWith("[];")) {
+        if (type.endsWith("[]")) {
           walkFunc = "walkAstArrayParent";
         }
 

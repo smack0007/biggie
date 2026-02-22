@@ -6,6 +6,7 @@ import { bool, nameof } from "../shims.ts";
 import { Mutable } from "../utils.ts";
 import { Symbol, SymbolFlags, SymbolScope, SymbolTable } from "./symbols.ts";
 
+// TODO: bind should use Result<BinderResult, BinderError>.
 export function bind(program: Program) {
   bindInitialize(program);
 
@@ -79,6 +80,7 @@ function getSymbolByName(scope: Required<SymbolScope>, name: string): Symbol {
 
 function bindSourceFile(program: Program, sourceFile: Required<ast.SourceFile>): void {
   walkAst(sourceFile, (node: ast.SyntaxNode): bool => {
+    // TODO: All the cases in the switch should return false that binding only occurs once.
     switch (node.kind) {
       case ast.SyntaxKind.ImportDeclaration:
         bindImportDeclaration(program, sourceFile, <ast.ImportDeclaration> node);
@@ -90,10 +92,6 @@ function bindSourceFile(program: Program, sourceFile: Required<ast.SourceFile>):
 
       case ast.SyntaxKind.FunctionDeclaration:
         bindFunctionDeclaration(program, sourceFile, <ast.FunctionDeclaration> node);
-        return true;
-
-      case ast.SyntaxKind.FunctionArgument:
-        bindFunctionArgument(program, sourceFile, <ast.FunctionArgument> node);
         return true;
 
       case ast.SyntaxKind.StructDeclaration:
@@ -188,43 +186,6 @@ function bindFunctionDeclaration(
   }
 }
 
-function bindFunctionArgument(
-  program: Program,
-  sourceFile: Required<ast.SourceFile>,
-  functionArgument: ast.FunctionArgument,
-): void {
-  let members: SymbolTable | undefined;
-
-  // TODO: Generalize this with VariableDeclaration.
-  if (functionArgument.type.kind == ast.SyntaxKind.TypeReference) {
-    const typeReference = <ast.TypeReference> functionArgument.type;
-    if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
-      const qualifiedName = <ast.QualifiedName> typeReference.typeName;
-
-      const scope = getSymbolScopeFromNode(functionArgument);
-      const module = getSymbolByName(scope, qualifiedName.left.value);
-
-      // TODO: Check members is set
-
-      const moduleExport = module.members![qualifiedName.right.value];
-
-      // TODO: Check members is set.
-
-      members = moduleExport.members;
-    }
-  }
-
-  (<Mutable<ast.FunctionArgument>> functionArgument).symbol = {
-    sourceFileName: sourceFile.fileName,
-    name: functionArgument.name.value,
-    flags: SymbolFlags.Variable,
-    members,
-  };
-
-  const scope = getSymbolScopeFromNode(functionArgument);
-  scope.locals[functionArgument.symbol!.name] = functionArgument.symbol!;
-}
-
 function bindStructDeclaration(
   program: Program,
   sourceFile: Required<ast.SourceFile>,
@@ -268,7 +229,6 @@ function bindVariableDeclaration(
 ): void {
   let members: SymbolTable | undefined;
 
-  // HACK: Ignore println for now.
   if (variableDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
     const typeReference = <ast.TypeReference> variableDeclaration.type;
     if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {

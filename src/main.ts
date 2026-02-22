@@ -33,9 +33,9 @@ async function main(argv: string[]): Promise<int> {
     console.info(emitResult.code);
   } else if (isError(parseResult)) {
     stderr.write(
-      `Error: (${parseResult.error.line}, ${parseResult.error.column}) ${
+      `Error: (${parseResult.error.line}, ${parseResult.error.column}) ${parseResult.error.fileName} [${
         ParserErrorKind[parseResult.error.kind]
-      } ${parseResult.error.message}\n`,
+      }] ${parseResult.error.message}\n`,
     );
 
     return 1;

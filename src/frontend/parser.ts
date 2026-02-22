@@ -16,7 +16,6 @@ import {
   EqualityExpression,
   Expression,
   ExpressionStatement,
-  FunctionArgument,
   FunctionDeclaration,
   Identifier,
   IfStatement,
@@ -47,7 +46,6 @@ import {
 } from "./ast.ts";
 import { scan, Token, TokenType } from "./scanner.ts";
 import { Program } from "./program.ts";
-import * as symbols from "./symbols.ts";
 
 export interface ParserLogger {
   enter(name: string, fileName: string, token?: Token): void;
@@ -84,6 +82,7 @@ export enum ParserErrorKind {
 
 export interface ParserError {
   kind: ParserErrorKind;
+  fileName: string;
   line: int;
   column: int;
   message?: string;
@@ -93,9 +92,15 @@ function resolveModule(filePath: string, basePath: string): string {
   return isAbsolute(filePath) ? filePath : resolve(basePath, filePath);
 }
 
-function parserError(token: Token, kind: ParserErrorKind, message?: string): ErrorResult<ParserError> {
+function parserError(
+  fileName: string,
+  token: Token,
+  kind: ParserErrorKind,
+  message?: string,
+): ErrorResult<ParserError> {
   return error({
     kind,
+    fileName,
     line: token.line,
     column: token.column,
     message,
@@ -152,6 +157,7 @@ function expect(
   if (Array.isArray(expectedType)) {
     if (!expectedType.includes(token.type)) {
       return parserError(
+        context.fileName,
         token,
         ParserErrorKind.UnexpectedTokenType,
         `Expected Token of type ${expectedType.map((x) => TokenType[x]).join(" | ")} but was ${
@@ -162,6 +168,7 @@ function expect(
   } else {
     if (token.type != expectedType) {
       return parserError(
+        context.fileName,
         token,
         ParserErrorKind.UnexpectedTokenType,
         `Expected Token of type ${TokenType[expectedType]} but was ${
@@ -259,7 +266,12 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
   switch (token.type) {
     case TokenType.Import:
       if (isExported) {
-        return parserError(token, ParserErrorKind.ExportImport, "export cannot be followed by import.");
+        return parserError(
+          context.fileName,
+          token,
+          ParserErrorKind.ExportImport,
+          "export cannot be followed by import.",
+        );
       }
 
       result = await parseImportDeclaration(context);
@@ -284,6 +296,7 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
 
     default:
       return parserError(
+        context.fileName,
         token,
         ParserErrorKind.UnknownTopLevelStatement,
         `Token type ${TokenType[token.type]} unexpected in ${nameof(parseTopLevelStatement)}`,
@@ -348,15 +361,27 @@ async function parseImportDeclaration(
   });
 }
 
-function parseVariableDeclaration(context: ParserSourceFileContext): Result<VariableDeclaration, ParserError> {
-  context.logger.enter(nameof(parseVariableDeclaration));
-  let token = expect(context, TokenType.Var, nameof(parseVariableDeclaration));
+interface ParseVariableDeclarationOptions {
+  isFunctionArgument?: bool;
+}
 
-  if (isError(token)) {
-    return token;
+function parseVariableDeclaration(
+  context: ParserSourceFileContext,
+  options: ParseVariableDeclarationOptions = {},
+): Result<VariableDeclaration, ParserError> {
+  context.logger.enter(nameof(parseVariableDeclaration));
+  let token: Result<Token, ParserError>;
+
+  if (!options.isFunctionArgument) {
+    token = expect(context, TokenType.Var, nameof(parseVariableDeclaration));
+
+    if (isError(token)) {
+      return token;
+    }
+
+    advance(context);
   }
 
-  advance(context);
   const identifier = parseIdentifier(context);
 
   if (isError(identifier)) {
@@ -386,13 +411,15 @@ function parseVariableDeclaration(context: ParserSourceFileContext): Result<Vari
     }
   }
 
-  token = expect(context, TokenType.Semicolon, nameof(parseVariableDeclaration));
+  if (!options.isFunctionArgument) {
+    token = expect(context, TokenType.Semicolon, nameof(parseVariableDeclaration));
 
-  if (isError(token)) {
-    return token;
+    if (isError(token)) {
+      return token;
+    }
+
+    advance(context);
   }
-
-  advance(context);
 
   return success({
     kind: SyntaxKind.VariableDeclaration,
@@ -402,6 +429,7 @@ function parseVariableDeclaration(context: ParserSourceFileContext): Result<Vari
   });
 }
 
+// TODO: isExported should be moved into an options object like in parseVariableDeclaration.
 function parseEnumDeclaration(
   context: ParserSourceFileContext,
   isExported: boolean,
@@ -460,7 +488,7 @@ function parseEnumDeclaration(
 }
 
 function parseEnumMember(context: ParserSourceFileContext): Result<EnumMember, ParserError> {
-  context.logger.enter(nameof(parseFunctionArgument));
+  context.logger.enter(nameof(parseEnumMember));
 
   const name = parseIdentifier(context);
 
@@ -511,9 +539,9 @@ function parseFunctionDeclaration(
 
   advance(context);
 
-  const args: FunctionArgument[] = [];
+  const args: VariableDeclaration[] = [];
   while (check(context, TokenType.Identifier)) {
-    const arg = parseFunctionArgument(context);
+    const arg = parseVariableDeclaration(context, { isFunctionArgument: true });
 
     if (isError(arg)) {
       return arg;
@@ -559,36 +587,6 @@ function parseFunctionDeclaration(
     arguments: args,
     returnType: returnType.value,
     body: body.value,
-  });
-}
-
-function parseFunctionArgument(context: ParserSourceFileContext): Result<FunctionArgument, ParserError> {
-  context.logger.enter(nameof(parseFunctionArgument));
-
-  const name = parseIdentifier(context);
-
-  if (isError(name)) {
-    return name;
-  }
-
-  const token = expect(context, TokenType.Colon, nameof(parseFunctionArgument));
-
-  if (isError(token)) {
-    return token;
-  }
-
-  advance(context);
-
-  const type = parseType(context);
-
-  if (isError(type)) {
-    return type;
-  }
-
-  return success({
-    kind: SyntaxKind.FunctionArgument,
-    name: name.value,
-    type: type.value,
   });
 }
 
@@ -972,7 +970,12 @@ function parseAssignmentExpression(context: ParserSourceFileContext): Result<Exp
     }
 
     if (expression.value.kind != SyntaxKind.Identifier) {
-      return parserError(startToken, ParserErrorKind.InvalidAssignmentTarget, "Invalid assignment target.");
+      return parserError(
+        context.fileName,
+        startToken,
+        ParserErrorKind.InvalidAssignmentTarget,
+        "Invalid assignment target.",
+      );
     }
 
     return success<AssignmentExpression>({
@@ -1269,6 +1272,7 @@ function parsePrimaryExpression(context: ParserSourceFileContext): Result<Expres
 
     default:
       return parserError(
+        context.fileName,
         token,
         ParserErrorKind.UnknownExpression,
         `Token type ${TokenType[token.type]} unexpected in ${nameof(parsePrimaryExpression)}`,
@@ -1569,6 +1573,7 @@ function parseIdentifier(context: ParserSourceFileContext): Result<Identifier, P
 
   if (token.value.text == null) {
     return parserError(
+      context.fileName,
       token.value,
       ParserErrorKind.TokenTextIsNull,
       `Expected token to have text value in ${nameof(parseIdentifier)}.`,
@@ -1742,6 +1747,7 @@ function parseIntegerLiteral(context: ParserSourceFileContext): Result<IntegerLi
 
   if (token.value.text == null) {
     return parserError(
+      context.fileName,
       token.value,
       ParserErrorKind.TokenTextIsNull,
       `Expected token to have text value in ${nameof(parseIntegerLiteral)}.`,
@@ -1766,6 +1772,7 @@ function parseStringLiteral(context: ParserSourceFileContext): Result<StringLite
 
   if (token.value.text == null) {
     return parserError(
+      context.fileName,
       token.value,
       ParserErrorKind.TokenTextIsNull,
       `Expected token to have text value in ${nameof(parseStringLiteral)}.`,

@@ -183,20 +183,11 @@ export interface FunctionDeclaration extends SyntaxNode, symbols.SymbolDeclarati
 
   readonly name: Identifier;
 
-  readonly arguments: FunctionArgument[];
+  readonly arguments: VariableDeclaration[];
 
   readonly returnType: TypeNode;
 
   readonly body: StatementBlock;
-}
-
-// TODO: FunctionArgument should probably just be a VariableDeclaration.
-export interface FunctionArgument extends SyntaxNode, symbols.SymbolDeclaration {
-  readonly kind: SyntaxKind.FunctionArgument;
-
-  readonly name: Identifier;
-
-  readonly type: TypeNode;
 }
 
 export interface StructDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
