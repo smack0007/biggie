@@ -4,6 +4,8 @@ import { emitC } from "./backend/cBackend.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
 import { int, isError, isSuccess } from "./shims.ts";
 import { Token } from "./frontend/scanner.ts";
+import { bind } from "./frontend/binder.ts";
+import { inspect } from "node:util";
 
 main(argv.slice(2)).then(exit);
 
@@ -20,18 +22,20 @@ async function main(argv: string[]): Promise<int> {
   });
 
   if (isSuccess(parseResult)) {
-    if (debug) {
-      console.info("/* " + JSON.stringify(Object.keys(parseResult.value)) + " */");
-    }
+    const program = parseResult.value;
 
-    const emitResult = emitC(parseResult.value, entryFileName);
+    bind(program);
+
+    // console.info(`/* ${inspect(parseResult.value.sourceFiles[parseResult.value.entryFileName], { depth: 6 })} */`);
+
+    const emitResult = emitC(program);
 
     console.info(emitResult.code);
   } else if (isError(parseResult)) {
     stderr.write(
-      `Error: (${parseResult.error.line}, ${parseResult.error.column}) ${ParserErrorKind[parseResult.error.kind]} ${
-        parseResult.error.message
-      }\n`,
+      `Error: (${parseResult.error.line}, ${parseResult.error.column}) ${
+        ParserErrorKind[parseResult.error.kind]
+      } ${parseResult.error.message}\n`,
     );
 
     return 1;

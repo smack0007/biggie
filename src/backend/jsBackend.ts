@@ -95,7 +95,7 @@ function outputUnexpectedNode(
 
 function outputTopLevelStatement(context: JSBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
-    case SyntaxKind.FuncDeclaration:
+    case SyntaxKind.FunctionDeclaration:
       outputFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
       break;
 
@@ -184,9 +184,9 @@ function outputBlockLevelStatement(context: JSBackendContext, sourceFile: Source
 function outputVarDeclaration(context: JSBackendContext, sourceFile: SourceFile, varDeclaration: VariableDeclaration) {
   context.append(`${varDeclaration.isConst ? "const" : "let"} ${varDeclaration.name.value}`);
 
-  if (varDeclaration.expression) {
+  if (varDeclaration.initializer) {
     context.append(" = ");
-    outputExpression(context, sourceFile, varDeclaration.expression);
+    outputExpression(context, sourceFile, varDeclaration.initializer);
   }
 
   context.append(";\n");

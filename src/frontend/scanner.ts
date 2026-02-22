@@ -52,6 +52,9 @@ export enum TokenType {
   // else
   Else,
 
+  // enum
+  Enum,
+
   // =
   Equals,
 
@@ -434,6 +437,10 @@ export function scan(text: string): Array<Token> {
 
           case "else":
             token.push({ type: TokenType.Else, text: null, line: line, column: column });
+            break;
+
+          case "enum":
+            token.push({ type: TokenType.Enum, text: null, line: line, column: column });
             break;
 
           case "export":

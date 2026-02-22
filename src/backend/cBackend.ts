@@ -1,28 +1,35 @@
 import { basename, extname } from "node:path";
 import {
   AdditiveExpression,
-  AssignmentExpression,
   ArrayLiteral,
   ArrayType,
+  AssignmentExpression,
   BooleanLiteral,
   CallExpression,
   ComparisonExpression,
   DeferStatement,
+  ElementAccessExpression,
+  EnumDeclaration,
   EqualityExpression,
   Expression,
   ExpressionStatement,
   FunctionDeclaration,
   Identifier,
   IfStatement,
+  ImportDeclaration,
   IntegerLiteral,
   LogicalExpression,
   MultiplicativeExpression,
   Operator,
   ParenthesizedExpression,
+  PointerType,
+  PropertyAccessExpression,
   ReturnStatement,
   SourceFile,
   StatementBlock,
   StringLiteral,
+  StructDeclaration,
+  StructLiteral,
   SyntaxKind,
   SyntaxNode,
   TypeNode,
@@ -30,15 +37,13 @@ import {
   UnaryExpression,
   VariableDeclaration,
   WhileStatement,
-  ElementAccessExpression,
-  PropertyAccessExpression,
-  StructDeclaration,
-  StructLiteral,
-  PointerType,
-  ImportStatement,
 } from "../frontend/ast.ts";
+import * as astUtils from "../frontend/astUtils.ts";
 import { int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
+import { Program } from "../frontend/program.ts";
+import { SymbolFlags } from "../frontend/symbols.ts";
+import { inspect } from "node:util";
 
 interface EmitContext {
   output: OutputWriter;
@@ -64,11 +69,11 @@ interface EmitResult {
   code: string;
 }
 
-export function emitC(sourceFiles: Record<string, SourceFile>, entryFileName: string): EmitResult {
+export function emitC(program: Program): EmitResult {
   const context: EmitContext = {
     output: new OutputWriter(),
     outputStack: [],
-    sourceFiles,
+    sourceFiles: program.sourceFiles,
     emittedSourceFiles: new Set<string>(),
     namePrefixStack: [],
     importMap: [{}],
@@ -79,9 +84,11 @@ export function emitC(sourceFiles: Record<string, SourceFile>, entryFileName: st
 
   emitPreamble(context);
 
-  const sourceFile = sourceFiles[entryFileName];
+  const entrySourceFile = program.sourceFiles[program.entryFileName];
 
-  emitSourceFile(context, sourceFile);
+  emitSourceFile(context, entrySourceFile);
+
+  context.output.appendLine(`/* ${inspect(context.moduleTypeNameMap)} */`);
 
   return {
     code: context.output.toString(),
@@ -202,7 +209,8 @@ function emitUnexpectedNode(
   sourceFile: SourceFile,
   node: SyntaxNode,
 ): void {
-  context.output.appendLine(`/* Unexpected node in ${functionName}:`);
+  context.output.appendLine("/*");
+  context.output.appendLine(`Unexpected node in ${functionName}:`);
   context.output.append(`${sourceFile.fileName} ${SyntaxKind[node.kind]}`);
   context.output.appendLine("*/");
 }
@@ -211,14 +219,14 @@ function emitSourceFile(context: EmitContext, sourceFile: SourceFile): void {
   pushImportMap(context);
 
   // Emit import statements first.
-  for (const statement of sourceFile.statements.filter((s) => s.kind == SyntaxKind.ImportStatement)) {
+  for (const statement of sourceFile.statements.filter((s) => s.kind == SyntaxKind.ImportDeclaration)) {
     emitTopLevelStatement(context, sourceFile, statement);
   }
 
   context.output.appendLine(`/* SourceFile: ${sourceFile.fileName} */`);
   context.output.appendLine();
 
-  for (const statement of sourceFile.statements.filter((s) => s.kind != SyntaxKind.ImportStatement)) {
+  for (const statement of sourceFile.statements.filter((s) => s.kind != SyntaxKind.ImportDeclaration)) {
     emitTopLevelStatement(context, sourceFile, statement);
   }
 
@@ -228,16 +236,20 @@ function emitSourceFile(context: EmitContext, sourceFile: SourceFile): void {
 
 function emitTopLevelStatement(context: EmitContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
-    case SyntaxKind.ImportStatement:
-      emitImportStatement(context, sourceFile, <ImportStatement>node);
+    case SyntaxKind.ImportDeclaration:
+      emitImportDeclaration(context, sourceFile, <ImportDeclaration> node);
       break;
 
-    case SyntaxKind.FuncDeclaration:
-      emitFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
+    case SyntaxKind.EnumDeclaration:
+      emitEnumDeclaration(context, sourceFile, <EnumDeclaration> node);
+      break;
+
+    case SyntaxKind.FunctionDeclaration:
+      emitFunctionDeclaration(context, sourceFile, <FunctionDeclaration> node);
       break;
 
     case SyntaxKind.StructDeclaration:
-      emitStructDeclaration(context, sourceFile, <StructDeclaration>node);
+      emitStructDeclaration(context, sourceFile, <StructDeclaration> node);
       break;
 
     default:
@@ -246,21 +258,50 @@ function emitTopLevelStatement(context: EmitContext, sourceFile: SourceFile, nod
   }
 }
 
-function calculateModuleAliasFromSourceFile(sourceFile: SourceFile): string {
-  return basename(sourceFile.fileName, extname(sourceFile.fileName));
-}
+function emitImportDeclaration(
+  context: EmitContext,
+  sourceFile: SourceFile,
+  importDeclaration: ImportDeclaration,
+): void {
+  const resolvedSourceFile = context.sourceFiles[importDeclaration.resolvedFileName];
 
-function emitImportStatement(context: EmitContext, sourceFile: SourceFile, importStatement: ImportStatement): void {
-  const moduleAlias =
-    importStatement.alias?.value ?? calculateModuleAliasFromSourceFile(importStatement.resolvedSourceFile);
+  if (!resolvedSourceFile) {
+    throw new Error("resolvedSourceFile is null");
+  }
 
-  if (!context.emittedSourceFiles.has(importStatement.resolvedSourceFile.fileName)) {
+  const moduleAlias = astUtils.getOrCalculateModuleAlias(importDeclaration);
+
+  if (!context.emittedSourceFiles.has(resolvedSourceFile.fileName)) {
     pushNamePrefix(context, moduleAlias);
-    emitSourceFile(context, importStatement.resolvedSourceFile);
+    emitSourceFile(context, resolvedSourceFile);
     popNamePrefix(context);
   }
 
-  setImportedModule(context, moduleAlias, importStatement.resolvedSourceFile);
+  setImportedModule(context, moduleAlias, resolvedSourceFile);
+}
+
+function emitEnumDeclaration(context: EmitContext, sourceFile: SourceFile, enumDeclaration: EnumDeclaration): void {
+  const mappedEnumName = getNamePrefix(context) + enumDeclaration.name.value;
+  mapModuleTypeName(context, sourceFile, enumDeclaration.name.value, mappedEnumName);
+
+  context.output.appendLine("typedef enum {");
+
+  context.output.indent();
+  for (const member of enumDeclaration.members) {
+    context.output.append(`${mappedEnumName}_${member.name.value}`);
+
+    if (member.initializer) {
+      context.output.append(" = ");
+      emitExpression(context, sourceFile, member.initializer);
+    }
+
+    context.output.appendLine(",");
+  }
+  context.output.unindent();
+
+  context.output.append(`} ${mappedEnumName};`);
+  context.output.appendLine();
+  context.output.appendLine();
 }
 
 function emitFunctionDeclaration(
@@ -334,31 +375,31 @@ function emitBlockLevelStatement(context: EmitContext, sourceFile: SourceFile, n
 
   switch (node.kind) {
     case SyntaxKind.DeferStatement:
-      emitDeferStatement(context, sourceFile, <DeferStatement>node);
+      emitDeferStatement(context, sourceFile, <DeferStatement> node);
       break;
 
     case SyntaxKind.ExpressionStatement:
-      emitExpressionStatement(context, sourceFile, <ExpressionStatement>node);
+      emitExpressionStatement(context, sourceFile, <ExpressionStatement> node);
       break;
 
     case SyntaxKind.IfStatement:
-      emitIfStatement(context, sourceFile, <IfStatement>node);
+      emitIfStatement(context, sourceFile, <IfStatement> node);
       break;
 
     case SyntaxKind.ReturnStatement:
-      emitReturnStatement(context, sourceFile, <ReturnStatement>node);
+      emitReturnStatement(context, sourceFile, <ReturnStatement> node);
       break;
 
     case SyntaxKind.StatementBlock:
-      emitStatementBlock(context, sourceFile, <StatementBlock>node);
+      emitStatementBlock(context, sourceFile, <StatementBlock> node);
       break;
 
     case SyntaxKind.VariableDeclaration:
-      emitVarDeclaration(context, sourceFile, <VariableDeclaration>node);
+      emitVariableDeclaration(context, sourceFile, <VariableDeclaration> node);
       break;
 
     case SyntaxKind.WhileStatement:
-      emitWhileStatement(context, sourceFile, <WhileStatement>node);
+      emitWhileStatement(context, sourceFile, <WhileStatement> node);
       break;
 
     default:
@@ -426,7 +467,11 @@ function emitReturnStatement(context: EmitContext, sourceFile: SourceFile, retur
   context.output.appendLine(";");
 }
 
-function emitVarDeclaration(context: EmitContext, sourceFile: SourceFile, variableDeclaration: VariableDeclaration) {
+function emitVariableDeclaration(
+  context: EmitContext,
+  sourceFile: SourceFile,
+  variableDeclaration: VariableDeclaration,
+) {
   const emitTypeResult = emitType(context, sourceFile, variableDeclaration.type);
   context.output.append(" ");
   emitIdentifier(context, sourceFile, variableDeclaration.name);
@@ -435,9 +480,9 @@ function emitVarDeclaration(context: EmitContext, sourceFile: SourceFile, variab
     context.output.append("[]");
   }
 
-  if (variableDeclaration.expression != null) {
+  if (variableDeclaration.initializer != null) {
     context.output.append(" = ");
-    emitExpression(context, sourceFile, variableDeclaration.expression);
+    emitExpression(context, sourceFile, variableDeclaration.initializer);
   }
 
   context.output.appendLine(";");
@@ -563,71 +608,71 @@ function emitTypeReference(
 function emitExpression(context: EmitContext, sourceFile: SourceFile, expression: Expression) {
   switch (expression.kind) {
     case SyntaxKind.AdditiveExpression:
-      emitAdditiveExpression(context, sourceFile, <AdditiveExpression>expression);
+      emitAdditiveExpression(context, sourceFile, <AdditiveExpression> expression);
       break;
 
     case SyntaxKind.ArrayLiteral:
-      emitArrayLiteral(context, sourceFile, <ArrayLiteral>expression);
+      emitArrayLiteral(context, sourceFile, <ArrayLiteral> expression);
       break;
 
     case SyntaxKind.AssignmentExpression:
-      emitAssignmentExpression(context, sourceFile, <AssignmentExpression>expression);
+      emitAssignmentExpression(context, sourceFile, <AssignmentExpression> expression);
       break;
 
     case SyntaxKind.BooleanLiteral:
-      emitBooleanLiteral(context, sourceFile, <BooleanLiteral>expression);
+      emitBooleanLiteral(context, sourceFile, <BooleanLiteral> expression);
       break;
 
     case SyntaxKind.CallExpression:
-      emitCallExpression(context, sourceFile, <CallExpression>expression);
+      emitCallExpression(context, sourceFile, <CallExpression> expression);
       break;
 
     case SyntaxKind.ComparisonExpression:
-      emitComparisonExpression(context, sourceFile, <ComparisonExpression>expression);
+      emitComparisonExpression(context, sourceFile, <ComparisonExpression> expression);
       break;
 
     case SyntaxKind.ElementAccessExpression:
-      emitElementAccessExpression(context, sourceFile, <ElementAccessExpression>expression);
+      emitElementAccessExpression(context, sourceFile, <ElementAccessExpression> expression);
       break;
 
     case SyntaxKind.EqualityExpression:
-      emitEqualityExpression(context, sourceFile, <EqualityExpression>expression);
+      emitEqualityExpression(context, sourceFile, <EqualityExpression> expression);
       break;
 
     case SyntaxKind.Identifier:
-      emitIdentifier(context, sourceFile, <Identifier>expression);
+      emitIdentifier(context, sourceFile, <Identifier> expression);
       break;
 
     case SyntaxKind.IntegerLiteral:
-      emitIntegerLiteral(context, sourceFile, <IntegerLiteral>expression);
+      emitIntegerLiteral(context, sourceFile, <IntegerLiteral> expression);
       break;
 
     case SyntaxKind.LogicalExpression:
-      emitLogicalExpression(context, sourceFile, <LogicalExpression>expression);
+      emitLogicalExpression(context, sourceFile, <LogicalExpression> expression);
       break;
 
     case SyntaxKind.MultiplicativeExpression:
-      emitMultiplicativeExpression(context, sourceFile, <MultiplicativeExpression>expression);
+      emitMultiplicativeExpression(context, sourceFile, <MultiplicativeExpression> expression);
       break;
 
     case SyntaxKind.ParenthesizedExpression:
-      emitParenthesizedExpression(context, sourceFile, <ParenthesizedExpression>expression);
+      emitParenthesizedExpression(context, sourceFile, <ParenthesizedExpression> expression);
       break;
 
     case SyntaxKind.PropertyAccessExpression:
-      emitPropertyAccessExpression(context, sourceFile, <PropertyAccessExpression>expression);
+      emitPropertyAccessExpression(context, sourceFile, <PropertyAccessExpression> expression);
       break;
 
     case SyntaxKind.StringLiteral:
-      emitStringLiteral(context, sourceFile, <StringLiteral>expression);
+      emitStringLiteral(context, sourceFile, <StringLiteral> expression);
       break;
 
     case SyntaxKind.StructLiteral:
-      emitStructLiteral(context, sourceFile, <StructLiteral>expression);
+      emitStructLiteral(context, sourceFile, <StructLiteral> expression);
       break;
 
     case SyntaxKind.UnaryExpression:
-      emitUnaryExpression(context, sourceFile, <UnaryExpression>expression);
+      emitUnaryExpression(context, sourceFile, <UnaryExpression> expression);
       break;
 
     default:
@@ -699,7 +744,7 @@ function emitCallExpression(context: EmitContext, sourceFile: SourceFile, callEx
   let beginVaradicArgs = callExpression.arguments.length;
   let varadicArgsArrayName = "";
   if (callExpression.expression.kind == SyntaxKind.Identifier) {
-    const functionName = (<Identifier>callExpression.expression).value;
+    const functionName = (<Identifier> callExpression.expression).value;
 
     if (functionName == "println") {
       isVaradicCall = true;
@@ -766,22 +811,36 @@ function emitPropertyAccessExpression(
   sourceFile: SourceFile,
   propertyAccessExpression: PropertyAccessExpression,
 ) {
-  // NOTE: If expression (lhs) is an identifier then we are at the beginning of a property access chain.
-  if (propertyAccessExpression.expression.kind == SyntaxKind.Identifier) {
-    const module = getImportedModuleByAlias(context, (<Identifier>propertyAccessExpression.expression).value);
+  if (propertyAccessExpression.expression.symbol) {
+    // TODO: Implement HasFlag method.
+    if (propertyAccessExpression.expression.symbol.flags == SymbolFlags.Module) {
+      const module = getImportedModuleByAlias(context, propertyAccessExpression.expression.symbol.name);
 
-    if (module != null) {
-      const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.name.value);
+      if (module != null) {
+        const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.name.value);
 
+        if (mappedTypeName != null) {
+          context.output.append(mappedTypeName);
+          return;
+        }
+      }
+    } else if (propertyAccessExpression.expression.symbol.flags == SymbolFlags.Enum) {
+      const module = context.sourceFiles[propertyAccessExpression.expression.symbol.sourceFileName];
+      const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.expression.symbol.name);
       if (mappedTypeName != null) {
-        context.output.append(mappedTypeName);
+        context.output.append(`${mappedTypeName}_`);
+        emitIdentifier(context, sourceFile, propertyAccessExpression.name);
         return;
       }
+    } else {
+      emitExpression(context, sourceFile, propertyAccessExpression.expression);
+      context.output.append(".");
     }
+  } else {
+    emitExpression(context, sourceFile, propertyAccessExpression.expression);
+    context.output.append(".");
   }
 
-  emitExpression(context, sourceFile, propertyAccessExpression.expression);
-  context.output.append(".");
   emitIdentifier(context, sourceFile, propertyAccessExpression.name);
 }
 

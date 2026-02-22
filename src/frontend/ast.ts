@@ -1,3 +1,5 @@
+import * as symbols from "./symbols.ts";
+
 export enum SyntaxKind {
   AdditiveExpression,
 
@@ -17,21 +19,25 @@ export enum SyntaxKind {
 
   ElementAccessExpression,
 
+  EnumDeclaration,
+
+  EnumMember,
+
   EqualityExpression,
 
   Expression,
 
   ExpressionStatement,
 
-  FuncArgument,
+  FunctionArgument,
 
-  FuncDeclaration,
+  FunctionDeclaration,
 
   Identifier,
 
   IfStatement,
 
-  ImportStatement,
+  ImportDeclaration,
 
   IntegerLiteral,
 
@@ -116,73 +122,94 @@ export enum Operator {
 
 export interface SyntaxNode {
   readonly kind: SyntaxKind;
+
+  readonly parent?: SyntaxNode;
 }
 
-export interface SourceFile extends SyntaxNode {
+export interface SourceFile extends SyntaxNode, symbols.SymbolScope {
   readonly kind: SyntaxKind.SourceFile;
 
   readonly fileName: string;
 
-  readonly statements: Array<Statement>;
+  readonly statements: Statement[];
+
+  readonly exports?: symbols.SymbolTable;
 }
 
-export interface Statement extends SyntaxNode {
-  readonly kind: SyntaxKind;
-}
+export interface Statement extends SyntaxNode {}
 
-export interface ImportStatement extends Statement {
-  readonly kind: SyntaxKind.ImportStatement;
-
-  readonly module: StringLiteral;
+export interface ImportDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
+  readonly kind: SyntaxKind.ImportDeclaration;
 
   readonly alias?: Identifier;
 
-  readonly resolvedSourceFile: SourceFile;
+  readonly module: StringLiteral;
+
+  readonly resolvedFileName: string;
 }
 
-export interface VariableDeclaration extends Statement {
+export interface VariableDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
   readonly kind: SyntaxKind.VariableDeclaration;
 
   readonly name: Identifier;
 
   readonly type: TypeNode;
 
-  readonly expression?: Expression;
+  readonly initializer?: Expression;
 }
 
-export interface FunctionDeclaration extends Statement {
-  readonly kind: SyntaxKind.FuncDeclaration;
+export interface EnumDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
+  readonly kind: SyntaxKind.EnumDeclaration;
 
   readonly isExported: boolean;
 
   readonly name: Identifier;
 
-  readonly arguments: Array<FunctionArgument>;
+  readonly members: EnumMember[];
+}
+
+export interface EnumMember extends SyntaxNode, symbols.SymbolDeclaration {
+  readonly kind: SyntaxKind.EnumMember;
+
+  readonly name: Identifier;
+
+  readonly initializer?: Expression;
+}
+
+export interface FunctionDeclaration extends SyntaxNode, symbols.SymbolDeclaration, symbols.SymbolScope {
+  readonly kind: SyntaxKind.FunctionDeclaration;
+
+  readonly isExported: boolean;
+
+  readonly name: Identifier;
+
+  readonly arguments: FunctionArgument[];
 
   readonly returnType: TypeNode;
 
   readonly body: StatementBlock;
 }
 
-export interface FunctionArgument extends SyntaxNode {
-  readonly kind: SyntaxKind.FuncArgument;
+// TODO: FunctionArgument should probably just be a VariableDeclaration.
+export interface FunctionArgument extends SyntaxNode, symbols.SymbolDeclaration {
+  readonly kind: SyntaxKind.FunctionArgument;
 
   readonly name: Identifier;
 
   readonly type: TypeNode;
 }
 
-export interface StructDeclaration extends Statement {
+export interface StructDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
   readonly kind: SyntaxKind.StructDeclaration;
 
   readonly isExported: boolean;
 
   readonly name: Identifier;
 
-  readonly members: Array<StructMember>;
+  readonly members: StructMember[];
 }
 
-export interface StructMember extends SyntaxNode {
+export interface StructMember extends SyntaxNode, symbols.SymbolDeclaration {
   readonly kind: SyntaxKind.StructMember;
 
   readonly name: Identifier;
@@ -226,13 +253,13 @@ export interface ReturnStatement extends Statement {
   readonly expression: Expression;
 }
 
-export interface StatementBlock extends SyntaxNode {
+export interface StatementBlock extends SyntaxNode, symbols.SymbolScope {
   readonly kind: SyntaxKind.StatementBlock;
 
-  readonly statements: Array<Statement>;
+  readonly statements: Statement[];
 }
 
-export interface Expression extends SyntaxNode {}
+export interface Expression extends SyntaxNode, symbols.SymbolReference {}
 
 export interface LogicalExpression extends Expression {
   readonly kind: SyntaxKind.LogicalExpression;
@@ -318,7 +345,7 @@ export interface CallExpression extends Expression {
 
   readonly expression: Expression;
 
-  readonly arguments: Array<Expression>;
+  readonly arguments: Expression[];
 }
 
 export interface ElementAccessExpression extends Expression {
@@ -354,10 +381,10 @@ export interface PointerType extends TypeNode {
 export interface TypeReference extends TypeNode {
   readonly kind: SyntaxKind.TypeReference;
 
-  readonly typeName: QualifiedType | Identifier;
+  readonly typeName: QualifiedName | Identifier;
 }
 
-export interface QualifiedType extends SyntaxNode {
+export interface QualifiedName extends SyntaxNode {
   readonly kind: SyntaxKind.QualifiedName;
 
   readonly left: Identifier;
@@ -365,7 +392,8 @@ export interface QualifiedType extends SyntaxNode {
   readonly right: Identifier;
 }
 
-export interface Identifier extends SyntaxNode {
+// TODO: Should Identifier be an Expression?
+export interface Identifier extends SyntaxNode, symbols.SymbolReference {
   readonly kind: SyntaxKind.Identifier;
 
   readonly value: string;
@@ -380,7 +408,7 @@ export interface ArrayLiteral extends Expression {
 export interface StructLiteral extends Expression {
   readonly kind: SyntaxKind.StructLiteral;
 
-  readonly elements: Array<StructLiteralElement>;
+  readonly elements: StructLiteralElement[];
 }
 
 export interface StructLiteralElement extends SyntaxNode {

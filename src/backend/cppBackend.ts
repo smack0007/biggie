@@ -70,7 +70,7 @@ function emitUnexpectedNode(
 
 function emitTopLevelStatement(context: CppBackendContext, sourceFile: SourceFile, node: SyntaxNode): void {
   switch (node.kind) {
-    case SyntaxKind.FuncDeclaration:
+    case SyntaxKind.FunctionDeclaration:
       emitFunctionDeclaration(context, sourceFile, <FunctionDeclaration>node);
       break;
 
@@ -241,9 +241,9 @@ function emitVarDeclaration(
   context.append(" ");
   emitIdentifier(context, sourceFile, variableDeclaration.name);
 
-  if (variableDeclaration.expression != null) {
+  if (variableDeclaration.initializer != null) {
     context.append(" = ");
-    emitExpression(context, sourceFile, variableDeclaration.expression);
+    emitExpression(context, sourceFile, variableDeclaration.initializer);
   }
 
   context.append(";\n");

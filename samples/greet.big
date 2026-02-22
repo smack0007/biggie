@@ -1,9 +1,17 @@
 import personLib "./person.big"
 
-export func sayHello(person: personLib.Person, count: int32): void {
-  var i: int32 = 0;
-  while (i < count) {
+export enum GreetType {
+  Formal = 1,
+  Informal,
+  Crazy
+}
+
+export func sayHello(person: personLib.Person, type: GreetType): void {
+  if (type == GreetType.Formal) {
     println("Hello %s, you are %d years old!", person.name, person.age);
-    i += 1;
+  } else if (type == GreetType.Informal) {
+    println("Howdy %s, you are %d years old!", person.name, person.age);
+  } else {
+    println("Strap in %s, you are %d years old!", person.name, person.age);
   }
 }
