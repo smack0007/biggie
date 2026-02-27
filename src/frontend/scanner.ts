@@ -161,11 +161,15 @@ export enum TokenType {
   While,
 }
 
+export interface TextPosition {
+  line: int;
+  column: int;
+}
+
 export interface Token {
   type: TokenType;
   text: string | null;
-  line: int;
-  column: int;
+  pos: TextPosition;
 }
 
 function isDigit(ch: char): boolean {
@@ -188,7 +192,7 @@ function isWhitespace(ch: char): boolean {
 }
 
 function isLetter(ch: char): boolean {
-  return ch.toUpperCase() != ch.toLowerCase() || <number>ch.codePointAt(0) > 127;
+  return ch.toUpperCase() != ch.toLowerCase() || <number> ch.codePointAt(0) > 127;
 }
 
 export function scan(text: string): Array<Token> {
@@ -230,81 +234,81 @@ export function scan(text: string): Array<Token> {
         type = TokenType.String;
       } else if (text[i] == ";") {
         // End Statement
-        token.push({ type: TokenType.Semicolon, text: null, line: line, column: column });
+        token.push({ type: TokenType.Semicolon, text: null, pos: { line, column } });
       } else if (text[i] == ".") {
         // Period
-        token.push({ type: TokenType.Dot, text: null, line: line, column: column });
+        token.push({ type: TokenType.Dot, text: null, pos: { line, column } });
       } else if (text[i] == ",") {
         // Period
-        token.push({ type: TokenType.Comma, text: null, line: line, column: column });
+        token.push({ type: TokenType.Comma, text: null, pos: { line, column } });
       } else if (text[i] == "(") {
         // OpenParen
-        token.push({ type: TokenType.OpenParen, text: null, line: line, column: column });
+        token.push({ type: TokenType.OpenParen, text: null, pos: { line, column } });
       } else if (text[i] == ")") {
         // CloseParen
-        token.push({ type: TokenType.CloseParen, text: null, line: line, column: column });
+        token.push({ type: TokenType.CloseParen, text: null, pos: { line, column } });
       } else if (text[i] == "[") {
         // OpenBracket
-        token.push({ type: TokenType.OpenBracket, text: null, line: line, column: column });
+        token.push({ type: TokenType.OpenBracket, text: null, pos: { line, column } });
       } else if (text[i] == "]") {
         // CloseBracket
-        token.push({ type: TokenType.CloseBracket, text: null, line: line, column: column });
+        token.push({ type: TokenType.CloseBracket, text: null, pos: { line, column } });
       } else if (text[i] == "{") {
         // OpenBrace
-        token.push({ type: TokenType.OpenBrace, text: null, line: line, column: column });
+        token.push({ type: TokenType.OpenBrace, text: null, pos: { line, column } });
       } else if (text[i] == "}") {
         // CloseBrace
-        token.push({ type: TokenType.CloseBrace, text: null, line: line, column: column });
+        token.push({ type: TokenType.CloseBrace, text: null, pos: { line, column } });
       } else if (text[i] == ":") {
-        token.push({ type: TokenType.Colon, text: null, line: line, column: column });
+        token.push({ type: TokenType.Colon, text: null, pos: { line, column } });
       } else if (text[i] == "=") {
-        // Gets or EqualTo or MapsTo
+        // Gets or EqualTo
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.EqualsEquals, text: null, line: line, column: column });
+          token.push({ type: TokenType.EqualsEquals, text: null, pos: { line, column } });
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.Equals, text: null, line: line, column: column });
+          token.push({ type: TokenType.Equals, text: null, pos: { line, column } });
         }
       } else if (text[i] == "!") {
         // Not or NotEqualTo
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.ExclamationEquals, text: null, line: line, column: column });
+          token.push({ type: TokenType.ExclamationEquals, text: null, pos: { line, column } });
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.Exclamation, text: null, line: line, column: column });
+          token.push({ type: TokenType.Exclamation, text: null, pos: { line, column } });
         }
       } else if (text[i] == ">") {
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.GreaterThanEqual, text: null, line: line, column: column });
+          token.push({ type: TokenType.GreaterThanEqual, text: null, pos: { line, column } });
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.GreaterThan, text: null, line: line, column: column });
+          token.push({ type: TokenType.GreaterThan, text: null, pos: { line, column } });
         }
       } else if (text[i] == "<") {
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.LessThanEqual, text: null, line: line, column: column });
+          token.push({ type: TokenType.LessThanEqual, text: null, pos: { line, column } });
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.LessThan, text: null, line: line, column: column });
+          token.push({ type: TokenType.LessThan, text: null, pos: { line, column } });
         }
       } else if (text[i] == "+") {
         // Plus or PlusGets
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.PlusEquals, text: null, line: line, column: column });
+          token.push({ type: TokenType.PlusEquals, text: null, pos: { line, column } });
           i += 1;
           curColumn += 1;
         } else {
-          token.push({ type: TokenType.Plus, text: null, line: line, column: column });
+          token.push({ type: TokenType.Plus, text: null, pos: { line, column } });
         }
       } else if (text[i] == "-") {
         // Minus or MinusGets
         if (i + 1 < text.length && !isWhitespace(text[i + 1])) {
           if (text[i + 1] == "=") {
-            token.push({ type: TokenType.MinusEquals, text: null, line: line, column: column });
+            token.push({ type: TokenType.MinusEquals, text: null, pos: { line, column } });
             i += 1;
             curColumn += 1;
           } else if (isDigit(text[i + 1])) {
@@ -314,24 +318,24 @@ export function scan(text: string): Array<Token> {
             i += 1;
             curColumn += 1;
           } else {
-            token.push({ type: TokenType.Minus, text: null, line: line, column: column });
+            token.push({ type: TokenType.Minus, text: null, pos: { line, column } });
           }
         } else {
-          token.push({ type: TokenType.Minus, text: null, line: line, column: column });
+          token.push({ type: TokenType.Minus, text: null, pos: { line, column } });
         }
       } else if (text[i] == "*") {
         // Multiply or MultiplyGets
         if (i + 1 < text.length && text[i + 1] != "=") {
-          token.push({ type: TokenType.Asterisk, text: null, line: line, column: column });
+          token.push({ type: TokenType.Asterisk, text: null, pos: { line, column } });
         } else {
-          token.push({ type: TokenType.AsteriskEquals, text: null, line: line, column: column });
+          token.push({ type: TokenType.AsteriskEquals, text: null, pos: { line, column } });
           i += 1;
           curColumn += 1;
         }
       } else if (text[i] == "/") {
         // Divide or DivideGets or Comments
         if (i + 1 < text.length && text[i + 1] == "=") {
-          token.push({ type: TokenType.SlashEquals, text: null, line: line, column: column });
+          token.push({ type: TokenType.SlashEquals, text: null, pos: { line, column } });
           i++;
         } else if (i + 1 < text.length && text[i + 1] == "/") {
           // Single line comment
@@ -352,28 +356,28 @@ export function scan(text: string): Array<Token> {
             curColumn += 1;
           }
         } else {
-          token.push({ type: TokenType.Slash, text: null, line: line, column: column });
+          token.push({ type: TokenType.Slash, text: null, pos: { line, column } });
         }
       } else if (text[i] == "&") {
         if (i + 1 < text.length && text[i + 1] == "&") {
           // &&
-          token.push({ type: TokenType.AmpersandAmpersand, text: null, line: line, column: column });
+          token.push({ type: TokenType.AmpersandAmpersand, text: null, pos: { line, column } });
           i += 1;
           curColumn += 1;
         } else {
           // &
-          token.push({ type: TokenType.Ampersand, text: null, line: line, column: column });
+          token.push({ type: TokenType.Ampersand, text: null, pos: { line, column } });
         }
       } else if (text[i] == "|") {
         // LogicalOr or ClosePipeBracket
         if (i + 1 < text.length && text[i + 1] == "|") {
           // ||
-          token.push({ type: TokenType.BarBar, text: null, line: line, column: column });
+          token.push({ type: TokenType.BarBar, text: null, pos: { line, column } });
           i += 1;
           curColumn += 1;
         } else {
           // |
-          token.push({ type: TokenType.Bar, text: null, line: line, column: column });
+          token.push({ type: TokenType.Bar, text: null, pos: { line, column } });
         }
       } else if (isLetter(text[i]) || text[i] == "_") {
         // Identifier
@@ -432,67 +436,67 @@ export function scan(text: string): Array<Token> {
       if (type == TokenType.Identifier) {
         switch (value) {
           case "defer":
-            token.push({ type: TokenType.Defer, text: null, line: line, column: column });
+            token.push({ type: TokenType.Defer, text: null, pos: { line, column } });
             break;
 
           case "else":
-            token.push({ type: TokenType.Else, text: null, line: line, column: column });
+            token.push({ type: TokenType.Else, text: null, pos: { line, column } });
             break;
 
           case "enum":
-            token.push({ type: TokenType.Enum, text: null, line: line, column: column });
+            token.push({ type: TokenType.Enum, text: null, pos: { line, column } });
             break;
 
           case "export":
-            token.push({ type: TokenType.Export, text: null, line: line, column: column });
+            token.push({ type: TokenType.Export, text: null, pos: { line, column } });
             break;
 
           case "false":
-            token.push({ type: TokenType.False, text: null, line: line, column: column });
+            token.push({ type: TokenType.False, text: null, pos: { line, column } });
             break;
 
           case "for":
-            token.push({ type: TokenType.For, text: null, line: line, column: column });
+            token.push({ type: TokenType.For, text: null, pos: { line, column } });
             break;
 
           case "func":
-            token.push({ type: TokenType.Func, text: null, line: line, column: column });
+            token.push({ type: TokenType.Func, text: null, pos: { line, column } });
             break;
 
           case "if":
-            token.push({ type: TokenType.If, text: null, line: line, column: column });
+            token.push({ type: TokenType.If, text: null, pos: { line, column } });
             break;
 
           case "import":
-            token.push({ type: TokenType.Import, text: null, line: line, column: column });
+            token.push({ type: TokenType.Import, text: null, pos: { line, column } });
             break;
 
           case "null":
-            token.push({ type: TokenType.Null, text: null, line: line, column: column });
+            token.push({ type: TokenType.Null, text: null, pos: { line, column } });
             break;
 
           case "return":
-            token.push({ type: TokenType.Return, text: null, line: line, column: column });
+            token.push({ type: TokenType.Return, text: null, pos: { line, column } });
             break;
 
           case "struct":
-            token.push({ type: TokenType.Struct, text: null, line: line, column: column });
+            token.push({ type: TokenType.Struct, text: null, pos: { line, column } });
             break;
 
           case "true":
-            token.push({ type: TokenType.True, text: null, line: line, column: column });
+            token.push({ type: TokenType.True, text: null, pos: { line, column } });
             break;
 
           case "var":
-            token.push({ type: TokenType.Var, text: null, line: line, column: column });
+            token.push({ type: TokenType.Var, text: null, pos: { line, column } });
             break;
 
           case "while":
-            token.push({ type: TokenType.While, text: null, line: line, column: column });
+            token.push({ type: TokenType.While, text: null, pos: { line, column } });
             break;
 
           default:
-            token.push({ type: type, text: value, line: line, column: column });
+            token.push({ type, text: value, pos: { line, column } });
             break;
         }
       } else if (type == TokenType.Numeric) {
@@ -502,11 +506,11 @@ export function scan(text: string): Array<Token> {
           type = TokenType.Integer;
         }
 
-        token.push({ type: type, text: value, line: line, column: column });
+        token.push({ type: type, text: value, pos: { line, column } });
       } else if (type == TokenType.Char) {
-        token.push({ type: type, text: value, line: line, column: column });
+        token.push({ type: type, text: value, pos: { line, column } });
       } else if (type == TokenType.String) {
-        token.push({ type: type, text: value, line: line, column: column });
+        token.push({ type: type, text: value, pos: { line, column } });
       }
 
       output = false;
@@ -518,7 +522,7 @@ export function scan(text: string): Array<Token> {
 
   if (type == TokenType.Unknown) {
     // Add an EOF to mark the end of the script.
-    token.push({ type: TokenType.EOF, text: null, line: line, column: column });
+    token.push({ type: TokenType.EOF, text: null, pos: { line, column } });
   }
 
   return token;

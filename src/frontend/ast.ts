@@ -1,3 +1,4 @@
+import { TextPosition } from "./scanner.ts";
 import * as symbols from "./symbols.ts";
 
 export enum SyntaxKind {
@@ -122,6 +123,10 @@ export enum Operator {
 
 export interface SyntaxNode {
   readonly kind: SyntaxKind;
+
+  readonly startPos: TextPosition;
+
+  readonly endPos: TextPosition;
 
   readonly parent?: SyntaxNode;
 }

@@ -18,7 +18,7 @@ async function main(argv: string[]): Promise<int> {
   chdir(entryDirectory);
   const parseResult = await parse(entryFileName, {
     enter: (name: string, fileName: string, token?: Token) =>
-      debug && console.info(`/*${fileName} ${name} (${token?.line}, ${token?.column}) <${token?.text}> */`),
+      debug && console.info(`/*${fileName} ${name} (${token?.pos.line}, ${token?.pos.column}) <${token?.text}> */`),
   });
 
   if (isSuccess(parseResult)) {
@@ -28,7 +28,9 @@ async function main(argv: string[]): Promise<int> {
 
     if (isError(bindResult)) {
       stderr.write(
-        `Error: [${BindErrorKind[bindResult.error.kind]}] ${bindResult.error.message}\n`,
+        `Error: (${bindResult.error.pos.line}, ${bindResult.error.pos.column}) [${
+          BindErrorKind[bindResult.error.kind]
+        }] ${bindResult.error.message}\n`,
       );
 
       return 1;
@@ -41,7 +43,7 @@ async function main(argv: string[]): Promise<int> {
     console.info(emitResult.code);
   } else if (isError(parseResult)) {
     stderr.write(
-      `Error: (${parseResult.error.line}, ${parseResult.error.column}) ${parseResult.error.fileName} [${
+      `Error: (${parseResult.error.pos.line}, ${parseResult.error.pos.column}) ${parseResult.error.fileName} [${
         ParserErrorKind[parseResult.error.kind]
       }] ${parseResult.error.message}\n`,
     );
