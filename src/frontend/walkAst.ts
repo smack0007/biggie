@@ -15,6 +15,10 @@ function walkAstParent<Error = unknown>(
 ): Result<void, Error> {
   const callbackResult = callback(node, parent);
 
+  if (isError(callbackResult)) {
+    return callbackResult;
+  }
+
   // NOTE: The return value of callback indicates if we should keep descending further into the tree.
   if (isSuccess(callbackResult) && callbackResult.value) {
     const childrenResult = walkAstChildren<Error>(node, callback);

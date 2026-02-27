@@ -5,6 +5,7 @@ import { walkAst, walkAstChildren } from "./walkAst.ts";
 import { bool, error, ErrorResult, isError, nameof, Result, success } from "../shims.ts";
 import { Mutable } from "../utils.ts";
 import { Symbol, SymbolFlags, SymbolScope, SymbolTable } from "./symbols.ts";
+import { TextPosition } from "./scanner.ts";
 
 export enum BindErrorKind {
   Unexpected,
@@ -14,13 +15,15 @@ export enum BindErrorKind {
 export interface BindError {
   kind: BindErrorKind;
   message?: string;
+  pos: TextPosition;
 }
 
-function bindError(kind: BindErrorKind, message: string, node?: ast.SyntaxNode): ErrorResult<BindError> {
+function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): ErrorResult<BindError> {
   // TODO: Use node to enrich the error.
   return error({
     kind,
     message,
+    pos: node.startPos,
   });
 }
 
@@ -109,7 +112,15 @@ function getSymbolScopeFromNode(node: ast.SyntaxNode): Result<Required<SymbolSco
   return getParentNodeByKinds<Required<SymbolScope>>(node, SYMBOL_SCOPE_SYNTAX_KIND);
 }
 
-function getSymbolByName(scope: Required<SymbolScope>, name: string): Result<Symbol, BindError> {
+function getSymbolByName(node: ast.SyntaxNode, name: string): Result<Symbol, BindError> {
+  const scopeResult = getSymbolScopeFromNode(node);
+
+  if (isError(scopeResult)) {
+    return scopeResult;
+  }
+
+  let scope = scopeResult.value;
+
   while (scope.nextSymbolScope) {
     if (scope.locals[name]) {
       return success(scope.locals[name]);
@@ -121,7 +132,7 @@ function getSymbolByName(scope: Required<SymbolScope>, name: string): Result<Sym
     return success(scope.locals[name]);
   }
 
-  return bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${name}".`);
+  return bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${name}".`, node);
 }
 
 function bindSourceFile(program: Program, sourceFile: Required<ast.SourceFile>): Result<void, BindError> {
@@ -343,13 +354,7 @@ function bindVariableDeclaration(
     if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
       const qualifiedName = <ast.QualifiedName> typeReference.typeName;
 
-      const scope = getSymbolScopeFromNode(variableDeclaration);
-
-      if (isError(scope)) {
-        return scope;
-      }
-
-      const module = getSymbolByName(scope.value, qualifiedName.left.value);
+      const module = getSymbolByName(variableDeclaration, qualifiedName.left.value);
 
       if (isError(module)) {
         return module;
@@ -367,13 +372,7 @@ function bindVariableDeclaration(
 
       // HACK: Ignore int32 for now.
       if (identifier.value != "int32") {
-        const scope = getSymbolScopeFromNode(variableDeclaration);
-
-        if (isError(scope)) {
-          return scope;
-        }
-
-        const symbol = getSymbolByName(scope.value, identifier.value);
+        const symbol = getSymbolByName(variableDeclaration, identifier.value);
 
         if (isError(symbol)) {
           return symbol;
@@ -473,13 +472,7 @@ function bindIdentifier(
   }
 
   if (!parentSymbol) {
-    const scope = getSymbolScopeFromNode(identifier);
-
-    if (isError(scope)) {
-      return scope;
-    }
-
-    const symbol = getSymbolByName(scope.value, identifier.value);
+    const symbol = getSymbolByName(identifier, identifier.value);
 
     if (isError(symbol)) {
       return symbol;
