@@ -3,7 +3,7 @@ export type char = string;
 export type int32 = number;
 export type int = int32;
 
-export type SucessResult<Value> = {
+export type SuccessResult<Value> = {
   readonly success: true;
   readonly value: Value;
 };
@@ -13,11 +13,11 @@ export type ErrorResult<Error> = {
   readonly error: Error;
 };
 
-export type Result<Value, Error> = SucessResult<Value> | ErrorResult<Error>;
+export type Result<Value, Error> = SuccessResult<Value> | ErrorResult<Error>;
 
-export function success(): SucessResult<never>;
-export function success<Value>(value: Value): SucessResult<Value>;
-export function success<Value>(value?: Value): SucessResult<Value | undefined> {
+export function success(): SuccessResult<never>;
+export function success<Value>(value: Value): SuccessResult<Value>;
+export function success<Value>(value?: Value): SuccessResult<Value | undefined> {
   return { success: true, value };
 }
 
@@ -25,7 +25,7 @@ export function error<Error>(error: Error): ErrorResult<Error> {
   return { success: false, error };
 }
 
-export function isSuccess<Value, Error>(result: Result<Value, Error>): result is SucessResult<Value> {
+export function isSuccess<Value, Error>(result: Result<Value, Error>): result is SuccessResult<Value> {
   return result.success;
 }
 

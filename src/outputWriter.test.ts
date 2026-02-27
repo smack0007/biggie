@@ -1,4 +1,4 @@
-import assert from "node:assert";
+import * as assert from "node:assert";
 import { EOL } from "node:os";
 import { describe, it } from "node:test";
 import { OutputWriter } from "./outputWriter.ts";

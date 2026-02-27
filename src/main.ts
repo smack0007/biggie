@@ -4,7 +4,7 @@ import { emitC } from "./backend/cBackend.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
 import { int, isError, isSuccess } from "./shims.ts";
 import { Token } from "./frontend/scanner.ts";
-import { bind } from "./frontend/binder.ts";
+import { bind, BindErrorKind } from "./frontend/binder.ts";
 import { inspect } from "node:util";
 
 main(argv.slice(2)).then(exit);
@@ -24,7 +24,15 @@ async function main(argv: string[]): Promise<int> {
   if (isSuccess(parseResult)) {
     const program = parseResult.value;
 
-    bind(program);
+    const bindResult = bind(program);
+
+    if (isError(bindResult)) {
+      stderr.write(
+        `Error: [${BindErrorKind[bindResult.error.kind]}] ${bindResult.error.message}\n`,
+      );
+
+      return 1;
+    }
 
     // console.info(`/* ${inspect(parseResult.value.sourceFiles[parseResult.value.entryFileName], { depth: 6 })} */`);
 
