@@ -15,7 +15,9 @@ export type ErrorResult<Error> = {
 
 export type Result<Value, Error> = SucessResult<Value> | ErrorResult<Error>;
 
-export function success<Value>(value: Value): SucessResult<Value> {
+export function success(): SucessResult<never>;
+export function success<Value>(value: Value): SucessResult<Value>;
+export function success<Value>(value?: Value): SucessResult<Value | undefined> {
   return { success: true, value };
 }
 
