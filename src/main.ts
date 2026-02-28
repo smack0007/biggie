@@ -1,25 +1,37 @@
+import * as fs from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { argv, chdir, exit, stderr } from "node:process";
+import { argv, chdir, cwd, exit, stderr } from "node:process";
 import { emitC } from "./backend/cBackend.ts";
 import { parse, ParserErrorKind } from "./frontend/parser.ts";
 import { int, isError, isSuccess } from "./shims.ts";
 import { Token } from "./frontend/scanner.ts";
 import { bind, BindErrorKind } from "./frontend/binder.ts";
-import { inspect } from "node:util";
+import * as args from "./args.ts";
 
 main(argv.slice(2)).then(exit);
 
 async function main(argv: string[]): Promise<int> {
-  const entryFileName = resolve(argv[0]);
+  const argsResult = args.parse(argv);
+
+  if (isError(argsResult)) {
+    stderr.write(
+      `Error: [${args.ParseErrorKind[argsResult.error.kind]}] ${argsResult.error.message}\n`,
+    );
+
+    return 1;
+  }
+
+  const entryFileName = resolve(argsResult.value.files[0]);
   const entryDirectory = dirname(entryFileName);
 
-  const debug = argv.includes("--debug");
-
+  const oldDirectory = cwd();
   chdir(entryDirectory);
   const parseResult = await parse(entryFileName, {
     enter: (name: string, fileName: string, token?: Token) =>
-      debug && console.info(`/*${fileName} ${name} (${token?.pos.line}, ${token?.pos.column}) <${token?.text}> */`),
+      argsResult.value.debug &&
+      console.info(`/*${fileName} ${name} (${token?.pos.line}, ${token?.pos.column}) <${token?.text}> */`),
   });
+  chdir(oldDirectory);
 
   if (isSuccess(parseResult)) {
     const program = parseResult.value;
@@ -40,8 +52,15 @@ async function main(argv: string[]): Promise<int> {
 
     const emitResult = emitC(program);
 
-    console.info(emitResult.code);
-  } else if (isError(parseResult)) {
+    const outputFileName = resolve(argsResult.value.output);
+    const outputDirectory = dirname(outputFileName);
+
+    if (!(await fs.stat(outputDirectory)).isDirectory()) {
+      await fs.mkdir(outputDirectory);
+    }
+
+    await fs.writeFile(outputFileName, emitResult.code, "utf-8");
+  } else {
     stderr.write(
       `Error: (${parseResult.error.pos.line}, ${parseResult.error.pos.column}) ${parseResult.error.fileName} [${
         ParserErrorKind[parseResult.error.kind]
