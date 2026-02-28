@@ -1,6 +1,12 @@
 import * as assert from "node:assert";
 import { describe, it } from "node:test";
-import { error, isError, isSuccess, success } from "./shims.ts";
+import { error, isError, isSuccess, nameof, success } from "./shims.ts";
+
+describe("nameof", () => {
+  it("returns the name of a function", () => {
+    assert.equal(nameof(describe), "describe");
+  });
+});
 
 describe("Result (success/error)", () => {
   it("success returns success=true and the value", () => {
