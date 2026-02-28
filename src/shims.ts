@@ -3,6 +3,27 @@ export type char = string;
 export type int32 = number;
 export type int = int32;
 
+//
+// hasFlag
+//
+
+export function hasFlag(flags: number, flag: number): boolean {
+  return (flags & flag) != 0;
+}
+
+//
+// nameof
+//
+
+// deno-lint-ignore ban-types
+export function nameof(value: Function): string {
+  return (value as unknown as { name: string }).name;
+}
+
+//
+// Result
+//
+
 export type SuccessResult<Value> = {
   readonly success: true;
   readonly value: Value;
@@ -31,11 +52,4 @@ export function isSuccess<Value, Error>(result: Result<Value, Error>): result is
 
 export function isError<Value, Error>(result: Result<Value, Error>): result is ErrorResult<Error> {
   return !result.success;
-}
-
-export type OrNull<T> = T | null;
-
-// deno-lint-ignore ban-types
-export function nameof(value: Function): string {
-  return (value as unknown as { name: string }).name;
 }

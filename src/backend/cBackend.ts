@@ -39,7 +39,7 @@ import {
   WhileStatement,
 } from "../frontend/ast.ts";
 import * as astUtils from "../frontend/astUtils.ts";
-import { int, nameof } from "../shims.ts";
+import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
 import { Program } from "../frontend/program.ts";
 import { SymbolFlags } from "../frontend/symbols.ts";
@@ -812,8 +812,7 @@ function emitPropertyAccessExpression(
   propertyAccessExpression: PropertyAccessExpression,
 ) {
   if (propertyAccessExpression.expression.symbol) {
-    // TODO: Implement HasFlag method.
-    if (propertyAccessExpression.expression.symbol.flags == SymbolFlags.Module) {
+    if (hasFlag(propertyAccessExpression.expression.symbol.flags, SymbolFlags.Module)) {
       const module = getImportedModuleByAlias(context, propertyAccessExpression.expression.symbol.name);
 
       if (module != null) {
@@ -824,7 +823,7 @@ function emitPropertyAccessExpression(
           return;
         }
       }
-    } else if (propertyAccessExpression.expression.symbol.flags == SymbolFlags.Enum) {
+    } else if (hasFlag(propertyAccessExpression.expression.symbol.flags, SymbolFlags.Enum)) {
       const module = context.sourceFiles[propertyAccessExpression.expression.symbol.sourceFileName];
       const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.expression.symbol.name);
       if (mappedTypeName != null) {

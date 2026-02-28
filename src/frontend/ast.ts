@@ -388,8 +388,7 @@ export interface QualifiedName extends SyntaxNode {
   readonly right: Identifier;
 }
 
-// TODO: Should Identifier be an Expression?
-export interface Identifier extends SyntaxNode, symbols.SymbolReference {
+export interface Identifier extends Expression, symbols.SymbolReference {
   readonly kind: SyntaxKind.Identifier;
 
   readonly value: string;

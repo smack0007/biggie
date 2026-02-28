@@ -1,19 +1,19 @@
 export enum SymbolFlags {
   None = 0,
 
-  Module,
+  Module = 1 << 0,
 
-  Enum,
+  Enum = 1 << 1,
 
-  EnumMember,
+  EnumMember = 1 << 2,
 
-  Function,
+  Function = 1 << 3,
 
-  Struct,
+  Struct = 1 << 4,
 
-  StructMember,
+  StructMember = 1 << 5,
 
-  Variable,
+  Variable = 1 << 6,
 }
 
 export type SymbolTable = Record<string, Symbol>;

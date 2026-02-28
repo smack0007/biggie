@@ -19,7 +19,6 @@ export interface BindError {
 }
 
 function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): ErrorResult<BindError> {
-  // TODO: Use node to enrich the error.
   return error({
     kind,
     message,
@@ -27,7 +26,6 @@ function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): 
   });
 }
 
-// TODO: bind should use Result<BinderResult, BinderError>.
 export function bind(program: Program): Result<void, BindError> {
   let result = bindInitialize(program);
 
