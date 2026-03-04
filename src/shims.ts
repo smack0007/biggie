@@ -2,6 +2,8 @@ export type bool = boolean;
 export type char = string;
 export type int32 = number;
 export type int = int32;
+export type uint32 = number;
+export type uint = uint32;
 
 //
 // hasFlag

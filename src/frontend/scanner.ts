@@ -1,4 +1,5 @@
-import { char, int } from "../shims.ts";
+import { char } from "../shims.ts";
+import { TextPosition } from "./program.ts";
 
 export enum TokenType {
   // Used internally to indicate we're currently looking for a token.
@@ -159,11 +160,6 @@ export enum TokenType {
 
   // while
   While,
-}
-
-export interface TextPosition {
-  line: int;
-  column: int;
 }
 
 export interface Token {

@@ -36,6 +36,17 @@ async function main(argv: string[]): Promise<int> {
   if (isSuccess(parseResult)) {
     const program = parseResult.value;
 
+    if (program.diagnostics.length > 0) {
+      for (const diagnostic of program.diagnostics) {
+        // TODO: Diagnostics could also be warnings.
+        console.error(
+          `Error: (${diagnostic.pos.line}, ${diagnostic.pos.column}) ${diagnostic.fileName} ${diagnostic.message}`,
+        );
+      }
+
+      return 1;
+    }
+
     const bindResult = bind(program);
 
     if (isError(bindResult)) {

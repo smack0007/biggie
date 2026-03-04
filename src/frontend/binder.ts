@@ -1,16 +1,14 @@
 import * as ast from "./ast/mod.ts";
-import { Program } from "./program.ts";
+import { Program, ProgramDiagnostic, TextPosition } from "./program.ts";
 import { bool, error, ErrorResult, isError, isSuccess, nameof, Result, success } from "../shims.ts";
-import { Mutable } from "../utils.ts";
 import { Symbol, SymbolFlags, SymbolScope, SymbolTable } from "./symbols.ts";
-import { TextPosition } from "./scanner.ts";
 
 export enum BindErrorKind {
   Unexpected,
   MissingSymbol,
 }
 
-export interface BindError {
+export interface BindError extends ProgramDiagnostic {
   kind: BindErrorKind;
   message: string;
   fileName: string;

@@ -1,6 +1,6 @@
 import { dirname, isAbsolute, resolve } from "node:path";
 import { readFile } from "node:fs/promises";
-import { bool, error, ErrorResult, int, isError, nameof, Result, success } from "../shims.ts";
+import { bool, error, ErrorResult, int, isError, isSuccess, nameof, Result, success } from "../shims.ts";
 import {
   AdditiveExpression,
   ArrayLiteral,
@@ -44,17 +44,18 @@ import {
   VariableDeclaration,
   WhileStatement,
 } from "./ast/mod.ts";
-import { scan, TextPosition, Token, TokenType } from "./scanner.ts";
-import { Program } from "./program.ts";
+import { scan, Token, TokenType } from "./scanner.ts";
+import { Program, ProgramDiagnostic, TextPosition } from "./program.ts";
 
 export interface ParserLogger {
   enter(name: string, fileName: string, token?: Token): void;
 }
 
 interface ParserContext {
-  entryFileName: string;
   logger?: ParserLogger;
+  entryFileName: string;
   sourceFiles: Record<string, SourceFile>;
+  diagnostics: ProgramDiagnostic[];
 }
 
 interface ParserSourceFileContext {
@@ -80,11 +81,11 @@ export enum ParserErrorKind {
   UnknownExpression,
 }
 
-export interface ParserError {
+export interface ParserError extends ProgramDiagnostic {
   kind: ParserErrorKind;
   fileName: string;
   pos: TextPosition;
-  message?: string;
+  message: string;
 }
 
 function resolveModule(filePath: string, basePath: string): string {
@@ -95,7 +96,7 @@ function parserError(
   fileName: string,
   token: Token,
   kind: ParserErrorKind,
-  message?: string,
+  message: string,
 ): ErrorResult<ParserError> {
   return error({
     kind,
@@ -113,7 +114,7 @@ function advance(context: ParserSourceFileContext): Token {
   if (!isEOF(context)) {
     context.index += 1;
   }
-  return previous(context);
+  return peek(context);
 }
 
 function check(context: ParserSourceFileContext, type: TokenType): bool {
@@ -183,14 +184,22 @@ function expect(
   return success(token);
 }
 
+function resync(context: ParserSourceFileContext, tokenTypes: TokenType[]): void {
+  let nextTokenType = peek(context).type;
+  while (nextTokenType != TokenType.EOF && !tokenTypes.includes(nextTokenType)) {
+    nextTokenType = advance(context).type;
+  }
+}
+
 export async function parse(
   entryFileName: string,
   logger?: ParserLogger,
 ): Promise<Result<Program, ParserError>> {
   const context: ParserContext = {
+    logger,
     entryFileName,
     sourceFiles: {},
-    logger,
+    diagnostics: [],
   };
 
   const entrySourceFile = await parseSourceFile(context, entryFileName);
@@ -204,6 +213,7 @@ export async function parse(
   return success({
     entryFileName,
     sourceFiles: context.sourceFiles,
+    diagnostics: context.diagnostics,
   });
 }
 
@@ -234,11 +244,12 @@ export async function parseSourceFile(
   while (!isEOF(context)) {
     const statement = await parseTopLevelStatement(context);
 
-    if (isError(statement)) {
-      return statement;
+    if (isSuccess(statement)) {
+      statements.push(statement.value);
+    } else {
+      context.base.diagnostics.push(statement.error);
+      resync(context, TOP_LEVEL_STATEMENT_TOKEN_TYPES);
     }
-
-    statements.push(statement.value);
   }
 
   const eof = expect(context, TokenType.EOF, nameof(parseSourceFile));
@@ -259,6 +270,15 @@ export async function parseSourceFile(
     locals: {},
   });
 }
+
+const TOP_LEVEL_STATEMENT_TOKEN_TYPES: TokenType[] = [
+  TokenType.Export,
+  TokenType.Import,
+  TokenType.Var,
+  TokenType.Enum,
+  TokenType.Func,
+  TokenType.Struct,
+];
 
 async function parseTopLevelStatement(context: ParserSourceFileContext): Promise<Result<Statement, ParserError>> {
   context.logger.enter(nameof(parseTopLevelStatement));
