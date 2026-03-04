@@ -1,4 +1,4 @@
-import * as ast from "./ast.ts";
+import * as ast from "./ast/mod.ts";
 import { Program } from "./program.ts";
 import { bool, error, ErrorResult, isError, isSuccess, nameof, Result, success } from "../shims.ts";
 import { Mutable } from "../utils.ts";

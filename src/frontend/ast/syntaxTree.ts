@@ -1,9 +1,5 @@
-import { TextPosition } from "./scanner.ts";
-import * as symbols from "./symbols.ts";
-
-export * from "./ast.typeGuards.ts";
-export * from "./ast.utils.ts";
-export * from "./ast.walk.ts";
+import { TextPosition } from "../scanner.ts";
+import * as symbols from "../symbols.ts";
 
 export enum SyntaxKind {
   AdditiveExpression,

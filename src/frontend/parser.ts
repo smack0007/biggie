@@ -43,7 +43,7 @@ import {
   UnaryExpression,
   VariableDeclaration,
   WhileStatement,
-} from "./ast.ts";
+} from "./ast/mod.ts";
 import { scan, TextPosition, Token, TokenType } from "./scanner.ts";
 import { Program } from "./program.ts";
 

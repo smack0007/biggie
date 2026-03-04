@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { ImportDeclaration } from "./ast.ts";
+import { ImportDeclaration } from "./syntaxTree.ts";
 
 export function getOrCalculateModuleAlias(importDeclaration: ImportDeclaration): string {
   return importDeclaration.alias?.value ??
