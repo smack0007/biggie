@@ -180,15 +180,19 @@ export function walkChildren<Error = unknown>(
     }
 
     if (interfaceName != null) {
-      if (line.startsWith("readonly ")) {
+      if (line.includes(":")) {
         const parts = line.split(" ");
-        let propertyName = parts[1].replaceAll(":", "");
+        let propertyName = parts[0].replaceAll(":", "");
 
-        if (["kind", "exports?", "fileName", "isExported", "operator", "symbol?", "value"].includes(propertyName)) {
+        if (
+          ["kind", "endPos", "exports?", "fileName", "isExported", "operator", "startPos", "symbol?", "value"].includes(
+            propertyName,
+          )
+        ) {
           continue;
         }
 
-        const type = parts[2].substring(0, parts[2].length - 1);
+        const type = parts[1].substring(0, parts[1].length - 1);
 
         if (type == "string") {
           continue;

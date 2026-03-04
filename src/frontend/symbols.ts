@@ -29,13 +29,13 @@ export interface Symbol {
 }
 
 export interface SymbolDeclaration {
-  readonly symbol?: Symbol;
+  symbol?: Symbol;
 }
 
 export type SymbolReference = SymbolDeclaration;
 
 export interface SymbolScope {
-  readonly locals?: SymbolTable;
+  locals?: SymbolTable;
 
-  readonly nextSymbolScope?: SymbolScope;
+  nextSymbolScope?: SymbolScope;
 }

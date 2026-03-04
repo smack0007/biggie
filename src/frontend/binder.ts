@@ -54,17 +54,17 @@ const SYMBOL_SCOPE_SYNTAX_KIND = [
 
 function bindInitialize(program: Program): Result<void, BindError> {
   for (const sourceFile of Object.values(program.sourceFiles)) {
-    (<Mutable<ast.SourceFile>> sourceFile).locals = {};
-    (<Mutable<ast.SourceFile>> sourceFile).exports = {};
+    sourceFile.locals = {};
+    sourceFile.exports = {};
 
     const result = ast.walkChildren(
       sourceFile,
       (node: ast.SyntaxNode, parent: ast.SyntaxNode): Result<bool, BindError> => {
-        (node as Mutable<ast.SyntaxNode>).parent = parent;
+        node.parent = parent;
 
         if (SYMBOL_SCOPE_SYNTAX_KIND.includes(node.kind)) {
           const scope = <SymbolScope> node;
-          (<Mutable<SymbolScope>> scope).locals = {};
+          scope.locals = {};
 
           const nextSymbolScope = getParentNodeByKinds<Required<SymbolScope>>(node, SYMBOL_SCOPE_SYNTAX_KIND);
 
@@ -72,7 +72,7 @@ function bindInitialize(program: Program): Result<void, BindError> {
             return nextSymbolScope;
           }
 
-          (<Mutable<SymbolScope>> scope).nextSymbolScope = nextSymbolScope.value;
+          scope.nextSymbolScope = nextSymbolScope.value;
         }
 
         return success(true);
@@ -216,7 +216,7 @@ function bindImportDeclaration(
   const moduleAlias = ast.getOrCalculateModuleAlias(importStatement);
   const members = program.sourceFiles[importStatement.resolvedFileName].exports;
 
-  (<Mutable<ast.ImportDeclaration>> importStatement).symbol = {
+  importStatement.symbol = {
     sourceFileName: sourceFile.fileName,
     name: moduleAlias,
     flags: SymbolFlags.Module,
@@ -244,7 +244,7 @@ function bindEnumDeclaration(
     members[enumMember.symbol!.name] = enumMember.symbol!;
   }
 
-  (<Mutable<ast.EnumDeclaration>> enumDeclaration).symbol = {
+  enumDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: enumDeclaration.name.value,
     flags: SymbolFlags.Enum,
@@ -264,7 +264,7 @@ function bindEnumMember(
   sourceFile: Required<ast.SourceFile>,
   enumMember: ast.EnumMember,
 ): Result<void, BindError> {
-  (<Mutable<ast.EnumMember>> enumMember).symbol = {
+  enumMember.symbol = {
     sourceFileName: sourceFile.fileName,
     name: enumMember.name.value,
     flags: SymbolFlags.EnumMember,
@@ -278,7 +278,7 @@ function bindFunctionDeclaration(
   sourceFile: Required<ast.SourceFile>,
   functionDeclaration: ast.FunctionDeclaration,
 ): Result<void, BindError> {
-  (<Mutable<ast.FunctionDeclaration>> functionDeclaration).symbol = {
+  functionDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: functionDeclaration.name.value,
     flags: SymbolFlags.Function,
@@ -308,7 +308,7 @@ function bindStructDeclaration(
     members[structMember.symbol!.name] = structMember.symbol!;
   }
 
-  (<Mutable<ast.StructDeclaration>> structDeclaration).symbol = {
+  structDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structDeclaration.name.value,
     flags: SymbolFlags.Variable,
@@ -328,7 +328,7 @@ function bindStructMember(
   sourceFile: Required<ast.SourceFile>,
   structMember: ast.StructMember,
 ): Result<void, BindError> {
-  (<Mutable<ast.StructMember>> structMember).symbol = {
+  structMember.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structMember.name.value,
     flags: SymbolFlags.StructMember,
@@ -378,7 +378,7 @@ function bindVariableDeclaration(
     }
   }
 
-  (<Mutable<ast.VariableDeclaration>> variableDeclaration).symbol = {
+  variableDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: variableDeclaration.name.value,
     flags: SymbolFlags.Variable,
@@ -445,7 +445,7 @@ function bindPropertyAccessExpression(
     return result;
   }
 
-  (<Mutable<ast.PropertyAccessExpression>> propertyAccessExpression).symbol = propertyAccessExpression.name.symbol;
+  propertyAccessExpression.symbol = propertyAccessExpression.name.symbol;
 
   return success();
 }
@@ -472,7 +472,7 @@ function bindIdentifier(
       return symbol;
     }
 
-    (<Mutable<ast.Identifier>> identifier).symbol = symbol.value;
+    identifier.symbol = symbol.value;
   } else {
     if (!parentSymbol.members) {
       return bindError(
@@ -490,7 +490,7 @@ function bindIdentifier(
       );
     }
 
-    (identifier as Mutable<ast.Identifier>).symbol = parentSymbol.members[identifier.value];
+    identifier.symbol = parentSymbol.members[identifier.value];
   }
 
   return success();

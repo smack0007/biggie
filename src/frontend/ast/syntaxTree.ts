@@ -122,312 +122,312 @@ export enum Operator {
 }
 
 export interface SyntaxNode {
-  readonly kind: SyntaxKind;
+  kind: SyntaxKind;
 
-  readonly startPos: TextPosition;
+  startPos: TextPosition;
 
-  readonly endPos: TextPosition;
+  endPos: TextPosition;
 
-  readonly parent?: SyntaxNode;
+  parent?: SyntaxNode;
 }
 
 export interface SourceFile extends SyntaxNode, symbols.SymbolScope {
-  readonly kind: SyntaxKind.SourceFile;
+  kind: SyntaxKind.SourceFile;
 
-  readonly fileName: string;
+  fileName: string;
 
-  readonly statements: Statement[];
+  statements: Statement[];
 
-  readonly exports?: symbols.SymbolTable;
+  exports?: symbols.SymbolTable;
 }
 
 export interface Statement extends SyntaxNode {}
 
 export interface ImportDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
-  readonly kind: SyntaxKind.ImportDeclaration;
+  kind: SyntaxKind.ImportDeclaration;
 
-  readonly alias?: Identifier;
+  alias?: Identifier;
 
-  readonly module: StringLiteral;
+  module: StringLiteral;
 
-  readonly resolvedFileName: string;
+  resolvedFileName: string;
 }
 
 export interface VariableDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
-  readonly kind: SyntaxKind.VariableDeclaration;
+  kind: SyntaxKind.VariableDeclaration;
 
-  readonly name: Identifier;
+  name: Identifier;
 
-  readonly type: TypeNode;
+  type: TypeNode;
 
-  readonly initializer?: Expression;
+  initializer?: Expression;
 }
 
 export interface EnumDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
-  readonly kind: SyntaxKind.EnumDeclaration;
+  kind: SyntaxKind.EnumDeclaration;
 
-  readonly isExported: boolean;
+  isExported: boolean;
 
-  readonly name: Identifier;
+  name: Identifier;
 
-  readonly members: EnumMember[];
+  members: EnumMember[];
 }
 
 export interface EnumMember extends SyntaxNode, symbols.SymbolDeclaration {
-  readonly kind: SyntaxKind.EnumMember;
+  kind: SyntaxKind.EnumMember;
 
-  readonly name: Identifier;
+  name: Identifier;
 
-  readonly initializer?: Expression;
+  initializer?: Expression;
 }
 
 export interface FunctionDeclaration extends SyntaxNode, symbols.SymbolDeclaration, symbols.SymbolScope {
-  readonly kind: SyntaxKind.FunctionDeclaration;
+  kind: SyntaxKind.FunctionDeclaration;
 
-  readonly isExported: boolean;
+  isExported: boolean;
 
-  readonly name: Identifier;
+  name: Identifier;
 
-  readonly arguments: VariableDeclaration[];
+  arguments: VariableDeclaration[];
 
-  readonly returnType: TypeNode;
+  returnType: TypeNode;
 
-  readonly body: StatementBlock;
+  body: StatementBlock;
 }
 
 export interface StructDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
-  readonly kind: SyntaxKind.StructDeclaration;
+  kind: SyntaxKind.StructDeclaration;
 
-  readonly isExported: boolean;
+  isExported: boolean;
 
-  readonly name: Identifier;
+  name: Identifier;
 
-  readonly members: StructMember[];
+  members: StructMember[];
 }
 
 export interface StructMember extends SyntaxNode, symbols.SymbolDeclaration {
-  readonly kind: SyntaxKind.StructMember;
+  kind: SyntaxKind.StructMember;
 
-  readonly name: Identifier;
+  name: Identifier;
 
-  readonly type: Identifier;
+  type: Identifier;
 }
 
 export interface ExpressionStatement extends Statement {
-  readonly kind: SyntaxKind.ExpressionStatement;
+  kind: SyntaxKind.ExpressionStatement;
 
-  readonly expression: Expression;
+  expression: Expression;
 }
 
 export interface DeferStatement extends Statement {
-  readonly kind: SyntaxKind.DeferStatement;
+  kind: SyntaxKind.DeferStatement;
 
-  readonly body: Statement;
+  body: Statement;
 }
 
 export interface IfStatement extends Statement {
-  readonly kind: SyntaxKind.IfStatement;
+  kind: SyntaxKind.IfStatement;
 
-  readonly condition: Expression;
+  condition: Expression;
 
-  readonly then: Statement;
+  then: Statement;
 
-  readonly else?: Statement;
+  else?: Statement;
 }
 
 export interface WhileStatement extends Statement {
-  readonly kind: SyntaxKind.WhileStatement;
+  kind: SyntaxKind.WhileStatement;
 
-  readonly condition: Expression;
+  condition: Expression;
 
-  readonly body: Statement;
+  body: Statement;
 }
 
 export interface ReturnStatement extends Statement {
-  readonly kind: SyntaxKind.ReturnStatement;
+  kind: SyntaxKind.ReturnStatement;
 
-  readonly expression: Expression;
+  expression: Expression;
 }
 
 export interface StatementBlock extends SyntaxNode, symbols.SymbolScope {
-  readonly kind: SyntaxKind.StatementBlock;
+  kind: SyntaxKind.StatementBlock;
 
-  readonly statements: Statement[];
+  statements: Statement[];
 }
 
 export interface Expression extends SyntaxNode, symbols.SymbolReference {}
 
 export interface LogicalExpression extends Expression {
-  readonly kind: SyntaxKind.LogicalExpression;
+  kind: SyntaxKind.LogicalExpression;
 
-  readonly lhs: Expression;
+  lhs: Expression;
 
-  readonly operator: Operator.AmpersandAmpersand | Operator.BarBar;
+  operator: Operator.AmpersandAmpersand | Operator.BarBar;
 
-  readonly rhs: Expression;
+  rhs: Expression;
 }
 
 export interface AssignmentExpression extends Expression {
-  readonly kind: SyntaxKind.AssignmentExpression;
+  kind: SyntaxKind.AssignmentExpression;
 
-  readonly name: Identifier;
+  name: Identifier;
 
-  readonly operator:
+  operator:
     | Operator.Equals
     | Operator.PlusEquals
     | Operator.MinusEquals
     | Operator.AsteriskEquals
     | Operator.SlashEquals;
 
-  readonly value: Expression;
+  value: Expression;
 }
 
 export interface EqualityExpression extends Expression {
-  readonly kind: SyntaxKind.EqualityExpression;
+  kind: SyntaxKind.EqualityExpression;
 
-  readonly lhs: Expression;
+  lhs: Expression;
 
-  readonly operator: Operator.EqualsEquals | Operator.ExclamationEquals;
+  operator: Operator.EqualsEquals | Operator.ExclamationEquals;
 
-  readonly rhs: Expression;
+  rhs: Expression;
 }
 
 export interface ComparisonExpression extends Expression {
-  readonly kind: SyntaxKind.ComparisonExpression;
+  kind: SyntaxKind.ComparisonExpression;
 
-  readonly lhs: Expression;
+  lhs: Expression;
 
-  readonly operator: Operator.GreaterThan | Operator.GreaterThanEquals | Operator.LessThan | Operator.LessThanEquals;
+  operator: Operator.GreaterThan | Operator.GreaterThanEquals | Operator.LessThan | Operator.LessThanEquals;
 
-  readonly rhs: Expression;
+  rhs: Expression;
 }
 
 export interface AdditiveExpression extends Expression {
-  readonly kind: SyntaxKind.AdditiveExpression;
+  kind: SyntaxKind.AdditiveExpression;
 
-  readonly lhs: Expression;
+  lhs: Expression;
 
-  readonly operator: Operator.Plus | Operator.Minus;
+  operator: Operator.Plus | Operator.Minus;
 
-  readonly rhs: Expression;
+  rhs: Expression;
 }
 
 export interface MultiplicativeExpression extends Expression {
-  readonly kind: SyntaxKind.MultiplicativeExpression;
+  kind: SyntaxKind.MultiplicativeExpression;
 
-  readonly lhs: Expression;
+  lhs: Expression;
 
-  readonly operator: Operator.Asterisk | Operator.Slash;
+  operator: Operator.Asterisk | Operator.Slash;
 
-  readonly rhs: Expression;
+  rhs: Expression;
 }
 
 export interface UnaryExpression extends Expression {
-  readonly kind: SyntaxKind.UnaryExpression;
+  kind: SyntaxKind.UnaryExpression;
 
-  readonly operator: Operator.Ampersand | Operator.Asterisk | Operator.Exclamation | Operator.Minus;
+  operator: Operator.Ampersand | Operator.Asterisk | Operator.Exclamation | Operator.Minus;
 
-  readonly expression: Expression;
+  expression: Expression;
 }
 
 export interface ParenthesizedExpression extends Expression {
-  readonly kind: SyntaxKind.ParenthesizedExpression;
+  kind: SyntaxKind.ParenthesizedExpression;
 
-  readonly expression: Expression;
+  expression: Expression;
 }
 
 export interface CallExpression extends Expression {
-  readonly kind: SyntaxKind.CallExpression;
+  kind: SyntaxKind.CallExpression;
 
-  readonly expression: Expression;
+  expression: Expression;
 
-  readonly arguments: Expression[];
+  arguments: Expression[];
 }
 
 export interface ElementAccessExpression extends Expression {
-  readonly kind: SyntaxKind.ElementAccessExpression;
+  kind: SyntaxKind.ElementAccessExpression;
 
-  readonly expression: Expression;
+  expression: Expression;
 
-  readonly argumentExpression: Expression;
+  argumentExpression: Expression;
 }
 
 export interface PropertyAccessExpression extends Expression {
-  readonly kind: SyntaxKind.PropertyAccessExpression;
+  kind: SyntaxKind.PropertyAccessExpression;
 
-  readonly expression: Expression;
+  expression: Expression;
 
-  readonly name: Identifier;
+  name: Identifier;
 }
 
 export interface TypeNode extends SyntaxNode {}
 
 export interface ArrayType extends TypeNode {
-  readonly kind: SyntaxKind.ArrayType;
+  kind: SyntaxKind.ArrayType;
 
-  readonly elementType: TypeNode;
+  elementType: TypeNode;
 }
 
 export interface PointerType extends TypeNode {
-  readonly kind: SyntaxKind.PointerType;
+  kind: SyntaxKind.PointerType;
 
-  readonly elementType: TypeNode;
+  elementType: TypeNode;
 }
 
 export interface TypeReference extends TypeNode {
-  readonly kind: SyntaxKind.TypeReference;
+  kind: SyntaxKind.TypeReference;
 
-  readonly typeName: QualifiedName | Identifier;
+  typeName: QualifiedName | Identifier;
 }
 
 export interface QualifiedName extends SyntaxNode {
-  readonly kind: SyntaxKind.QualifiedName;
+  kind: SyntaxKind.QualifiedName;
 
-  readonly left: Identifier;
+  left: Identifier;
 
-  readonly right: Identifier;
+  right: Identifier;
 }
 
 export interface Identifier extends Expression, symbols.SymbolReference {
-  readonly kind: SyntaxKind.Identifier;
+  kind: SyntaxKind.Identifier;
 
-  readonly value: string;
+  value: string;
 }
 
 export interface ArrayLiteral extends Expression {
-  readonly kind: SyntaxKind.ArrayLiteral;
+  kind: SyntaxKind.ArrayLiteral;
 
-  readonly elements: Expression[];
+  elements: Expression[];
 }
 
 export interface StructLiteral extends Expression {
-  readonly kind: SyntaxKind.StructLiteral;
+  kind: SyntaxKind.StructLiteral;
 
-  readonly elements: StructLiteralElement[];
+  elements: StructLiteralElement[];
 }
 
 export interface StructLiteralElement extends SyntaxNode {
-  readonly kind: SyntaxKind.StructLiteralElement;
+  kind: SyntaxKind.StructLiteralElement;
 
-  readonly name?: Identifier;
+  name?: Identifier;
 
-  readonly expression: Expression;
+  expression: Expression;
 }
 
 export interface BooleanLiteral extends Expression {
-  readonly kind: SyntaxKind.BooleanLiteral;
+  kind: SyntaxKind.BooleanLiteral;
 
-  readonly value: boolean;
+  value: boolean;
 }
 
 export interface IntegerLiteral extends Expression {
-  readonly kind: SyntaxKind.IntegerLiteral;
+  kind: SyntaxKind.IntegerLiteral;
 
-  readonly value: string;
+  value: string;
 }
 
 export interface StringLiteral extends Expression {
-  readonly kind: SyntaxKind.StringLiteral;
+  kind: SyntaxKind.StringLiteral;
 
-  readonly value: string;
+  value: string;
 }
