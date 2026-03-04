@@ -40,7 +40,7 @@ async function main(argv: string[]): Promise<int> {
 
     if (isError(bindResult)) {
       stderr.write(
-        `Error: (${bindResult.error.pos.line}, ${bindResult.error.pos.column}) [${
+        `Error: (${bindResult.error.pos.line}, ${bindResult.error.pos.column}) ${bindResult.error.fileName} [${
           BindErrorKind[bindResult.error.kind]
         }] ${bindResult.error.message}\n`,
       );

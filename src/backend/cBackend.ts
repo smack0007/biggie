@@ -38,7 +38,7 @@ import {
   VariableDeclaration,
   WhileStatement,
 } from "../frontend/ast.ts";
-import * as astUtils from "../frontend/astUtils.ts";
+import * as astUtils from "../frontend/ast.utils.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
 import { Program } from "../frontend/program.ts";

@@ -34,4 +34,23 @@ describe("OutputWriter", () => {
 
     assert.strictEqual(stringBuilder.toString(), ["One", "Two", "Three"].join(EOL));
   });
+
+  it("createPlaceholder() throws when a line is currently being written", () => {
+    const stringBuilder = new OutputWriter();
+    stringBuilder.append("abc");
+    assert.throws(() => stringBuilder.createPlaceholder());
+  });
+
+  it("createPlaceholder() can insert content", () => {
+    const stringBuilder = new OutputWriter();
+    stringBuilder.appendLine("abc");
+
+    const placeholder = stringBuilder.createPlaceholder();
+
+    stringBuilder.appendLine("ghi");
+
+    placeholder.appendLine("def");
+
+    assert.equal(stringBuilder.toString(), "abc\ndef\nghi\n");
+  });
 });

@@ -1,8 +1,6 @@
 import * as ast from "./ast.ts";
-import * as astUtils from "./astUtils.ts";
 import { Program } from "./program.ts";
-import { walkAst, walkAstChildren } from "./walkAst.ts";
-import { bool, error, ErrorResult, isError, nameof, Result, success } from "../shims.ts";
+import { bool, error, ErrorResult, isError, isSuccess, nameof, Result, success } from "../shims.ts";
 import { Mutable } from "../utils.ts";
 import { Symbol, SymbolFlags, SymbolScope, SymbolTable } from "./symbols.ts";
 import { TextPosition } from "./scanner.ts";
@@ -14,14 +12,18 @@ export enum BindErrorKind {
 
 export interface BindError {
   kind: BindErrorKind;
-  message?: string;
+  message: string;
+  fileName: string;
   pos: TextPosition;
 }
 
 function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): ErrorResult<BindError> {
+  const sourceFile = getSourceFileFromNode(node);
+
   return error({
     kind,
     message,
+    fileName: isSuccess(sourceFile) ? sourceFile.value.fileName : "",
     pos: node.startPos,
   });
 }
@@ -55,7 +57,7 @@ function bindInitialize(program: Program): Result<void, BindError> {
     (<Mutable<ast.SourceFile>> sourceFile).locals = {};
     (<Mutable<ast.SourceFile>> sourceFile).exports = {};
 
-    const result = walkAstChildren(
+    const result = ast.walkChildren(
       sourceFile,
       (node: ast.SyntaxNode, parent: ast.SyntaxNode): Result<bool, BindError> => {
         (node as Mutable<ast.SyntaxNode>).parent = parent;
@@ -106,6 +108,10 @@ function getParentNodeByKinds<T>(node: ast.SyntaxNode, kinds: ast.SyntaxKind[]):
   return success(<T> node);
 }
 
+function getSourceFileFromNode(node: ast.SyntaxNode): Result<Required<ast.SourceFile>, BindError> {
+  return getParentNodeByKinds<Required<ast.SourceFile>>(node, [ast.SyntaxKind.SourceFile]);
+}
+
 function getSymbolScopeFromNode(node: ast.SyntaxNode): Result<Required<SymbolScope>, BindError> {
   return getParentNodeByKinds<Required<SymbolScope>>(node, SYMBOL_SCOPE_SYNTAX_KIND);
 }
@@ -134,7 +140,7 @@ function getSymbolByName(node: ast.SyntaxNode, name: string): Result<Symbol, Bin
 }
 
 function bindSourceFile(program: Program, sourceFile: Required<ast.SourceFile>): Result<void, BindError> {
-  return walkAst(sourceFile, (node: ast.SyntaxNode): Result<bool, BindError> => {
+  return ast.walk(sourceFile, (node: ast.SyntaxNode): Result<bool, BindError> => {
     let result: Result<void, BindError>;
 
     // TODO: All the cases in the switch should return false that binding only occurs once.
@@ -193,15 +199,6 @@ function bindSourceFile(program: Program, sourceFile: Required<ast.SourceFile>):
 
         return success(true);
 
-      case ast.SyntaxKind.Identifier:
-        result = bindIdentifier(program, sourceFile, <ast.Identifier> node);
-
-        if (isError(result)) {
-          return result;
-        }
-
-        return success(false);
-
       // Just ignoring types for now.
       case ast.SyntaxKind.TypeReference:
         return success(false);
@@ -216,7 +213,7 @@ function bindImportDeclaration(
   sourceFile: Required<ast.SourceFile>,
   importStatement: ast.ImportDeclaration,
 ): Result<void, BindError> {
-  const moduleAlias = astUtils.getOrCalculateModuleAlias(importStatement);
+  const moduleAlias = ast.getOrCalculateModuleAlias(importStatement);
   const members = program.sourceFiles[importStatement.resolvedFileName].exports;
 
   (<Mutable<ast.ImportDeclaration>> importStatement).symbol = {
@@ -460,7 +457,6 @@ function bindIdentifier(
   parentSymbol?: Symbol,
 ): Result<void, BindError> {
   if (identifier.symbol) {
-    // TODO: Return Unexpected error because of twice binding?
     return success();
   }
 
