@@ -763,11 +763,16 @@ function parseStatementBlock(context: ParserSourceFileContext): Result<Statement
   while (!isEOF(context) && peek(context).type != TokenType.CloseBrace) {
     const statement = parseBlockLevelStatement(context);
 
-    if (isError(statement)) {
-      return statement;
-    }
+    if (isSuccess(statement)) {
+      statements.push(statement.value);
+    } else {
+      context.base.diagnostics.push(statement.error);
+      resync(context, [TokenType.Semicolon, TokenType.CloseBrace]);
 
-    statements.push(statement.value!);
+      if (peek(context).type == TokenType.Semicolon) {
+        advance(context);
+      }
+    }
   }
 
   token = expect(context, TokenType.CloseBrace, nameof(parseStatementBlock));
