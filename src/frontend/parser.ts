@@ -1,6 +1,6 @@
 import { dirname, isAbsolute, resolve } from "node:path";
 import { readFile } from "node:fs/promises";
-import { bool, error, ErrorResult, int, isError, isSuccess, nameof, Result, success } from "../shims.ts";
+import { bool, int, nameof } from "../shims.ts";
 import {
   AdditiveExpression,
   ArrayLiteral,
@@ -97,13 +97,13 @@ function parserError(
   token: Token,
   kind: ParserErrorKind,
   message: string,
-): ErrorResult<ParserError> {
-  return error({
+): ParserError {
+  return {
     kind,
     fileName,
     pos: token.pos,
     message,
-  });
+  };
 }
 
 function getPos(context: ParserSourceFileContext): TextPosition {
@@ -154,12 +154,12 @@ function expect(
   context: ParserSourceFileContext,
   expectedType: TokenType | TokenType[],
   functionName: string,
-): Result<Token, ParserError> {
+): Token {
   const token = peek(context);
 
   if (Array.isArray(expectedType)) {
     if (!expectedType.includes(token.type)) {
-      return parserError(
+      throw parserError(
         context.fileName,
         token,
         ParserErrorKind.UnexpectedTokenType,
@@ -170,7 +170,7 @@ function expect(
     }
   } else {
     if (token.type != expectedType) {
-      return parserError(
+      throw parserError(
         context.fileName,
         token,
         ParserErrorKind.UnexpectedTokenType,
@@ -181,7 +181,7 @@ function expect(
     }
   }
 
-  return success(token);
+  return token;
 }
 
 function resync(context: ParserSourceFileContext, tokenTypes: TokenType[]): void {
@@ -194,7 +194,7 @@ function resync(context: ParserSourceFileContext, tokenTypes: TokenType[]): void
 export async function parse(
   entryFileName: string,
   logger?: ParserLogger,
-): Promise<Result<Program, ParserError>> {
+): Promise<Program> {
   const context: ParserContext = {
     logger,
     entryFileName,
@@ -202,25 +202,19 @@ export async function parse(
     diagnostics: [],
   };
 
-  const entrySourceFile = await parseSourceFile(context, entryFileName);
+  context.sourceFiles[entryFileName] = await parseSourceFile(context, entryFileName);
 
-  if (isError(entrySourceFile)) {
-    return entrySourceFile;
-  }
-
-  context.sourceFiles[entryFileName] = entrySourceFile.value;
-
-  return success({
+  return {
     entryFileName,
     sourceFiles: context.sourceFiles,
     diagnostics: context.diagnostics,
-  });
+  };
 }
 
 export async function parseSourceFile(
   baseContext: ParserContext,
   fileName: string,
-): Promise<Result<SourceFile, ParserError>> {
+): Promise<SourceFile> {
   baseContext.logger?.enter(nameof(parseSourceFile), fileName);
 
   const tokens = scan(await readFile(fileName, "utf8"));
@@ -242,25 +236,19 @@ export async function parseSourceFile(
   const statements: Statement[] = [];
 
   while (!isEOF(context)) {
-    const statement = await parseTopLevelStatement(context);
-
-    if (isSuccess(statement)) {
-      statements.push(statement.value);
-    } else {
-      context.base.diagnostics.push(statement.error);
+    try {
+      statements.push(await parseTopLevelStatement(context));
+    } catch (error) {
+      context.base.diagnostics.push(<ProgramDiagnostic> error);
       resync(context, TOP_LEVEL_STATEMENT_TOKEN_TYPES);
     }
   }
 
-  const eof = expect(context, TokenType.EOF, nameof(parseSourceFile));
-
-  if (isError(eof)) {
-    return eof;
-  }
+  expect(context, TokenType.EOF, nameof(parseSourceFile));
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.SourceFile,
     startPos,
     endPos,
@@ -268,7 +256,7 @@ export async function parseSourceFile(
     statements,
     exports: {},
     locals: {},
-  });
+  };
 }
 
 const TOP_LEVEL_STATEMENT_TOKEN_TYPES: TokenType[] = [
@@ -280,7 +268,7 @@ const TOP_LEVEL_STATEMENT_TOKEN_TYPES: TokenType[] = [
   TokenType.Struct,
 ];
 
-async function parseTopLevelStatement(context: ParserSourceFileContext): Promise<Result<Statement, ParserError>> {
+async function parseTopLevelStatement(context: ParserSourceFileContext): Promise<Statement> {
   context.logger.enter(nameof(parseTopLevelStatement));
 
   let isExported = false;
@@ -289,12 +277,12 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
     advance(context);
   }
 
-  let result: Result<Statement, ParserError>;
+  let result: Statement;
   const token = peek(context);
   switch (token.type) {
     case TokenType.Import:
       if (isExported) {
-        return parserError(
+        throw parserError(
           context.fileName,
           token,
           ParserErrorKind.ExportImport,
@@ -323,7 +311,7 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
       break;
 
     default:
-      return parserError(
+      throw parserError(
         context.fileName,
         token,
         ParserErrorKind.UnknownTopLevelStatement,
@@ -336,25 +324,16 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
 
 async function parseImportDeclaration(
   context: ParserSourceFileContext,
-): Promise<Result<ImportDeclaration, ParserError>> {
+): Promise<ImportDeclaration> {
   context.logger.enter(nameof(parseImportDeclaration));
   const startPos = getPos(context);
 
-  const token = expect(context, TokenType.Import, nameof(parseImportDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Import, nameof(parseImportDeclaration));
   advance(context);
 
-  let alias: Result<Identifier, ParserError> | undefined = undefined;
+  let alias: Identifier | undefined = undefined;
   if (peek(context).type == TokenType.Identifier) {
     alias = parseIdentifier(context);
-
-    if (isError(alias)) {
-      return alias;
-    }
   }
 
   // TODO: Not sure if it should be done here or in a later phase but
@@ -369,29 +348,19 @@ async function parseImportDeclaration(
 
   const module = parseStringLiteral(context);
 
-  if (isError(module)) {
-    return module;
-  }
-
-  const resolvedFileName = resolveModule(module.value.value, dirname(context.fileName));
-  const parseSourceFileResult = await parseSourceFile(context.base, resolvedFileName);
-
-  if (isError(parseSourceFileResult)) {
-    return parseSourceFileResult;
-  }
-
-  context.base.sourceFiles[resolvedFileName] = parseSourceFileResult.value;
+  const resolvedFileName = resolveModule(module.value, dirname(context.fileName));
+  context.base.sourceFiles[resolvedFileName] = await parseSourceFile(context.base, resolvedFileName);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.ImportDeclaration,
     startPos,
     endPos,
-    alias: alias?.value,
-    module: module.value,
+    alias: alias,
+    module: module,
     resolvedFileName,
-  });
+  };
 }
 
 interface ParseVariableDeclarationOptions {
@@ -401,404 +370,258 @@ interface ParseVariableDeclarationOptions {
 function parseVariableDeclaration(
   context: ParserSourceFileContext,
   options: ParseVariableDeclarationOptions = {},
-): Result<VariableDeclaration, ParserError> {
+): VariableDeclaration {
   context.logger.enter(nameof(parseVariableDeclaration));
   const startPos = getPos(context);
 
-  let token: Result<Token, ParserError>;
-
   if (!options.isFunctionArgument) {
-    token = expect(context, TokenType.Var, nameof(parseVariableDeclaration));
-
-    if (isError(token)) {
-      return token;
-    }
-
+    expect(context, TokenType.Var, nameof(parseVariableDeclaration));
     advance(context);
   }
 
   const identifier = parseIdentifier(context);
 
-  if (isError(identifier)) {
-    return identifier;
-  }
-
-  token = expect(context, TokenType.Colon, nameof(parseVariableDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Colon, nameof(parseVariableDeclaration));
   advance(context);
+
   const type = parseType(context);
 
-  if (isError(type)) {
-    return type;
-  }
-
-  let initializer: Result<Expression, ParserError> | undefined = undefined;
+  let initializer: Expression | undefined = undefined;
   if (check(context, TokenType.Equals)) {
     advance(context);
     initializer = parseExpression(context);
-
-    if (isError(initializer)) {
-      return initializer;
-    }
   }
 
   if (!options.isFunctionArgument) {
-    token = expect(context, TokenType.Semicolon, nameof(parseVariableDeclaration));
-
-    if (isError(token)) {
-      return token;
-    }
-
+    expect(context, TokenType.Semicolon, nameof(parseVariableDeclaration));
     advance(context);
   }
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.VariableDeclaration,
     startPos,
     endPos,
-    name: identifier.value,
-    type: type.value,
-    initializer: initializer?.value,
-  });
+    name: identifier,
+    type: type,
+    initializer: initializer,
+  };
 }
 
 // TODO: isExported should be moved into an options object like in parseVariableDeclaration.
 function parseEnumDeclaration(
   context: ParserSourceFileContext,
   isExported: boolean,
-): Result<EnumDeclaration, ParserError> {
+): EnumDeclaration {
   context.logger.enter(nameof(parseEnumDeclaration));
   const startPos = getPos(context);
 
-  let token = expect(context, TokenType.Enum, nameof(parseEnumDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Enum, nameof(parseEnumDeclaration));
   advance(context);
+
   const name = parseIdentifier(context);
 
-  if (isError(name)) {
-    return name;
-  }
-
-  token = expect(context, TokenType.OpenBrace, nameof(parseEnumDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.OpenBrace, nameof(parseEnumDeclaration));
   advance(context);
 
   const members: EnumMember[] = [];
   while (check(context, TokenType.Identifier)) {
-    const member = parseEnumMember(context);
-
-    if (isError(member)) {
-      return member;
-    }
-
-    members.push(member.value);
+    members.push(parseEnumMember(context));
 
     if (peek(context).type == TokenType.Comma) {
       advance(context);
     }
   }
 
-  token = expect(context, TokenType.CloseBrace, nameof(parseEnumDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.CloseBrace, nameof(parseEnumDeclaration));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.EnumDeclaration,
     startPos,
     endPos,
     isExported,
-    name: name.value,
+    name,
     members,
-  });
+  };
 }
 
-function parseEnumMember(context: ParserSourceFileContext): Result<EnumMember, ParserError> {
+function parseEnumMember(context: ParserSourceFileContext): EnumMember {
   context.logger.enter(nameof(parseEnumMember));
   const startPos = getPos(context);
 
   const name = parseIdentifier(context);
 
-  if (isError(name)) {
-    return name;
-  }
-
-  let initializer: Result<Expression, ParserError> | undefined = undefined;
+  let initializer: Expression | undefined = undefined;
   if (check(context, TokenType.Equals)) {
     advance(context);
     initializer = parseExpression(context);
-
-    if (isError(initializer)) {
-      return initializer;
-    }
   }
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.EnumMember,
     startPos,
     endPos,
-    name: name.value,
-    initializer: initializer?.value,
-  });
+    name,
+    initializer,
+  };
 }
 
 function parseFunctionDeclaration(
   context: ParserSourceFileContext,
   isExported: boolean,
-): Result<FunctionDeclaration, ParserError> {
+): FunctionDeclaration {
   context.logger.enter(nameof(parseFunctionDeclaration));
   const startPos = getPos(context);
 
-  let token = expect(context, TokenType.Func, nameof(parseFunctionDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Func, nameof(parseFunctionDeclaration));
   advance(context);
+
   const name = parseIdentifier(context);
 
-  if (isError(name)) {
-    return name;
-  }
-
-  token = expect(context, TokenType.OpenParen, nameof(parseFunctionDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.OpenParen, nameof(parseFunctionDeclaration));
   advance(context);
 
   const args: VariableDeclaration[] = [];
   while (check(context, TokenType.Identifier)) {
-    const arg = parseVariableDeclaration(context, { isFunctionArgument: true });
-
-    if (isError(arg)) {
-      return arg;
-    }
-
-    args.push(arg.value);
+    args.push(parseVariableDeclaration(context, { isFunctionArgument: true }));
 
     if (peek(context).type == TokenType.Comma) {
       advance(context);
     }
   }
 
-  token = expect(context, TokenType.CloseParen, nameof(parseFunctionDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.CloseParen, nameof(parseFunctionDeclaration));
   advance(context);
-  token = expect(context, TokenType.Colon, nameof(parseFunctionDeclaration));
 
-  if (isError(token)) {
-    return token;
-  }
-
+  // TODO: Should we just remove the colon before the return type?
+  expect(context, TokenType.Colon, nameof(parseFunctionDeclaration));
   advance(context);
+
   const returnType = parseType(context);
-
-  if (isError(returnType)) {
-    return returnType;
-  }
 
   const body = parseStatementBlock(context);
 
-  if (isError(body)) {
-    return body;
-  }
-
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.FunctionDeclaration,
     startPos,
     endPos,
     isExported,
-    name: name.value,
+    name,
     arguments: args,
-    returnType: returnType.value,
-    body: body.value,
-  });
+    returnType,
+    body,
+  };
 }
 
 function parseStructDeclaration(
   context: ParserSourceFileContext,
   isExported: boolean,
-): Result<StructDeclaration, ParserError> {
+): StructDeclaration {
   context.logger.enter(nameof(parseStructDeclaration));
   const startPos = getPos(context);
 
-  let token = expect(context, TokenType.Struct, nameof(parseStructDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Struct, nameof(parseStructDeclaration));
   advance(context);
-  const identifier = parseIdentifier(context);
 
-  if (isError(identifier)) {
-    return identifier;
-  }
+  const name = parseIdentifier(context);
 
-  token = expect(context, TokenType.OpenBrace, nameof(parseStructDeclaration));
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.OpenBrace, nameof(parseStructDeclaration));
   advance(context);
 
   const members: Array<StructMember> = [];
   while (check(context, TokenType.Identifier)) {
-    const member = parseStructMember(context);
-
-    if (isError(member)) {
-      return member;
-    }
-
-    members.push(<StructMember> member.value);
+    members.push(parseStructMember(context));
   }
 
-  token = expect(context, TokenType.CloseBrace, nameof(parseStructDeclaration));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.CloseBrace, nameof(parseStructDeclaration));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.StructDeclaration,
     startPos,
     endPos,
     isExported,
-    name: identifier.value,
-    members: members,
-  });
+    name,
+    members,
+  };
 }
 
-function parseStructMember(context: ParserSourceFileContext): Result<StructMember, ParserError> {
+function parseStructMember(context: ParserSourceFileContext): StructMember {
   context.logger.enter(nameof(parseStructMember));
   const startPos = getPos(context);
 
   const name = parseIdentifier(context);
 
-  if (isError(name)) {
-    return name;
-  }
-
-  let token = expect(context, TokenType.Colon, nameof(parseStructMember));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Colon, nameof(parseStructMember));
   advance(context);
 
   const type = parseIdentifier(context);
 
-  if (isError(type)) {
-    return type;
-  }
-
-  token = expect(context, TokenType.Semicolon, nameof(parseStructMember));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Semicolon, nameof(parseStructMember));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.StructMember,
     startPos,
     endPos,
-    name: name.value!,
-    type: type.value!,
-  });
+    name,
+    type,
+  };
 }
 
-function parseStatementBlock(context: ParserSourceFileContext): Result<StatementBlock, ParserError> {
+function parseStatementBlock(context: ParserSourceFileContext): StatementBlock {
   context.logger.enter(nameof(parseStatementBlock));
   const startPos = getPos(context);
 
-  let token = expect(context, TokenType.OpenBrace, nameof(parseStatementBlock));
-
-  if (isError(token)) {
-    return token;
-  }
+  expect(context, TokenType.OpenBrace, nameof(parseStatementBlock));
+  advance(context);
 
   const statements: Array<Statement> = [];
-
-  advance(context);
   while (!isEOF(context) && peek(context).type != TokenType.CloseBrace) {
-    const statement = parseBlockLevelStatement(context);
-
-    if (isSuccess(statement)) {
-      statements.push(statement.value);
-    } else {
-      context.base.diagnostics.push(statement.error);
+    try {
+      statements.push(parseBlockLevelStatement(context));
+    } catch (error) {
+      context.base.diagnostics.push(<ProgramDiagnostic> error);
       resync(context, [TokenType.Semicolon, TokenType.CloseBrace]);
 
+      // TODO: peek(context).type can be replaced with check
       if (peek(context).type == TokenType.Semicolon) {
         advance(context);
       }
     }
   }
 
-  token = expect(context, TokenType.CloseBrace, nameof(parseStatementBlock));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.CloseBrace, nameof(parseStatementBlock));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.StatementBlock,
     startPos,
     endPos,
     statements,
     locals: {},
-  });
+  };
 }
 
-function parseBlockLevelStatement(context: ParserSourceFileContext): Result<Statement, ParserError> {
+function parseBlockLevelStatement(context: ParserSourceFileContext): Statement {
   context.logger.enter(nameof(parseBlockLevelStatement));
   const token = peek(context);
 
-  let result: Result<Statement, ParserError>;
+  let result: Statement;
   switch (token.type) {
     case TokenType.Var:
       result = parseVariableDeclaration(context);
@@ -832,206 +655,131 @@ function parseBlockLevelStatement(context: ParserSourceFileContext): Result<Stat
   return result;
 }
 
-function parseExpressionStatement(context: ParserSourceFileContext): Result<ExpressionStatement, ParserError> {
+function parseExpressionStatement(context: ParserSourceFileContext): ExpressionStatement {
   context.logger.enter(nameof(parseExpressionStatement));
   const startPos = getPos(context);
 
   const expression = parseExpression(context);
 
-  if (isError(expression)) {
-    return expression;
-  }
-
-  const token = expect(context, TokenType.Semicolon, nameof(parseExpressionStatement));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Semicolon, nameof(parseExpressionStatement));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.ExpressionStatement,
     startPos,
     endPos,
-    expression: <Expression> expression.value,
-  });
+    expression,
+  };
 }
 
-function parseDeferStatement(context: ParserSourceFileContext): Result<DeferStatement, ParserError> {
+function parseDeferStatement(context: ParserSourceFileContext): DeferStatement {
   context.logger.enter(nameof(parseDeferStatement));
   const startPos = getPos(context);
 
-  const token = expect(context, TokenType.Defer, nameof(parseDeferStatement));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Defer, nameof(parseDeferStatement));
   advance(context);
-  const body = parseBlockLevelStatement(context);
 
-  if (isError(body)) {
-    return body;
-  }
+  const body = parseBlockLevelStatement(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.DeferStatement,
     startPos,
     endPos,
-    body: body.value,
-  });
+    body,
+  };
 }
 
-function parseIfStatement(context: ParserSourceFileContext): Result<IfStatement, ParserError> {
+function parseIfStatement(context: ParserSourceFileContext): IfStatement {
   context.logger.enter(nameof(parseIfStatement));
   const startPos = getPos(context);
 
-  let token = expect(context, TokenType.If, nameof(parseIfStatement));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.If, nameof(parseIfStatement));
   advance(context);
 
-  token = expect(context, TokenType.OpenParen, nameof(parseIfStatement));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.OpenParen, nameof(parseIfStatement));
   advance(context);
 
   const condition = parseExpression(context);
 
-  if (isError(condition)) {
-    return condition;
-  }
-
-  token = expect(context, TokenType.CloseParen, nameof(parseIfStatement));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.CloseParen, nameof(parseIfStatement));
   advance(context);
 
   const then = parseBlockLevelStatement(context);
 
-  if (isError(then)) {
-    return then;
-  }
-
   let _else: Statement | undefined = undefined;
 
+  // TODO: Can this be replaced with check?
   if (match(context, [TokenType.Else])) {
-    const elseResult = parseBlockLevelStatement(context);
-
-    if (isError(elseResult)) {
-      return elseResult;
-    }
-
-    _else = elseResult.value;
+    _else = parseBlockLevelStatement(context);
   }
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.IfStatement,
     startPos,
     endPos,
-    condition: condition.value,
-    then: then.value,
+    condition,
+    then,
     else: _else,
-  });
+  };
 }
 
-function parseWhileStatement(context: ParserSourceFileContext): Result<WhileStatement, ParserError> {
+function parseWhileStatement(context: ParserSourceFileContext): WhileStatement {
   context.logger.enter(nameof(parseWhileStatement));
   const startPos = getPos(context);
 
-  let token = expect(context, TokenType.While, nameof(parseWhileStatement));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.While, nameof(parseWhileStatement));
   advance(context);
-  token = expect(context, TokenType.OpenParen, nameof(parseWhileStatement));
 
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.OpenParen, nameof(parseWhileStatement));
   advance(context);
 
   const condition = parseExpression(context);
 
-  if (isError(condition)) {
-    return condition;
-  }
-
-  token = expect(context, TokenType.CloseParen, nameof(parseWhileStatement));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.CloseParen, nameof(parseWhileStatement));
   advance(context);
 
   const body = parseBlockLevelStatement(context);
 
-  if (isError(body)) {
-    return body;
-  }
-
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.WhileStatement,
     startPos,
     endPos,
-    condition: condition.value!,
-    body: body.value!,
-  });
+    condition,
+    body,
+  };
 }
 
-function parseReturnStatement(context: ParserSourceFileContext): Result<ReturnStatement, ParserError> {
+function parseReturnStatement(context: ParserSourceFileContext): ReturnStatement {
   context.logger.enter(nameof(parseReturnStatement));
   const startPos = getPos(context);
 
-  const token = expect(context, TokenType.Return, nameof(parseReturnStatement));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Return, nameof(parseReturnStatement));
   advance(context);
-  const expression = parseExpression(context);
 
-  if (isError(expression)) {
-    return expression;
-  }
+  const expression = parseExpression(context);
 
   expect(context, TokenType.Semicolon, nameof(parseReturnStatement));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.ReturnStatement,
     startPos,
     endPos,
-    expression: <Expression> expression.value,
-  });
+    expression,
+  };
 }
 
-function parseExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseExpression));
   return parseAssignmentExpression(context);
 }
@@ -1052,27 +800,19 @@ const ASSIGNMENT_OPERATORS_MAP: Partial<Record<TokenType, Operator>> = {
   [TokenType.SlashEquals]: Operator.SlashEquals,
 };
 
-function parseAssignmentExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseAssignmentExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseAssignmentExpression));
   const startPos = getPos(context);
 
   const startToken = peek(context);
   const expression = parseLogicalOrExpression(context);
 
-  if (isError(expression)) {
-    return expression;
-  }
-
   if (match(context, ASSIGNMENT_TOKENS)) {
     const operatorToken = previous(context);
     const value = parseExpression(context);
 
-    if (isError(value)) {
-      return value;
-    }
-
-    if (expression.value.kind != SyntaxKind.Identifier) {
-      return parserError(
+    if (expression.kind != SyntaxKind.Identifier) {
+      throw parserError(
         context.fileName,
         startToken,
         ParserErrorKind.InvalidAssignmentTarget,
@@ -1082,126 +822,98 @@ function parseAssignmentExpression(context: ParserSourceFileContext): Result<Exp
 
     const endPos = getPos(context);
 
-    return success<AssignmentExpression>({
+    return <AssignmentExpression> {
       kind: SyntaxKind.AssignmentExpression,
       startPos,
       endPos,
-      name: expression.value as Identifier,
+      name: expression as Identifier,
       operator: ASSIGNMENT_OPERATORS_MAP[operatorToken.type] as AssignmentExpression["operator"],
-      value: value.value,
-    });
+      value,
+    };
   } else {
     return expression;
   }
 }
 
-function parseLogicalOrExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseLogicalOrExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseLogicalOrExpression));
   const startPos = getPos(context);
 
   let result = parseLogicalAndExpression(context);
 
-  if (isError(result)) {
-    return result;
-  }
-
   while (match(context, [TokenType.BarBar])) {
     const rhs = parseLogicalAndExpression(context);
 
-    if (isError(rhs)) {
-      return rhs;
-    }
-
     const endPos = getPos(context);
 
-    result = success<LogicalExpression>({
+    result = <LogicalExpression> {
       kind: SyntaxKind.LogicalExpression,
       startPos,
       endPos,
-      lhs: result.value,
+      lhs: result,
       operator: Operator.BarBar,
-      rhs: rhs.value,
-    });
+      rhs: rhs,
+    };
   }
 
   return result;
 }
 
-function parseLogicalAndExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseLogicalAndExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseLogicalAndExpression));
   const startPos = getPos(context);
 
   let result = parseEqualityExpression(context);
 
-  if (isError(result)) {
-    return result;
-  }
-
   while (match(context, [TokenType.AmpersandAmpersand])) {
     const rhs = parseEqualityExpression(context);
 
-    if (isError(rhs)) {
-      return rhs;
-    }
-
     const endPos = getPos(context);
 
-    result = success<LogicalExpression>({
+    result = <LogicalExpression> {
       kind: SyntaxKind.LogicalExpression,
       startPos,
       endPos,
-      lhs: result.value,
+      lhs: result,
       operator: Operator.AmpersandAmpersand,
-      rhs: rhs.value,
-    });
+      rhs,
+    };
   }
 
   return result;
 }
 
-function parseEqualityExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseEqualityExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseEqualityExpression));
   const startPos = getPos(context);
 
   let result = parseComparisonExpression(context);
-
-  if (isError(result)) {
-    return result;
-  }
 
   while (match(context, [TokenType.EqualsEquals, TokenType.ExclamationEquals])) {
     const operatorToken = previous(context);
 
     const rhs = parseComparisonExpression(context);
 
-    if (isError(rhs)) {
-      return rhs;
-    }
-
     const endPos = getPos(context);
 
-    result = success<EqualityExpression>({
+    result = <EqualityExpression> {
       kind: SyntaxKind.EqualityExpression,
       startPos,
       endPos,
-      lhs: result.value,
+      lhs: result,
       operator: operatorToken.type == TokenType.EqualsEquals ? Operator.EqualsEquals : Operator.ExclamationEquals,
-      rhs: rhs.value,
-    });
+      rhs,
+    };
   }
 
   return result;
 }
 
-function parseComparisonExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseComparisonExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseComparisonExpression));
   const startPos = getPos(context);
 
   const lhs = parseAdditiveExpression(context);
-
-  if (isError(lhs)) {
-    return lhs;
-  }
 
   const operatorToken = peek(context);
   if (
@@ -1213,10 +925,6 @@ function parseComparisonExpression(context: ParserSourceFileContext): Result<Exp
     advance(context);
 
     const rhs = parseAdditiveExpression(context);
-
-    if (isError(rhs)) {
-      return rhs;
-    }
 
     let operator = Operator.GreaterThan;
     switch (operatorToken.type) {
@@ -1239,63 +947,52 @@ function parseComparisonExpression(context: ParserSourceFileContext): Result<Exp
 
     const endPos = getPos(context);
 
-    return success<ComparisonExpression>({
+    return <ComparisonExpression> {
       kind: SyntaxKind.ComparisonExpression,
       startPos,
       endPos,
-      lhs: lhs.value,
+      lhs,
       operator,
-      rhs: rhs.value,
-    });
+      rhs,
+    };
   } else {
     return lhs;
   }
 }
 
-function parseAdditiveExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseAdditiveExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseAdditiveExpression));
   const startPos = getPos(context);
 
   const lhs = parseMultiplicativeExpression(context);
 
-  if (isError(lhs)) {
-    return lhs;
-  }
-
+  // TODO: Use match here.
   const operatorToken = peek(context);
   if (operatorToken.type == TokenType.Plus || operatorToken.type == TokenType.Minus) {
     advance(context);
 
     const rhs = parseMultiplicativeExpression(context);
 
-    if (isError(rhs)) {
-      return rhs;
-    }
-
     const endPos = getPos(context);
 
-    return success<AdditiveExpression>({
+    return <AdditiveExpression> {
       kind: SyntaxKind.AdditiveExpression,
       startPos,
       endPos,
-      lhs: lhs.value,
+      lhs,
       operator: operatorToken.type == TokenType.Plus ? Operator.Plus : Operator.Minus,
-      rhs: rhs.value,
-    });
+      rhs,
+    };
   } else {
     return lhs;
   }
 }
 
-function parseMultiplicativeExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseMultiplicativeExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseMultiplicativeExpression));
   const startPos = getPos(context);
 
   const lhs = parseUnaryExpression(context);
-
-  if (isError(lhs)) {
-    return lhs;
-  }
 
   const operatorToken = peek(context);
   if (operatorToken.type == TokenType.Asterisk || operatorToken.type == TokenType.Slash) {
@@ -1303,27 +1000,23 @@ function parseMultiplicativeExpression(context: ParserSourceFileContext): Result
 
     const rhs = parseUnaryExpression(context);
 
-    if (isError(rhs)) {
-      return rhs;
-    }
-
     const endPos = getPos(context);
 
-    return success<MultiplicativeExpression>({
+    return <MultiplicativeExpression> {
       kind: SyntaxKind.MultiplicativeExpression,
       startPos,
       endPos,
-      lhs: lhs.value,
+      lhs,
       operator: operatorToken.type == TokenType.Asterisk ? Operator.Asterisk : Operator.Slash,
-      rhs: rhs.value,
-    });
+      rhs,
+    };
   } else {
     return lhs;
   }
 }
 
 // TODO: Implement this similar to parseAssignmentExpression.
-function parseUnaryExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parseUnaryExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parseUnaryExpression));
   const startPos = getPos(context);
 
@@ -1337,10 +1030,6 @@ function parseUnaryExpression(context: ParserSourceFileContext): Result<Expressi
     advance(context);
 
     const expression = parseUnaryExpression(context);
-
-    if (isError(expression)) {
-      return expression;
-    }
 
     let operator: Operator = Operator.Asterisk;
     switch (operatorToken.type) {
@@ -1363,22 +1052,22 @@ function parseUnaryExpression(context: ParserSourceFileContext): Result<Expressi
 
     const endPos = getPos(context);
 
-    return success<UnaryExpression>({
+    return <UnaryExpression> {
       kind: SyntaxKind.UnaryExpression,
       startPos,
       endPos,
       operator,
-      expression: expression.value,
-    });
+      expression,
+    };
   } else {
     return parsePrimaryExpression(context);
   }
 }
 
-function parsePrimaryExpression(context: ParserSourceFileContext): Result<Expression, ParserError> {
+function parsePrimaryExpression(context: ParserSourceFileContext): Expression {
   context.logger.enter(nameof(parsePrimaryExpression));
 
-  let result: Result<Expression, ParserError>;
+  let result: Expression;
   let token = peek(context);
 
   switch (token.type) {
@@ -1412,7 +1101,7 @@ function parsePrimaryExpression(context: ParserSourceFileContext): Result<Expres
       break;
 
     default:
-      return parserError(
+      throw parserError(
         context.fileName,
         token,
         ParserErrorKind.UnknownExpression,
@@ -1420,22 +1109,15 @@ function parsePrimaryExpression(context: ParserSourceFileContext): Result<Expres
       );
   }
 
-  if (isError(result)) {
-    return result;
-  }
-
+  // TODO: Use match here.
   token = peek(context);
   while ([TokenType.OpenParen, TokenType.OpenBracket, TokenType.Dot].includes(token.type)) {
     if (token.type == TokenType.OpenParen) {
-      result = parseCallExpression(context, result.value);
+      result = parseCallExpression(context, result);
     } else if (token.type == TokenType.OpenBracket) {
-      result = parseElementAccessExpression(context, result.value);
+      result = parseElementAccessExpression(context, result);
     } else if (token.type == TokenType.Dot) {
-      result = parsePropertyAccessExpression(context, result.value);
-    }
-
-    if (isError(result)) {
-      return result;
+      result = parsePropertyAccessExpression(context, result);
     }
 
     token = peek(context);
@@ -1444,178 +1126,124 @@ function parsePrimaryExpression(context: ParserSourceFileContext): Result<Expres
   return result;
 }
 
-function parseParenthesizedExpression(context: ParserSourceFileContext): Result<ParenthesizedExpression, ParserError> {
+function parseParenthesizedExpression(context: ParserSourceFileContext): ParenthesizedExpression {
   context.logger.enter(nameof(parseParenthesizedExpression));
   const startPos = getPos(context);
 
-  const openParenToken = expect(context, TokenType.OpenParen, nameof(parseParenthesizedExpression));
-
-  if (isError(openParenToken)) {
-    return openParenToken;
-  }
-
+  expect(context, TokenType.OpenParen, nameof(parseParenthesizedExpression));
   advance(context);
+
   const expression = parseExpression(context);
 
-  if (isError(expression)) {
-    return expression;
-  }
-
-  const closeParenToken = expect(context, TokenType.CloseParen, nameof(parseParenthesizedExpression));
-
-  if (isError(closeParenToken)) {
-    return closeParenToken;
-  }
-
+  expect(context, TokenType.CloseParen, nameof(parseParenthesizedExpression));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.ParenthesizedExpression,
     startPos,
     endPos,
-    expression: expression.value,
-  });
+    expression,
+  };
 }
 
 function parseCallExpression(
   context: ParserSourceFileContext,
   expression: Expression,
-): Result<CallExpression, ParserError> {
+): CallExpression {
   context.logger.enter(nameof(parseCallExpression));
   const startPos = getPos(context);
 
-  let token = expect(context, TokenType.OpenParen, nameof(parseCallExpression));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.OpenParen, nameof(parseCallExpression));
   advance(context);
+
   const args = parseCallExpressionArguments(context);
 
-  if (isError(args)) {
-    return args;
-  }
-
-  token = expect(context, TokenType.CloseParen, nameof(parseCallExpression));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.CloseParen, nameof(parseCallExpression));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.CallExpression,
     startPos,
     endPos,
     expression,
-    arguments: args.value,
-  });
+    arguments: args,
+  };
 }
 
 function parseElementAccessExpression(
   context: ParserSourceFileContext,
   expression: Expression,
-): Result<ElementAccessExpression, ParserError> {
+): ElementAccessExpression {
   context.logger.enter(nameof(parseElementAccessExpression));
   const startPos = getPos(context);
 
-  let token = expect(context, TokenType.OpenBracket, nameof(parseElementAccessExpression));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.OpenBracket, nameof(parseElementAccessExpression));
   advance(context);
+
   const argumentExpression = parseExpression(context);
 
-  if (isError(argumentExpression)) {
-    return argumentExpression;
-  }
-
-  token = expect(context, TokenType.CloseBracket, nameof(parseElementAccessExpression));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.CloseBracket, nameof(parseElementAccessExpression));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.ElementAccessExpression,
     startPos,
     endPos,
     expression,
-    argumentExpression: argumentExpression.value,
-  });
+    argumentExpression,
+  };
 }
 
 function parsePropertyAccessExpression(
   context: ParserSourceFileContext,
   expression: Expression,
-): Result<PropertyAccessExpression, ParserError> {
+): PropertyAccessExpression {
   context.logger.enter(nameof(parsePropertyAccessExpression));
   const startPos = getPos(context);
 
-  const token = expect(context, TokenType.Dot, nameof(parsePropertyAccessExpression));
-
-  if (isError(token)) {
-    return token;
-  }
-
+  expect(context, TokenType.Dot, nameof(parsePropertyAccessExpression));
   advance(context);
-  const name = parseIdentifier(context);
 
-  if (isError(name)) {
-    return name;
-  }
+  const name = parseIdentifier(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.PropertyAccessExpression,
     startPos,
     endPos,
     expression,
-    name: name.value,
-  });
+    name,
+  };
 }
 
-function parseCallExpressionArguments(context: ParserSourceFileContext): Result<Array<Expression>, ParserError> {
+function parseCallExpressionArguments(context: ParserSourceFileContext): Expression[] {
   context.logger.enter(nameof(parseCallExpressionArguments));
 
   const args: Array<Expression> = [];
 
+  // TODO: Use check here.
   let token = peek(context);
   while (!isEOF(context) && token.type != TokenType.CloseParen) {
+    args.push(parseExpression(context));
+
     token = peek(context);
-
-    const expression = parseExpression(context);
-
-    if (isError(expression)) {
-      return expression;
-    }
-
-    args.push(expression.value);
-    token = peek(context);
-
     if (token.type == TokenType.Comma) {
       advance(context);
       token = peek(context);
     }
   }
 
-  return success(args);
+  return args;
 }
 
-function parseType(context: ParserSourceFileContext): Result<TypeNode, ParserError> {
+function parseType(context: ParserSourceFileContext): TypeNode {
   context.logger.enter(nameof(parseType));
 
   const token = peek(context);
@@ -1628,110 +1256,75 @@ function parseType(context: ParserSourceFileContext): Result<TypeNode, ParserErr
   }
 }
 
-function parsePointerType(context: ParserSourceFileContext): Result<PointerType, ParserError> {
+function parsePointerType(context: ParserSourceFileContext): PointerType {
   context.logger.enter(nameof(parsePointerType));
   const startPos = getPos(context);
 
-  const expected = expect(context, TokenType.Asterisk, nameof(parsePointerType));
-
-  if (isError(expected)) {
-    return expected;
-  }
-
+  expect(context, TokenType.Asterisk, nameof(parsePointerType));
   advance(context);
 
   const elementType = parseType(context);
 
-  if (isError(elementType)) {
-    return elementType;
-  }
-
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.PointerType,
     startPos,
     endPos,
-    elementType: elementType.value,
-  });
+    elementType,
+  };
 }
 
-function parseArrayType(context: ParserSourceFileContext): Result<ArrayType, ParserError> {
+function parseArrayType(context: ParserSourceFileContext): ArrayType {
   context.logger.enter(nameof(parseArrayType));
   const startPos = getPos(context);
 
-  let expected = expect(context, TokenType.OpenBracket, nameof(parseArrayType));
-
-  if (isError(expected)) {
-    return expected;
-  }
-
+  expect(context, TokenType.OpenBracket, nameof(parseArrayType));
   advance(context);
-  expected = expect(context, TokenType.CloseBracket, nameof(parseArrayType));
 
-  if (isError(expected)) {
-    return expected;
-  }
-
+  expect(context, TokenType.CloseBracket, nameof(parseArrayType));
   advance(context);
 
   const elementType = parseType(context);
 
-  if (isError(elementType)) {
-    return elementType;
-  }
-
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.ArrayType,
     startPos,
     endPos,
-    elementType: elementType.value,
-  });
+    elementType,
+  };
 }
 
-function parseTypeReference(context: ParserSourceFileContext): Result<TypeReference, ParserError> {
+function parseTypeReference(context: ParserSourceFileContext): TypeReference {
   context.logger.enter(nameof(parseTypeReference));
   const startPos = getPos(context);
 
   const typeName = parseQualifiedTypeOrIdentifier(context);
 
-  if (isError(typeName)) {
-    return typeName;
-  }
-
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.TypeReference,
     startPos,
     endPos,
-    typeName: typeName.value,
-  });
+    typeName,
+  };
 }
 
-function parseQualifiedTypeOrIdentifier(
-  context: ParserSourceFileContext,
-): Result<QualifiedName | Identifier, ParserError> {
+function parseQualifiedTypeOrIdentifier(context: ParserSourceFileContext): QualifiedName | Identifier {
   context.logger.enter(nameof(parseQualifiedTypeOrIdentifier));
   const startPos = getPos(context);
 
   const left = parseIdentifier(context);
 
-  if (isError(left)) {
-    return left;
-  }
-
-  let result: QualifiedName | Identifier = left.value;
+  let result: QualifiedName | Identifier = left;
 
   if (peek(context).type == TokenType.Dot) {
     advance(context);
-    const right = parseIdentifier(context);
 
-    if (isError(right)) {
-      return right;
-    }
+    const right = parseIdentifier(context);
 
     const endPos = getPos(context);
 
@@ -1740,27 +1333,23 @@ function parseQualifiedTypeOrIdentifier(
       startPos,
       endPos,
       left: result,
-      right: right.value,
+      right: right,
     };
   }
 
-  return success(result);
+  return result;
 }
 
-function parseIdentifier(context: ParserSourceFileContext): Result<Identifier, ParserError> {
+function parseIdentifier(context: ParserSourceFileContext): Identifier {
   context.logger.enter(nameof(parseIdentifier));
   const startPos = getPos(context);
 
   const token = expect(context, TokenType.Identifier, nameof(parseIdentifier));
 
-  if (isError(token)) {
-    return token;
-  }
-
-  if (token.value.text == null) {
-    return parserError(
+  if (token.text == null) {
+    throw parserError(
       context.fileName,
-      token.value,
+      token,
       ParserErrorKind.TokenTextIsNull,
       `Expected token to have text value in ${nameof(parseIdentifier)}.`,
     );
@@ -1770,24 +1359,19 @@ function parseIdentifier(context: ParserSourceFileContext): Result<Identifier, P
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.Identifier,
     startPos,
     endPos,
-    value: token.value.text,
-  });
+    value: token.text,
+  };
 }
 
-function parseStructLiteral(context: ParserSourceFileContext): Result<StructLiteral, ParserError> {
+function parseStructLiteral(context: ParserSourceFileContext): StructLiteral {
   context.logger.enter(nameof(parseArrayLiteral));
   const startPos = getPos(context);
 
-  let expectedToken = expect(context, TokenType.OpenBrace, nameof(parseStructLiteral));
-
-  if (isError(expectedToken)) {
-    return expectedToken;
-  }
-
+  expect(context, TokenType.OpenBrace, nameof(parseStructLiteral));
   advance(context);
 
   const elements: StructLiteralElement[] = [];
@@ -1796,12 +1380,7 @@ function parseStructLiteral(context: ParserSourceFileContext): Result<StructLite
     const elementStartPos = getPos(context);
 
     if (elements.length > 0) {
-      expectedToken = expect(context, TokenType.Comma, nameof(parseStructLiteral));
-
-      if (isError(expectedToken)) {
-        return expectedToken;
-      }
-
+      expect(context, TokenType.Comma, nameof(parseStructLiteral));
       advance(context);
 
       // Handle hanging commas
@@ -1815,26 +1394,13 @@ function parseStructLiteral(context: ParserSourceFileContext): Result<StructLite
     if (peek(context).type == TokenType.Identifier) {
       const identifier = parseIdentifier(context);
 
-      if (isError(identifier)) {
-        return identifier;
-      }
+      name = identifier;
 
-      name = identifier.value;
-
-      expectedToken = expect(context, TokenType.Colon, nameof(parseStructLiteral));
-
-      if (isError(expectedToken)) {
-        return expectedToken;
-      }
-
+      expect(context, TokenType.Colon, nameof(parseStructLiteral));
       advance(context);
     }
 
     const expression = parseExpression(context);
-
-    if (isError(expression)) {
-      return expression;
-    }
 
     const elementEndPos = getPos(context);
 
@@ -1843,52 +1409,37 @@ function parseStructLiteral(context: ParserSourceFileContext): Result<StructLite
       startPos: elementStartPos,
       endPos: elementEndPos,
       name: name,
-      expression: expression.value,
+      expression: expression,
     });
 
     token = peek(context);
   }
 
-  expectedToken = expect(context, TokenType.CloseBrace, nameof(parseStructLiteral));
-
-  if (isError(expectedToken)) {
-    return expectedToken;
-  }
-
+  expect(context, TokenType.CloseBrace, nameof(parseStructLiteral));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.StructLiteral,
     startPos,
     endPos,
-    elements: elements,
-  });
+    elements,
+  };
 }
 
-function parseArrayLiteral(context: ParserSourceFileContext): Result<ArrayLiteral, ParserError> {
+function parseArrayLiteral(context: ParserSourceFileContext): ArrayLiteral {
   context.logger.enter(nameof(parseArrayLiteral));
   const startPos = getPos(context);
 
-  let expectedToken = expect(context, TokenType.OpenBracket, nameof(parseArrayLiteral));
-
-  if (isError(expectedToken)) {
-    return expectedToken;
-  }
-
+  expect(context, TokenType.OpenBracket, nameof(parseArrayLiteral));
   advance(context);
 
   const elements: Expression[] = [];
   let token = peek(context);
   while (token.type != TokenType.CloseBracket) {
     if (elements.length > 0) {
-      expectedToken = expect(context, TokenType.Comma, nameof(parseArrayLiteral));
-
-      if (isError(expectedToken)) {
-        return expectedToken;
-      }
-
+      expect(context, TokenType.Comma, nameof(parseArrayLiteral));
       advance(context);
 
       // Handle hanging commas
@@ -1898,71 +1449,51 @@ function parseArrayLiteral(context: ParserSourceFileContext): Result<ArrayLitera
       }
     }
 
-    const expression = parseExpression(context);
-
-    if (isError(expression)) {
-      return expression;
-    }
-
-    elements.push(expression.value);
+    elements.push(parseExpression(context));
 
     token = peek(context);
   }
 
-  expectedToken = expect(context, TokenType.CloseBracket, nameof(parseArrayLiteral));
-
-  if (isError(expectedToken)) {
-    return expectedToken;
-  }
-
+  expect(context, TokenType.CloseBracket, nameof(parseArrayLiteral));
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.ArrayLiteral,
     startPos,
     endPos,
     elements,
-  });
+  };
 }
 
-function parseBooleanLiteral(context: ParserSourceFileContext): Result<BooleanLiteral, ParserError> {
+function parseBooleanLiteral(context: ParserSourceFileContext): BooleanLiteral {
   context.logger.enter(nameof(parseBooleanLiteral));
   const startPos = getPos(context);
 
   const token = expect(context, [TokenType.True, TokenType.False], nameof(parseBooleanLiteral));
-
-  if (isError(token)) {
-    return token;
-  }
-
   advance(context);
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.BooleanLiteral,
     startPos,
     endPos,
-    value: token.value.type == TokenType.True,
-  });
+    value: token.type == TokenType.True,
+  };
 }
 
-function parseIntegerLiteral(context: ParserSourceFileContext): Result<IntegerLiteral, ParserError> {
+function parseIntegerLiteral(context: ParserSourceFileContext): IntegerLiteral {
   context.logger.enter(nameof(parseIntegerLiteral));
   const startPos = getPos(context);
 
   const token = expect(context, TokenType.Integer, nameof(parseIntegerLiteral));
 
-  if (isError(token)) {
-    return token;
-  }
-
-  if (token.value.text == null) {
-    return parserError(
+  if (token.text == null) {
+    throw parserError(
       context.fileName,
-      token.value,
+      token,
       ParserErrorKind.TokenTextIsNull,
       `Expected token to have text value in ${nameof(parseIntegerLiteral)}.`,
     );
@@ -1972,28 +1503,24 @@ function parseIntegerLiteral(context: ParserSourceFileContext): Result<IntegerLi
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.IntegerLiteral,
     startPos,
     endPos,
-    value: token.value.text,
-  });
+    value: token.text,
+  };
 }
 
-function parseStringLiteral(context: ParserSourceFileContext): Result<StringLiteral, ParserError> {
+function parseStringLiteral(context: ParserSourceFileContext): StringLiteral {
   context.logger.enter(nameof(parseStringLiteral));
   const startPos = getPos(context);
 
   const token = expect(context, TokenType.String, nameof(parseStringLiteral));
 
-  if (isError(token)) {
-    return token;
-  }
-
-  if (token.value.text == null) {
-    return parserError(
+  if (token.text == null) {
+    throw parserError(
       context.fileName,
-      token.value,
+      token,
       ParserErrorKind.TokenTextIsNull,
       `Expected token to have text value in ${nameof(parseStringLiteral)}.`,
     );
@@ -2003,10 +1530,10 @@ function parseStringLiteral(context: ParserSourceFileContext): Result<StringLite
 
   const endPos = getPos(context);
 
-  return success({
+  return {
     kind: SyntaxKind.StringLiteral,
     startPos,
     endPos,
-    value: token.value.text,
-  });
+    value: token.text,
+  };
 }
