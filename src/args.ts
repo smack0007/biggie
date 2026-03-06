@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { bool, error, Result, success } from "./shims.ts";
+import { bool } from "./shims.ts";
 
 export interface ParseResult {
   debug: bool;
@@ -18,9 +18,12 @@ export interface ParseError {
   message: string;
 }
 
-export function parse(argv: string[]): Result<ParseResult, ParseError> {
+export function parse(argv: string[]): ParseResult {
+  let values: Record<string, unknown>;
+  let positionals: string[];
+
   try {
-    const { values, positionals } = parseArgs({
+    const parseResult = parseArgs({
       args: argv,
       options: {
         debug: {
@@ -34,25 +37,27 @@ export function parse(argv: string[]): Result<ParseResult, ParseError> {
       },
       allowPositionals: true,
     });
-
-    if (positionals.length == 0) {
-      return error({
-        kind: ParseErrorKind.NoInputFiles,
-        message: getErrorMessage(ParseErrorKind.NoInputFiles),
-      });
-    }
-
-    return success({
-      ...(values as Exclude<ParseResult, "files">),
-      files: positionals,
-    });
+    values = parseResult.values;
+    positionals = parseResult.positionals;
   } catch (err) {
     const kind = mapNodeErrorCode((err as { code: string }).code);
-    return error({
+    throw <ParseError> {
       kind: kind,
       message: getErrorMessage(kind),
-    });
+    };
   }
+
+  if (positionals.length == 0) {
+    throw <ParseError> {
+      kind: ParseErrorKind.NoInputFiles,
+      message: getErrorMessage(ParseErrorKind.NoInputFiles),
+    };
+  }
+
+  return {
+    ...(values as unknown as Exclude<ParseResult, "files">),
+    files: positionals,
+  };
 }
 
 function mapNodeErrorCode(code: string): ParseErrorKind {

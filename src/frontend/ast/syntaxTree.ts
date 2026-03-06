@@ -1,4 +1,4 @@
-import { TextPosition } from "../scanner.ts";
+import { TextPosition } from "../program.ts";
 import * as symbols from "../symbols.ts";
 
 export enum SyntaxKind {

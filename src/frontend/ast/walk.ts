@@ -35,388 +35,259 @@ import {
   VariableDeclaration,
   WhileStatement,
 } from "./syntaxTree.ts";
-import { bool, isError, Result, success } from "../../shims.ts";
+import { bool } from "../../shims.ts";
 
-export type WalkCallback<Error = unknown> = (node: SyntaxNode, parent?: SyntaxNode) => Result<bool, Error>;
+export type WalkCallback = (node: SyntaxNode, parent?: SyntaxNode) => bool;
 
-export function walk<Error = unknown>(node: SyntaxNode, callback: WalkCallback<Error>): Result<void, Error> {
-  return walkParent<Error>(node, callback);
+export function walk(node: SyntaxNode, callback: WalkCallback): void {
+  walkParent(node, callback);
 }
 
-function walkParent<Error = unknown>(
-  node: SyntaxNode,
-  callback: WalkCallback<Error>,
-  parent?: SyntaxNode,
-): Result<void, Error> {
-  const callbackResult = callback(node, parent);
-
-  if (isError(callbackResult)) {
-    return callbackResult;
-  }
-
+function walkParent(node: SyntaxNode, callback: WalkCallback, parent?: SyntaxNode): void {
   // NOTE: The return value of callback indicates if we should keep descending further into the tree.
-  if (callbackResult.value) {
-    const childrenResult = walkChildren<Error>(node, callback);
-
-    if (isError(childrenResult)) {
-      return childrenResult;
-    }
+  if (callback(node, parent)) {
+    walkChildren(node, callback);
   }
-
-  return success();
 }
 
-export function walkArray<Error = unknown>(nodes: SyntaxNode[], callback: WalkCallback<Error>): Result<void, Error> {
-  return walkArrayParent<Error>(nodes, callback);
+export function walkArray(nodes: SyntaxNode[], callback: WalkCallback): void {
+  walkArrayParent(nodes, callback);
 }
 
-function walkArrayParent<Error = unknown>(
-  nodes: SyntaxNode[],
-  callback: WalkCallback<Error>,
-  parent?: SyntaxNode,
-): Result<void, Error> {
+function walkArrayParent(nodes: SyntaxNode[], callback: WalkCallback, parent?: SyntaxNode): void {
   for (const node of nodes) {
-    const result = walkParent<Error>(node, callback, parent);
-
-    if (isError(result)) {
-      return result;
-    }
+    walkParent(node, callback, parent);
   }
-
-  return success();
 }
 
-export type WalkChildrenCallback<Error = unknown> = (
-  node: SyntaxNode,
-  parent: SyntaxNode,
-) => Result<bool, Error>;
+export type WalkChildrenCallback = (node: SyntaxNode, parent: SyntaxNode) => bool;
 
-export function walkChildren<Error = unknown>(
-  node: SyntaxNode,
-  callback: WalkChildrenCallback<Error>,
-): Result<void, Error> {
-  let result: Result<void, Error>;
+export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): void {
   switch (node.kind) {
     case SyntaxKind.SourceFile:
       {
         const sourceFile = <SourceFile> node;
-        result = walkArrayParent<Error>(sourceFile.statements, <WalkCallback<Error>> callback, sourceFile);
-        if (isError(result)) return result;
+        walkArrayParent(sourceFile.statements, <WalkCallback> callback, sourceFile);
       }
       break;
     case SyntaxKind.ImportDeclaration:
       {
         const importDeclaration = <ImportDeclaration> node;
         if (importDeclaration.alias) {
-          result = walkParent<Error>(importDeclaration.alias, <WalkCallback<Error>> callback, importDeclaration);
-          if (isError(result)) return result;
+          walkParent(importDeclaration.alias, <WalkCallback> callback, importDeclaration);
         }
-        result = walkParent<Error>(importDeclaration.module, <WalkCallback<Error>> callback, importDeclaration);
-        if (isError(result)) return result;
+        walkParent(importDeclaration.module, <WalkCallback> callback, importDeclaration);
       }
       break;
     case SyntaxKind.VariableDeclaration:
       {
         const variableDeclaration = <VariableDeclaration> node;
-        result = walkParent<Error>(variableDeclaration.name, <WalkCallback<Error>> callback, variableDeclaration);
-        if (isError(result)) return result;
-        result = walkParent<Error>(variableDeclaration.type, <WalkCallback<Error>> callback, variableDeclaration);
-        if (isError(result)) return result;
+        walkParent(variableDeclaration.name, <WalkCallback> callback, variableDeclaration);
+        walkParent(variableDeclaration.type, <WalkCallback> callback, variableDeclaration);
         if (variableDeclaration.initializer) {
-          result = walkParent<Error>(
-            variableDeclaration.initializer,
-            <WalkCallback<Error>> callback,
-            variableDeclaration,
-          );
-          if (isError(result)) return result;
+          walkParent(variableDeclaration.initializer, <WalkCallback> callback, variableDeclaration);
         }
       }
       break;
     case SyntaxKind.EnumDeclaration:
       {
         const enumDeclaration = <EnumDeclaration> node;
-        result = walkParent<Error>(enumDeclaration.name, <WalkCallback<Error>> callback, enumDeclaration);
-        if (isError(result)) return result;
-        result = walkArrayParent<Error>(enumDeclaration.members, <WalkCallback<Error>> callback, enumDeclaration);
-        if (isError(result)) return result;
+        walkParent(enumDeclaration.name, <WalkCallback> callback, enumDeclaration);
+        walkArrayParent(enumDeclaration.members, <WalkCallback> callback, enumDeclaration);
       }
       break;
     case SyntaxKind.EnumMember:
       {
         const enumMember = <EnumMember> node;
-        result = walkParent<Error>(enumMember.name, <WalkCallback<Error>> callback, enumMember);
-        if (isError(result)) return result;
+        walkParent(enumMember.name, <WalkCallback> callback, enumMember);
         if (enumMember.initializer) {
-          result = walkParent<Error>(enumMember.initializer, <WalkCallback<Error>> callback, enumMember);
-          if (isError(result)) return result;
+          walkParent(enumMember.initializer, <WalkCallback> callback, enumMember);
         }
       }
       break;
     case SyntaxKind.FunctionDeclaration:
       {
         const functionDeclaration = <FunctionDeclaration> node;
-        result = walkParent<Error>(functionDeclaration.name, <WalkCallback<Error>> callback, functionDeclaration);
-        if (isError(result)) return result;
-        result = walkArrayParent<Error>(
-          functionDeclaration.arguments,
-          <WalkCallback<Error>> callback,
-          functionDeclaration,
-        );
-        if (isError(result)) return result;
-        result = walkParent<Error>(functionDeclaration.returnType, <WalkCallback<Error>> callback, functionDeclaration);
-        if (isError(result)) return result;
-        result = walkParent<Error>(functionDeclaration.body, <WalkCallback<Error>> callback, functionDeclaration);
-        if (isError(result)) return result;
+        walkParent(functionDeclaration.name, <WalkCallback> callback, functionDeclaration);
+        walkArrayParent(functionDeclaration.arguments, <WalkCallback> callback, functionDeclaration);
+        walkParent(functionDeclaration.returnType, <WalkCallback> callback, functionDeclaration);
+        walkParent(functionDeclaration.body, <WalkCallback> callback, functionDeclaration);
       }
       break;
     case SyntaxKind.StructDeclaration:
       {
         const structDeclaration = <StructDeclaration> node;
-        result = walkParent<Error>(structDeclaration.name, <WalkCallback<Error>> callback, structDeclaration);
-        if (isError(result)) return result;
-        result = walkArrayParent<Error>(structDeclaration.members, <WalkCallback<Error>> callback, structDeclaration);
-        if (isError(result)) return result;
+        walkParent(structDeclaration.name, <WalkCallback> callback, structDeclaration);
+        walkArrayParent(structDeclaration.members, <WalkCallback> callback, structDeclaration);
       }
       break;
     case SyntaxKind.StructMember:
       {
         const structMember = <StructMember> node;
-        result = walkParent<Error>(structMember.name, <WalkCallback<Error>> callback, structMember);
-        if (isError(result)) return result;
-        result = walkParent<Error>(structMember.type, <WalkCallback<Error>> callback, structMember);
-        if (isError(result)) return result;
+        walkParent(structMember.name, <WalkCallback> callback, structMember);
+        walkParent(structMember.type, <WalkCallback> callback, structMember);
       }
       break;
     case SyntaxKind.ExpressionStatement:
       {
         const expressionStatement = <ExpressionStatement> node;
-        result = walkParent<Error>(expressionStatement.expression, <WalkCallback<Error>> callback, expressionStatement);
-        if (isError(result)) return result;
+        walkParent(expressionStatement.expression, <WalkCallback> callback, expressionStatement);
       }
       break;
     case SyntaxKind.DeferStatement:
       {
         const deferStatement = <DeferStatement> node;
-        result = walkParent<Error>(deferStatement.body, <WalkCallback<Error>> callback, deferStatement);
-        if (isError(result)) return result;
+        walkParent(deferStatement.body, <WalkCallback> callback, deferStatement);
       }
       break;
     case SyntaxKind.IfStatement:
       {
         const ifStatement = <IfStatement> node;
-        result = walkParent<Error>(ifStatement.condition, <WalkCallback<Error>> callback, ifStatement);
-        if (isError(result)) return result;
-        result = walkParent<Error>(ifStatement.then, <WalkCallback<Error>> callback, ifStatement);
-        if (isError(result)) return result;
+        walkParent(ifStatement.condition, <WalkCallback> callback, ifStatement);
+        walkParent(ifStatement.then, <WalkCallback> callback, ifStatement);
         if (ifStatement.else) {
-          result = walkParent<Error>(ifStatement.else, <WalkCallback<Error>> callback, ifStatement);
-          if (isError(result)) return result;
+          walkParent(ifStatement.else, <WalkCallback> callback, ifStatement);
         }
       }
       break;
     case SyntaxKind.WhileStatement:
       {
         const whileStatement = <WhileStatement> node;
-        result = walkParent<Error>(whileStatement.condition, <WalkCallback<Error>> callback, whileStatement);
-        if (isError(result)) return result;
-        result = walkParent<Error>(whileStatement.body, <WalkCallback<Error>> callback, whileStatement);
-        if (isError(result)) return result;
+        walkParent(whileStatement.condition, <WalkCallback> callback, whileStatement);
+        walkParent(whileStatement.body, <WalkCallback> callback, whileStatement);
       }
       break;
     case SyntaxKind.ReturnStatement:
       {
         const returnStatement = <ReturnStatement> node;
-        result = walkParent<Error>(returnStatement.expression, <WalkCallback<Error>> callback, returnStatement);
-        if (isError(result)) return result;
+        walkParent(returnStatement.expression, <WalkCallback> callback, returnStatement);
       }
       break;
     case SyntaxKind.StatementBlock:
       {
         const statementBlock = <StatementBlock> node;
-        result = walkArrayParent<Error>(statementBlock.statements, <WalkCallback<Error>> callback, statementBlock);
-        if (isError(result)) return result;
+        walkArrayParent(statementBlock.statements, <WalkCallback> callback, statementBlock);
       }
       break;
     case SyntaxKind.LogicalExpression:
       {
         const logicalExpression = <LogicalExpression> node;
-        result = walkParent<Error>(logicalExpression.lhs, <WalkCallback<Error>> callback, logicalExpression);
-        if (isError(result)) return result;
-        result = walkParent<Error>(logicalExpression.rhs, <WalkCallback<Error>> callback, logicalExpression);
-        if (isError(result)) return result;
+        walkParent(logicalExpression.lhs, <WalkCallback> callback, logicalExpression);
+        walkParent(logicalExpression.rhs, <WalkCallback> callback, logicalExpression);
       }
       break;
     case SyntaxKind.AssignmentExpression:
       {
         const assignmentExpression = <AssignmentExpression> node;
-        result = walkParent<Error>(assignmentExpression.name, <WalkCallback<Error>> callback, assignmentExpression);
-        if (isError(result)) return result;
+        walkParent(assignmentExpression.name, <WalkCallback> callback, assignmentExpression);
       }
       break;
     case SyntaxKind.EqualityExpression:
       {
         const equalityExpression = <EqualityExpression> node;
-        result = walkParent<Error>(equalityExpression.lhs, <WalkCallback<Error>> callback, equalityExpression);
-        if (isError(result)) return result;
-        result = walkParent<Error>(equalityExpression.rhs, <WalkCallback<Error>> callback, equalityExpression);
-        if (isError(result)) return result;
+        walkParent(equalityExpression.lhs, <WalkCallback> callback, equalityExpression);
+        walkParent(equalityExpression.rhs, <WalkCallback> callback, equalityExpression);
       }
       break;
     case SyntaxKind.ComparisonExpression:
       {
         const comparisonExpression = <ComparisonExpression> node;
-        result = walkParent<Error>(comparisonExpression.lhs, <WalkCallback<Error>> callback, comparisonExpression);
-        if (isError(result)) return result;
-        result = walkParent<Error>(comparisonExpression.rhs, <WalkCallback<Error>> callback, comparisonExpression);
-        if (isError(result)) return result;
+        walkParent(comparisonExpression.lhs, <WalkCallback> callback, comparisonExpression);
+        walkParent(comparisonExpression.rhs, <WalkCallback> callback, comparisonExpression);
       }
       break;
     case SyntaxKind.AdditiveExpression:
       {
         const additiveExpression = <AdditiveExpression> node;
-        result = walkParent<Error>(additiveExpression.lhs, <WalkCallback<Error>> callback, additiveExpression);
-        if (isError(result)) return result;
-        result = walkParent<Error>(additiveExpression.rhs, <WalkCallback<Error>> callback, additiveExpression);
-        if (isError(result)) return result;
+        walkParent(additiveExpression.lhs, <WalkCallback> callback, additiveExpression);
+        walkParent(additiveExpression.rhs, <WalkCallback> callback, additiveExpression);
       }
       break;
     case SyntaxKind.MultiplicativeExpression:
       {
         const multiplicativeExpression = <MultiplicativeExpression> node;
-        result = walkParent<Error>(
-          multiplicativeExpression.lhs,
-          <WalkCallback<Error>> callback,
-          multiplicativeExpression,
-        );
-        if (isError(result)) return result;
-        result = walkParent<Error>(
-          multiplicativeExpression.rhs,
-          <WalkCallback<Error>> callback,
-          multiplicativeExpression,
-        );
-        if (isError(result)) return result;
+        walkParent(multiplicativeExpression.lhs, <WalkCallback> callback, multiplicativeExpression);
+        walkParent(multiplicativeExpression.rhs, <WalkCallback> callback, multiplicativeExpression);
       }
       break;
     case SyntaxKind.UnaryExpression:
       {
         const unaryExpression = <UnaryExpression> node;
-        result = walkParent<Error>(unaryExpression.expression, <WalkCallback<Error>> callback, unaryExpression);
-        if (isError(result)) return result;
+        walkParent(unaryExpression.expression, <WalkCallback> callback, unaryExpression);
       }
       break;
     case SyntaxKind.ParenthesizedExpression:
       {
         const parenthesizedExpression = <ParenthesizedExpression> node;
-        result = walkParent<Error>(
-          parenthesizedExpression.expression,
-          <WalkCallback<Error>> callback,
-          parenthesizedExpression,
-        );
-        if (isError(result)) return result;
+        walkParent(parenthesizedExpression.expression, <WalkCallback> callback, parenthesizedExpression);
       }
       break;
     case SyntaxKind.CallExpression:
       {
         const callExpression = <CallExpression> node;
-        result = walkParent<Error>(callExpression.expression, <WalkCallback<Error>> callback, callExpression);
-        if (isError(result)) return result;
-        result = walkArrayParent<Error>(callExpression.arguments, <WalkCallback<Error>> callback, callExpression);
-        if (isError(result)) return result;
+        walkParent(callExpression.expression, <WalkCallback> callback, callExpression);
+        walkArrayParent(callExpression.arguments, <WalkCallback> callback, callExpression);
       }
       break;
     case SyntaxKind.ElementAccessExpression:
       {
         const elementAccessExpression = <ElementAccessExpression> node;
-        result = walkParent<Error>(
-          elementAccessExpression.expression,
-          <WalkCallback<Error>> callback,
-          elementAccessExpression,
-        );
-        if (isError(result)) return result;
-        result = walkParent<Error>(
-          elementAccessExpression.argumentExpression,
-          <WalkCallback<Error>> callback,
-          elementAccessExpression,
-        );
-        if (isError(result)) return result;
+        walkParent(elementAccessExpression.expression, <WalkCallback> callback, elementAccessExpression);
+        walkParent(elementAccessExpression.argumentExpression, <WalkCallback> callback, elementAccessExpression);
       }
       break;
     case SyntaxKind.PropertyAccessExpression:
       {
         const propertyAccessExpression = <PropertyAccessExpression> node;
-        result = walkParent<Error>(
-          propertyAccessExpression.expression,
-          <WalkCallback<Error>> callback,
-          propertyAccessExpression,
-        );
-        if (isError(result)) return result;
-        result = walkParent<Error>(
-          propertyAccessExpression.name,
-          <WalkCallback<Error>> callback,
-          propertyAccessExpression,
-        );
-        if (isError(result)) return result;
+        walkParent(propertyAccessExpression.expression, <WalkCallback> callback, propertyAccessExpression);
+        walkParent(propertyAccessExpression.name, <WalkCallback> callback, propertyAccessExpression);
       }
       break;
     case SyntaxKind.ArrayType:
       {
         const arrayType = <ArrayType> node;
-        result = walkParent<Error>(arrayType.elementType, <WalkCallback<Error>> callback, arrayType);
-        if (isError(result)) return result;
+        walkParent(arrayType.elementType, <WalkCallback> callback, arrayType);
       }
       break;
     case SyntaxKind.PointerType:
       {
         const pointerType = <PointerType> node;
-        result = walkParent<Error>(pointerType.elementType, <WalkCallback<Error>> callback, pointerType);
-        if (isError(result)) return result;
+        walkParent(pointerType.elementType, <WalkCallback> callback, pointerType);
       }
       break;
     case SyntaxKind.TypeReference:
       {
         const typeReference = <TypeReference> node;
-        result = walkParent<Error>(typeReference.typeName, <WalkCallback<Error>> callback, typeReference);
-        if (isError(result)) return result;
+        walkParent(typeReference.typeName, <WalkCallback> callback, typeReference);
       }
       break;
     case SyntaxKind.QualifiedName:
       {
         const qualifiedName = <QualifiedName> node;
-        result = walkParent<Error>(qualifiedName.left, <WalkCallback<Error>> callback, qualifiedName);
-        if (isError(result)) return result;
-        result = walkParent<Error>(qualifiedName.right, <WalkCallback<Error>> callback, qualifiedName);
-        if (isError(result)) return result;
+        walkParent(qualifiedName.left, <WalkCallback> callback, qualifiedName);
+        walkParent(qualifiedName.right, <WalkCallback> callback, qualifiedName);
       }
       break;
     case SyntaxKind.ArrayLiteral:
       {
         const arrayLiteral = <ArrayLiteral> node;
-        result = walkArrayParent<Error>(arrayLiteral.elements, <WalkCallback<Error>> callback, arrayLiteral);
-        if (isError(result)) return result;
+        walkArrayParent(arrayLiteral.elements, <WalkCallback> callback, arrayLiteral);
       }
       break;
     case SyntaxKind.StructLiteral:
       {
         const structLiteral = <StructLiteral> node;
-        result = walkArrayParent<Error>(structLiteral.elements, <WalkCallback<Error>> callback, structLiteral);
-        if (isError(result)) return result;
+        walkArrayParent(structLiteral.elements, <WalkCallback> callback, structLiteral);
       }
       break;
     case SyntaxKind.StructLiteralElement:
       {
         const structLiteralElement = <StructLiteralElement> node;
         if (structLiteralElement.name) {
-          result = walkParent<Error>(structLiteralElement.name, <WalkCallback<Error>> callback, structLiteralElement);
-          if (isError(result)) return result;
+          walkParent(structLiteralElement.name, <WalkCallback> callback, structLiteralElement);
         }
-        result = walkParent<Error>(
-          structLiteralElement.expression,
-          <WalkCallback<Error>> callback,
-          structLiteralElement,
-        );
-        if (isError(result)) return result;
+        walkParent(structLiteralElement.expression, <WalkCallback> callback, structLiteralElement);
       }
       break;
   }
-  return success();
 }

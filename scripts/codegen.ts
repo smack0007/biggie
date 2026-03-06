@@ -99,67 +99,34 @@ async function writeAstWalk(syntaxTreeContents: string[]): Promise<void> {
   importPlaceholder.append("import { SyntaxKind, SyntaxNode");
 
   output.appendLine(
-    `import { bool, isError, Result, success } from "../../shims.ts";
+    `import { bool } from "../../shims.ts";
 
-export type WalkCallback<Error = unknown> = (node: SyntaxNode, parent?: SyntaxNode) => Result<bool, Error>;
+export type WalkCallback = (node: SyntaxNode, parent?: SyntaxNode) => bool;
 
-export function walk<Error = unknown>(node: SyntaxNode, callback: WalkCallback<Error>): Result<void, Error> {
-  return walkParent<Error>(node, callback);
+export function walk(node: SyntaxNode, callback: WalkCallback): void {
+  walkParent(node, callback);
 }
 
-function walkParent<Error = unknown>(
-  node: SyntaxNode,
-  callback: WalkCallback<Error>,
-  parent?: SyntaxNode,
-): Result<void, Error> {
-  const callbackResult = callback(node, parent);
-
-  if (isError(callbackResult)) {
-    return callbackResult;
-  }
-
+function walkParent(node: SyntaxNode, callback: WalkCallback, parent?: SyntaxNode): void {
   // NOTE: The return value of callback indicates if we should keep descending further into the tree.
-  if (callbackResult.value) {
-    const childrenResult = walkChildren<Error>(node, callback);
-
-    if (isError(childrenResult)) {
-      return childrenResult;
-    }
+  if (callback(node, parent)) {
+    walkChildren(node, callback);
   }
-
-  return success();
 }
 
-export function walkArray<Error = unknown>(nodes: SyntaxNode[], callback: WalkCallback<Error>): Result<void, Error> {
-  return walkArrayParent<Error>(nodes, callback);
+export function walkArray(nodes: SyntaxNode[], callback: WalkCallback): void {
+  walkArrayParent(nodes, callback);
 }
 
-function walkArrayParent<Error = unknown>(
-  nodes: SyntaxNode[],
-  callback: WalkCallback<Error>,
-  parent?: SyntaxNode,
-): Result<void, Error> {
+function walkArrayParent(nodes: SyntaxNode[], callback: WalkCallback, parent?: SyntaxNode): void {
   for (const node of nodes) {
-    const result = walkParent<Error>(node, callback, parent);
-
-    if (isError(result)) {
-      return result;
-    }
+    walkParent(node, callback, parent);
   }
-
-  return success();
 }
 
-export type WalkChildrenCallback<Error = unknown> = (
-  node: SyntaxNode,
-  parent: SyntaxNode,
-) => Result<bool, Error>;
+export type WalkChildrenCallback = (node: SyntaxNode, parent: SyntaxNode) => bool;
 
-export function walkChildren<Error = unknown>(
-  node: SyntaxNode,
-  callback: WalkChildrenCallback<Error>,
-): Result<void, Error> {
-  let result: Result<void, Error>;
+export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): void {
   switch (node.kind) {
 `,
   );
@@ -198,10 +165,12 @@ export function walkChildren<Error = unknown>(
           continue;
         }
 
+        const interfaceVariableName = firstLetterToLower(interfaceName);
+
         if (!caseBlockIsOutput) {
           output.appendLine(`case SyntaxKind.${interfaceName}: {`);
           output.indent();
-          output.appendLine(`const ${firstLetterToLower(interfaceName)} = <${interfaceName}>node;`);
+          output.appendLine(`const ${interfaceVariableName} = <${interfaceName}>node;`);
           caseBlockIsOutput = true;
 
           importPlaceholder.append(`, ${interfaceName}`);
@@ -210,7 +179,7 @@ export function walkChildren<Error = unknown>(
         let isOptional = false;
         if (propertyName.endsWith("?")) {
           propertyName = propertyName.replaceAll("?", "");
-          output.appendLine(`if (${firstLetterToLower(interfaceName)}.${propertyName}) {`);
+          output.appendLine(`if (${interfaceVariableName}.${propertyName}) {`);
           output.indent();
           isOptional = true;
         }
@@ -221,12 +190,8 @@ export function walkChildren<Error = unknown>(
         }
 
         output.appendLine(
-          `result = ${walkFunc}<Error>(${
-            firstLetterToLower(interfaceName)
-          }.${propertyName}, <WalkCallback<Error>>callback, ${firstLetterToLower(interfaceName)});`,
+          `${walkFunc}(${interfaceVariableName}.${propertyName}, <WalkCallback>callback, ${interfaceVariableName});`,
         );
-
-        output.appendLine("if (isError(result)) return result;");
 
         if (isOptional) {
           output.append("}");
@@ -244,7 +209,6 @@ export function walkChildren<Error = unknown>(
   }
   output.unindent();
   output.appendLine("}");
-  output.appendLine("return success();");
 
   output.unindent();
   output.appendLine("}");

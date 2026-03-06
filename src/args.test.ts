@@ -2,6 +2,7 @@ import * as assert from "node:assert";
 import { describe, it } from "node:test";
 import * as args from "./args.ts";
 import { isError, isSuccess } from "./shims.ts";
+import { ParserError } from "./frontend/parser.ts";
 
 describe("args", () => {
   describe("parse", () => {
@@ -27,40 +28,29 @@ describe("args", () => {
 
     for (const [input, output] of testData) {
       it(`parses "${input.join(" ")}" correctly`, () => {
-        const result = args.parse(input);
-        if (isSuccess(result)) {
-          assert.deepStrictEqual(result.value, output);
-        } else {
-          assert.fail("args.parse failed.");
-        }
+        assert.deepStrictEqual(args.parse(input), output);
       });
     }
 
     it("fails with no args", () => {
-      const result = args.parse([]);
-      if (isError(result)) {
-        assert.equal(result.error.kind, args.ParseErrorKind.NoInputFiles);
-      } else {
-        assert.fail("args.parse succeeded.");
-      }
+      assert.throws(() => args.parse([]), (error) => {
+        assert.equal((error as ParserError).kind, args.ParseErrorKind.NoInputFiles);
+        return true;
+      });
     });
 
     it("fails with unknown option", () => {
-      const result = args.parse(["--foo", "bar", "input.big"]);
-      if (isError(result)) {
-        assert.equal(result.error.kind, args.ParseErrorKind.UnkownOption);
-      } else {
-        assert.fail("args.parse succeeded.");
-      }
+      assert.throws(() => args.parse(["--foo", "bar", "input.big"]), (error) => {
+        assert.equal((error as ParserError).kind, args.ParseErrorKind.UnkownOption);
+        return true;
+      });
     });
 
     it("fails when no input files are provided", () => {
-      const result = args.parse(["-o", "output.c"]);
-      if (isError(result)) {
-        assert.equal(result.error.kind, args.ParseErrorKind.NoInputFiles);
-      } else {
-        assert.fail("args.parse succeeded.");
-      }
+      assert.throws(() => args.parse(["-o", "output.c"]), (error) => {
+        assert.equal((error as ParserError).kind, args.ParseErrorKind.NoInputFiles);
+        return true;
+      });
     });
   });
 });
