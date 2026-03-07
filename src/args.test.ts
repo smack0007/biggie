@@ -1,7 +1,6 @@
 import * as assert from "node:assert";
 import { describe, it } from "node:test";
 import * as args from "./args.ts";
-import { isError, isSuccess } from "./shims.ts";
 import { ParserError } from "./frontend/parser.ts";
 
 describe("args", () => {

@@ -21,37 +21,3 @@ export function hasFlag(flags: number, flag: number): boolean {
 export function nameof(value: Function): string {
   return (value as unknown as { name: string }).name;
 }
-
-//
-// Result
-//
-
-export type SuccessResult<Value> = {
-  readonly success: true;
-  readonly value: Value;
-};
-
-export type ErrorResult<Error> = {
-  readonly success: false;
-  readonly error: Error;
-};
-
-export type Result<Value, Error> = SuccessResult<Value> | ErrorResult<Error>;
-
-export function success(): SuccessResult<never>;
-export function success<Value>(value: Value): SuccessResult<Value>;
-export function success<Value>(value?: Value): SuccessResult<Value | undefined> {
-  return { success: true, value };
-}
-
-export function error<Error>(error: Error): ErrorResult<Error> {
-  return { success: false, error };
-}
-
-export function isSuccess<Value, Error>(result: Result<Value, Error>): result is SuccessResult<Value> {
-  return result.success;
-}
-
-export function isError<Value, Error>(result: Result<Value, Error>): result is ErrorResult<Error> {
-  return !result.success;
-}
