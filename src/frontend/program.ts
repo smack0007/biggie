@@ -1,12 +1,12 @@
+import * as ast from "./ast/mod.ts";
 import { uint } from "../shims.ts";
-import { SourceFile } from "./ast/mod.ts";
 
 export interface TextPosition {
   line: uint;
   column: uint;
 }
 
-export interface ProgramDiagnostic {
+export interface Diagnostic {
   // The fileName of the source file the diagnositic is associated with.
   fileName: string;
 
@@ -22,7 +22,7 @@ export interface Program {
   entryFileName: string;
 
   // Map of [sourceFilePath] => SourceFile
-  sourceFiles: Record<string, SourceFile>;
+  sourceFiles: Record<string, ast.SourceFile>;
 
-  diagnostics: ProgramDiagnostic[];
+  diagnostics: Diagnostic[];
 }

@@ -1,15 +1,15 @@
 import * as fs from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { argv, chdir, cwd, exit } from "node:process";
-import { emitC } from "./backend/cBackend.ts";
-import { parse, ParserError, ParserErrorKind } from "./frontend/parser.ts";
-import { int } from "./shims.ts";
-import { Token } from "./frontend/scanner.ts";
-import { bind, BindError, BindErrorKind } from "./frontend/binder.ts";
+import * as path from "node:path";
+import * as process from "node:process";
 import * as args from "./args.ts";
-import { Program } from "./frontend/program.ts";
+import * as cBackend from "./backend/cBackend.ts";
+import * as binder from "./frontend/binder.ts";
+import * as parser from "./frontend/parser.ts";
+import * as scanner from "./frontend/scanner.ts";
+import * as program from "./frontend/program.ts";
+import { int } from "./shims.ts";
 
-main(argv.slice(2)).then(exit);
+main(process.argv.slice(2)).then(process.exit);
 
 async function main(argv: string[]): Promise<int> {
   let parsedArgs: args.ParseResult;
@@ -24,32 +24,32 @@ async function main(argv: string[]): Promise<int> {
     return 1;
   }
 
-  const entryFileName = resolve(parsedArgs.files[0]);
-  const entryDirectory = dirname(entryFileName);
+  const entryFileName = path.resolve(parsedArgs.files[0]);
+  const entryDirectory = path.dirname(entryFileName);
 
-  const oldDirectory = cwd();
-  chdir(entryDirectory);
+  const oldDirectory = process.cwd();
+  process.chdir(entryDirectory);
 
-  let program: Program;
+  let program: program.Program;
 
   try {
-    program = await parse(entryFileName, {
-      enter: (name: string, fileName: string, token?: Token) =>
+    program = await parser.parse(entryFileName, {
+      enter: (name: string, fileName: string, token?: scanner.Token) =>
         parsedArgs.debug &&
         console.info(`/*${fileName} ${name} (${token?.pos.line}, ${token?.pos.column}) <${token?.text}> */`),
     });
   } catch (error) {
-    const parseError = <ParserError> error;
+    const parseError = <parser.ParserError> error;
     console.error(
       `Error: (${parseError.pos.line}, ${parseError.pos.column}) ${parseError.fileName} [${
-        ParserErrorKind[parseError.kind]
+        parser.ParserErrorKind[parseError.kind]
       }] ${parseError.message}\n`,
     );
 
     return 1;
   }
 
-  chdir(oldDirectory);
+  process.chdir(oldDirectory);
 
   if (program.diagnostics.length > 0) {
     for (const diagnostic of program.diagnostics) {
@@ -63,12 +63,12 @@ async function main(argv: string[]): Promise<int> {
   }
 
   try {
-    bind(program);
+    binder.bind(program);
   } catch (error) {
-    const bindError = <BindError> error;
+    const bindError = <binder.BindError> error;
     console.error(
       `Error: (${bindError.pos.line}, ${bindError.pos.column}) ${bindError.fileName} [${
-        BindErrorKind[bindError.kind]
+        binder.BindErrorKind[bindError.kind]
       }] ${bindError.message}`,
     );
     return 1;
@@ -76,10 +76,10 @@ async function main(argv: string[]): Promise<int> {
 
   // console.info(`/* ${inspect(parseResult.value.sourceFiles[parseResult.value.entryFileName], { depth: 6 })} */`);
 
-  const emitResult = emitC(program);
+  const emitResult = cBackend.emit(program);
 
-  const outputFileName = resolve(parsedArgs.output);
-  const outputDirectory = dirname(outputFileName);
+  const outputFileName = path.resolve(parsedArgs.output);
+  const outputDirectory = path.dirname(outputFileName);
 
   if (!(await fs.stat(outputDirectory)).isDirectory()) {
     await fs.mkdir(outputDirectory);

@@ -1,8 +1,8 @@
 import * as ast from "../frontend/ast/mod.ts";
+import * as program from "../frontend/program.ts";
+import * as symbols from "../frontend/symbols.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
-import { Program } from "../frontend/program.ts";
-import { SymbolFlags } from "../frontend/symbols.ts";
 import { inspect } from "node:util";
 
 interface EmitContext {
@@ -29,7 +29,7 @@ interface EmitResult {
   code: string;
 }
 
-export function emitC(program: Program): EmitResult {
+export function emit(program: program.Program): EmitResult {
   const context: EmitContext = {
     output: new OutputWriter(),
     outputStack: [],
@@ -780,7 +780,7 @@ function emitPropertyAccessExpression(
   propertyAccessExpression: ast.PropertyAccessExpression,
 ) {
   if (propertyAccessExpression.expression.symbol) {
-    if (hasFlag(propertyAccessExpression.expression.symbol.flags, SymbolFlags.Module)) {
+    if (hasFlag(propertyAccessExpression.expression.symbol.flags, symbols.Flags.Module)) {
       const module = getImportedModuleByAlias(context, propertyAccessExpression.expression.symbol.name);
 
       if (module != null) {
@@ -791,7 +791,7 @@ function emitPropertyAccessExpression(
           return;
         }
       }
-    } else if (hasFlag(propertyAccessExpression.expression.symbol.flags, SymbolFlags.Enum)) {
+    } else if (hasFlag(propertyAccessExpression.expression.symbol.flags, symbols.Flags.Enum)) {
       const module = context.sourceFiles[propertyAccessExpression.expression.symbol.sourceFileName];
       const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.expression.symbol.name);
       if (mappedTypeName != null) {

@@ -131,19 +131,19 @@ export interface SyntaxNode {
   parent?: SyntaxNode;
 }
 
-export interface SourceFile extends SyntaxNode, symbols.SymbolScope {
+export interface SourceFile extends SyntaxNode, symbols.Scope {
   kind: SyntaxKind.SourceFile;
 
   fileName: string;
 
   statements: Statement[];
 
-  exports?: symbols.SymbolTable;
+  exports?: symbols.Table;
 }
 
 export interface Statement extends SyntaxNode {}
 
-export interface ImportDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
+export interface ImportDeclaration extends SyntaxNode, symbols.Declaration {
   kind: SyntaxKind.ImportDeclaration;
 
   alias?: Identifier;
@@ -153,7 +153,7 @@ export interface ImportDeclaration extends SyntaxNode, symbols.SymbolDeclaration
   resolvedFileName: string;
 }
 
-export interface VariableDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
+export interface VariableDeclaration extends SyntaxNode, symbols.Declaration {
   kind: SyntaxKind.VariableDeclaration;
 
   name: Identifier;
@@ -163,7 +163,7 @@ export interface VariableDeclaration extends SyntaxNode, symbols.SymbolDeclarati
   initializer?: Expression;
 }
 
-export interface EnumDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
+export interface EnumDeclaration extends SyntaxNode, symbols.Declaration {
   kind: SyntaxKind.EnumDeclaration;
 
   isExported: boolean;
@@ -173,7 +173,7 @@ export interface EnumDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
   members: EnumMember[];
 }
 
-export interface EnumMember extends SyntaxNode, symbols.SymbolDeclaration {
+export interface EnumMember extends SyntaxNode, symbols.Declaration {
   kind: SyntaxKind.EnumMember;
 
   name: Identifier;
@@ -181,7 +181,7 @@ export interface EnumMember extends SyntaxNode, symbols.SymbolDeclaration {
   initializer?: Expression;
 }
 
-export interface FunctionDeclaration extends SyntaxNode, symbols.SymbolDeclaration, symbols.SymbolScope {
+export interface FunctionDeclaration extends SyntaxNode, symbols.Declaration, symbols.Scope {
   kind: SyntaxKind.FunctionDeclaration;
 
   isExported: boolean;
@@ -195,7 +195,7 @@ export interface FunctionDeclaration extends SyntaxNode, symbols.SymbolDeclarati
   body: StatementBlock;
 }
 
-export interface StructDeclaration extends SyntaxNode, symbols.SymbolDeclaration {
+export interface StructDeclaration extends SyntaxNode, symbols.Declaration {
   kind: SyntaxKind.StructDeclaration;
 
   isExported: boolean;
@@ -205,7 +205,7 @@ export interface StructDeclaration extends SyntaxNode, symbols.SymbolDeclaration
   members: StructMember[];
 }
 
-export interface StructMember extends SyntaxNode, symbols.SymbolDeclaration {
+export interface StructMember extends SyntaxNode, symbols.Declaration {
   kind: SyntaxKind.StructMember;
 
   name: Identifier;
@@ -249,13 +249,13 @@ export interface ReturnStatement extends Statement {
   expression: Expression;
 }
 
-export interface StatementBlock extends SyntaxNode, symbols.SymbolScope {
+export interface StatementBlock extends SyntaxNode, symbols.Scope {
   kind: SyntaxKind.StatementBlock;
 
   statements: Statement[];
 }
 
-export interface Expression extends SyntaxNode, symbols.SymbolReference {}
+export interface Expression extends SyntaxNode, symbols.Reference {}
 
 export interface LogicalExpression extends Expression {
   kind: SyntaxKind.LogicalExpression;
@@ -388,7 +388,7 @@ export interface QualifiedName extends SyntaxNode {
   right: Identifier;
 }
 
-export interface Identifier extends Expression, symbols.SymbolReference {
+export interface Identifier extends Expression, symbols.Reference {
   kind: SyntaxKind.Identifier;
 
   value: string;

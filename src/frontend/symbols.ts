@@ -1,4 +1,4 @@
-export enum SymbolFlags {
+export enum Flags {
   None = 0,
 
   Module = 1 << 0,
@@ -16,26 +16,26 @@ export enum SymbolFlags {
   Variable = 1 << 6,
 }
 
-export type SymbolTable = Record<string, Symbol>;
+export type Table = Record<string, Symbol>;
 
 export interface Symbol {
   sourceFileName: string;
 
   name: string;
 
-  flags: SymbolFlags;
+  flags: Flags;
 
-  members?: SymbolTable;
+  members?: Table;
 }
 
-export interface SymbolDeclaration {
+export interface Declaration {
   symbol?: Symbol;
 }
 
-export type SymbolReference = SymbolDeclaration;
+export type Reference = Declaration;
 
-export interface SymbolScope {
-  locals?: SymbolTable;
+export interface Scope {
+  locals?: Table;
 
-  nextSymbolScope?: SymbolScope;
+  nextSymbolScope?: Scope;
 }
