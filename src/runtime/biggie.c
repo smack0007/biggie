@@ -10,16 +10,24 @@ typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
 typedef int64_t int64;
+typedef ptrdiff_t isize;
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
+typedef size_t usize;
+
+// typedef struct Array {
+//   void* data;
+//   ptrdiff_t length;
+// } Array;
+// #define ARRAY(arr, type) ((Array){arr, sizeof(arr) / sizeof(type)})
 
 typedef struct String {
   char* data;
-  ptrdiff_t length;
+  usize length;
 } String;
-#define STR(str) ((String){str, sizeof(str) - 1})
+#define STRING(str) ((String){str, sizeof(str) - 1})
 typedef String string;
 
 void println(string format, void* args[]) {

@@ -890,7 +890,7 @@ function emitParenthesizedExpression(
 }
 
 function emitStringLiteral(context: EmitContext, sourceFile: ast.SourceFile, stringLiteral: ast.StringLiteral) {
-  context.output.append(`STR("${stringLiteral.value}")`);
+  context.output.append(`STRING("${stringLiteral.value}")`);
 }
 
 function emitStructLiteral(context: EmitContext, sourceFile: ast.SourceFile, structLiteral: ast.StructLiteral) {
