@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import child_process from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { describe, it } from "node:test";
@@ -6,18 +7,34 @@ import { describe, it } from "node:test";
 const dirname = import.meta.dirname ?? "";
 
 const buildPath = resolve(join(dirname, "..", "build.sh"));
-const textDecoder = new TextDecoder();
 
-async function exec(command: string, args: string[] = []): Promise<[string, string]> {
-  const denoCommand = new Deno.Command(command, {
-    args,
-    stdout: "piped",
-    stderr: "piped",
+function exec(command: string, args: string[] = []): Promise<[string, string]> {
+  return new Promise((resolve, reject) => {
+    const child = child_process.spawn(command, args);
+
+    let stdoutData = "";
+    let stderrData = "";
+
+    child.stdout.on("data", (data) => {
+      stdoutData += data.toString();
+    });
+
+    child.stderr.on("data", (data) => {
+      stderrData += data.toString();
+    });
+
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`Command exited with code ${code}: ${stderrData}`));
+      } else {
+        resolve([stdoutData, stderrData]);
+      }
+    });
+
+    child.on("error", (err) => {
+      reject(err);
+    });
   });
-
-  const { stdout, stderr } = await denoCommand.output();
-
-  return [textDecoder.decode(stdout), textDecoder.decode(stderr)];
 }
 
 async function build(file: string): Promise<string> {
