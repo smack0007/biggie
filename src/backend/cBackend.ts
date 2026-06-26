@@ -13,6 +13,8 @@ interface EmitContext {
   sourceFiles: Record<string, ast.SourceFile>;
   // Set<fileName>
   emittedSourceFiles: Set<string>;
+  // [fileNamePrefix] = SourceFile.fileName
+  sourceFilePrefixes: Record<string, ast.SourceFile>;
   // A stack of prefixes to attach to names.
   namePrefixStack: string[];
   // [moduleAlias] = SourceFile
@@ -35,6 +37,7 @@ export function emit(program: program.Program): EmitResult {
     outputStack: [],
     sourceFiles: program.sourceFiles,
     emittedSourceFiles: new Set<string>(),
+    sourceFilePrefixes: {},
     namePrefixStack: [],
     importMap: [{}],
     moduleTypeNameMap: {},
@@ -93,7 +96,8 @@ function getNamePrefix(context: EmitContext): string {
     return "";
   }
 
-  return "_" + context.namePrefixStack.join("_") + "_";
+  // Only take the last prefix in the stack. The prefix is guarenteed to be unique.
+  return "_" + context.namePrefixStack[context.namePrefixStack.length - 1] + "_";
 }
 
 function pushImportMap(context: EmitContext): void {
@@ -229,14 +233,21 @@ function emitImportDeclaration(
     throw new Error("resolvedSourceFile is null");
   }
 
-  const moduleAlias = ast.getOrCalculateModuleAlias(importDeclaration);
-
   if (!context.emittedSourceFiles.has(resolvedSourceFile.fileName)) {
-    pushNamePrefix(context, moduleAlias);
+    let sourceFilePrefix = ast.getModuleAliasByFileName(importDeclaration);
+    let sourceFilePrefixIndex = 1;
+    while (context.sourceFilePrefixes[sourceFilePrefix + sourceFilePrefixIndex] !== undefined) {
+      sourceFilePrefixIndex += 1;
+    }
+
+    sourceFilePrefix = sourceFilePrefix + sourceFilePrefixIndex;
+    context.sourceFilePrefixes[sourceFilePrefix] = resolvedSourceFile;
+    pushNamePrefix(context, sourceFilePrefix);
     emitSourceFile(context, resolvedSourceFile);
     popNamePrefix(context);
   }
 
+  const moduleAlias = ast.getOrCalculateModuleAlias(importDeclaration);
   setImportedModule(context, moduleAlias, resolvedSourceFile);
 }
 

@@ -208,7 +208,7 @@ function bindFuncDeclaration(
   functionDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: functionDeclaration.name.value,
-    flags: symbols.Flags.Function,
+    flags: symbols.Flags.Func,
   };
 
   sourceFile.locals[functionDeclaration.symbol!.name] = functionDeclaration.symbol!;
@@ -231,7 +231,7 @@ function bindStructDeclaration(
   structDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structDeclaration.name.value,
-    flags: symbols.Flags.Variable,
+    flags: symbols.Flags.Var,
     members,
   };
 
@@ -288,7 +288,7 @@ function bindVarDeclaration(
   variableDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: variableDeclaration.name.value,
-    flags: symbols.Flags.Variable,
+    flags: symbols.Flags.Var,
     members,
   };
 

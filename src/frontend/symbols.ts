@@ -7,13 +7,13 @@ export enum Flags {
 
   EnumMember = 1 << 2,
 
-  Function = 1 << 3,
+  Func = 1 << 3,
 
   Struct = 1 << 4,
 
   StructMember = 1 << 5,
 
-  Variable = 1 << 6,
+  Var = 1 << 6,
 }
 
 export type Table = Record<string, Symbol>;
