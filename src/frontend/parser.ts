@@ -4,6 +4,7 @@ import * as ast from "./ast/mod.ts";
 import * as scanner from "./scanner.ts";
 import * as program from "./program.ts";
 import { bool, int, nameof } from "../shims.ts";
+import { BinderState } from "./symbols.ts";
 
 export interface ParserLogger {
   enter(name: string, fileName: string, token?: scanner.Token): void;
@@ -212,6 +213,7 @@ export async function parseSourceFile(
     endPos,
     fileName,
     statements,
+    binderState: BinderState.Uninitialized,
     exports: {},
     locals: {},
   };

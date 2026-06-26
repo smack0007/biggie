@@ -1,10 +1,10 @@
-import person "../shared/person.big"
+import "../shared/person.big"
 import greetEn "../shared/en/greet.big"
 import greetDe "../shared/de/greet.big"
 import greetType "../shared/greetType.big"
 
 func main(): int {  
-  var person: person.Person = { "Buddy", 42 };
+  var person: Person = { "Buddy", 42 };
   greetEn.greet(person, 10);
   greetDe.greet(person, 10);
   println("%d", greetType.GreetType.Informal);

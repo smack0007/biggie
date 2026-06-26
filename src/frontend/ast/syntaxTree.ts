@@ -131,14 +131,14 @@ export interface SyntaxNode {
   parent?: SyntaxNode;
 }
 
-export interface SourceFile extends SyntaxNode, symbols.Scope {
+export interface SourceFile extends SyntaxNode, symbols.BinderNode, symbols.Scope {
   kind: SyntaxKind.SourceFile;
 
   fileName: string;
 
   statements: Statement[];
 
-  exports?: symbols.Table;
+  exports: symbols.SymbolTable;
 }
 
 export interface Statement extends SyntaxNode {}

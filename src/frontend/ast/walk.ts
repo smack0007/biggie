@@ -37,6 +37,9 @@ import {
 } from "./syntaxTree.ts";
 import { bool } from "../../shims.ts";
 
+/**
+ * @return Indicates whether or not descending further into the tree should continue.
+ */
 export type WalkCallback = (node: SyntaxNode, parent?: SyntaxNode) => bool;
 
 export function walk(node: SyntaxNode, callback: WalkCallback): void {

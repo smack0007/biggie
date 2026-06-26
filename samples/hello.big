@@ -1,12 +1,12 @@
-import personLib "./person.big"
+import "./person.big"
 import "./greet.big"
 
 func main(): int {  
-  var person: personLib.Person = { "Buddy", 42 };
+  var person: Person = { "Buddy", 42 };
   
-  greet.sayHello(person, greet.GreetType.Formal);
-  greet.sayHello(person, greet.GreetType.Informal);
-  greet.sayHello(person, greet.GreetType.Crazy);
+  sayHello(person, GreetType.Formal);
+  sayHello(person, GreetType.Informal);
+  sayHello(person, GreetType.Crazy);
 
   return 0;
 }

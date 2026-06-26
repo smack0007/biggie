@@ -13,8 +13,8 @@ interface EmitContext {
   sourceFiles: Record<string, ast.SourceFile>;
   // Set<fileName>
   emittedSourceFiles: Set<string>;
-  // [fileNamePrefix] = SourceFile.fileName
-  sourceFilePrefixes: Record<string, ast.SourceFile>;
+  // [SourceFile.fileName] = fileNamePrefix
+  sourceFilePrefixes: Record<string, string>;
   // A stack of prefixes to attach to names.
   namePrefixStack: string[];
   // [moduleAlias] = SourceFile
@@ -233,22 +233,29 @@ function emitImportDeclaration(
     throw new Error("resolvedSourceFile is null");
   }
 
+  let sourceFilePrefix = context.sourceFilePrefixes[resolvedSourceFile.fileName];
   if (!context.emittedSourceFiles.has(resolvedSourceFile.fileName)) {
-    let sourceFilePrefix = ast.getModuleAliasByFileName(importDeclaration);
+    sourceFilePrefix = ast.getModulePrefixByFileName(importDeclaration);
     let sourceFilePrefixIndex = 1;
-    while (context.sourceFilePrefixes[sourceFilePrefix + sourceFilePrefixIndex] !== undefined) {
+    while (Object.values(context.sourceFilePrefixes).includes(sourceFilePrefix + sourceFilePrefixIndex)) {
       sourceFilePrefixIndex += 1;
     }
 
     sourceFilePrefix = sourceFilePrefix + sourceFilePrefixIndex;
-    context.sourceFilePrefixes[sourceFilePrefix] = resolvedSourceFile;
+    context.sourceFilePrefixes[resolvedSourceFile.fileName] = sourceFilePrefix;
     pushNamePrefix(context, sourceFilePrefix);
     emitSourceFile(context, resolvedSourceFile);
     popNamePrefix(context);
   }
 
-  const moduleAlias = ast.getOrCalculateModuleAlias(importDeclaration);
-  setImportedModule(context, moduleAlias, resolvedSourceFile);
+  if (importDeclaration.alias) {
+    setImportedModule(context, importDeclaration.alias.value, resolvedSourceFile);
+  } else {
+    for (const key of Object.keys(resolvedSourceFile.exports)) {
+      // TODO: Inserting the "_"(s) here feels wrong, have some function that we can use.
+      mapModuleTypeName(context, sourceFile, key, "_" + sourceFilePrefix + "_" + key);
+    }
+  }
 }
 
 function emitEnumDeclaration(
@@ -552,6 +559,7 @@ function emitTypeReference(
   if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
     const module = getImportedModuleByAlias(context, typeReference.typeName.left.value);
 
+    // TODO: emitIdentifier also does mapping, maybe this is unnecessary.
     let typeIsMapped = false;
     if (module != null) {
       const mappedTypeName = getMappedModuleTypeName(context, module, typeReference.typeName.right.value);
@@ -568,13 +576,7 @@ function emitTypeReference(
       emitIdentifier(context, sourceFile, typeReference.typeName.right);
     }
   } else {
-    const mappedTypeName = getMappedModuleTypeName(context, sourceFile, typeReference.typeName.value);
-
-    if (mappedTypeName != null) {
-      context.output.append(mappedTypeName);
-    } else {
-      emitIdentifier(context, sourceFile, typeReference.typeName);
-    }
+    emitIdentifier(context, sourceFile, typeReference.typeName);
   }
 
   return result;
@@ -863,7 +865,13 @@ function emitEqualityExpression(context: EmitContext, sourceFile: ast.SourceFile
 }
 
 function emitIdentifier(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier) {
-  context.output.append(identifier.value);
+  const mappedName = getMappedModuleTypeName(context, sourceFile, identifier.value);
+
+  if (mappedName) {
+    context.output.append(mappedName);
+  } else {
+    context.output.append(identifier.value);
+  }
 }
 
 function emitIntegerLiteral(context: EmitContext, sourceFile: ast.SourceFile, integerLiteral: ast.IntegerLiteral) {

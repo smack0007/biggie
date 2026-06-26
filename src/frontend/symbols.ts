@@ -1,3 +1,11 @@
+export enum BinderState {
+  Uninitialized = 0,
+
+  Initialized = 1,
+
+  Finished = 2,
+}
+
 export enum Flags {
   None = 0,
 
@@ -16,7 +24,11 @@ export enum Flags {
   Var = 1 << 6,
 }
 
-export type Table = Record<string, Symbol>;
+export interface BinderNode {
+  binderState: BinderState;
+}
+
+export type SymbolTable = Record<string, Symbol>;
 
 export interface Symbol {
   sourceFileName: string;
@@ -25,7 +37,7 @@ export interface Symbol {
 
   flags: Flags;
 
-  members?: Table;
+  members?: SymbolTable;
 }
 
 export interface Declaration {
@@ -35,7 +47,7 @@ export interface Declaration {
 export type Reference = Declaration;
 
 export interface Scope {
-  locals?: Table;
+  locals?: SymbolTable;
 
   nextSymbolScope?: Scope;
 }

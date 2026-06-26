@@ -30,7 +30,10 @@ export function bind(program: program.Program): void {
   bindInitialize(program);
 
   for (const sourceFile of Object.values(program.sourceFiles)) {
-    bindSourceFile(program, <Required<ast.SourceFile>> sourceFile);
+    // Import declarations lead to source files being finished before we get here.
+    if (sourceFile.binderState != symbols.BinderState.Finished) {
+      bindSourceFile(program, <Required<ast.SourceFile>> sourceFile);
+    }
   }
 }
 
@@ -42,8 +45,8 @@ const SYMBOL_SCOPE_SYNTAX_KIND = [
 
 function bindInitialize(program: program.Program): void {
   for (const sourceFile of Object.values(program.sourceFiles)) {
+    sourceFile.binderState = symbols.BinderState.Initialized;
     sourceFile.locals = {};
-    sourceFile.exports = {};
 
     ast.walkChildren(
       sourceFile,
@@ -144,24 +147,36 @@ function bindSourceFile(program: program.Program, sourceFile: Required<ast.Sourc
 
     return true;
   });
+
+  sourceFile.binderState = symbols.BinderState.Finished;
 }
 
 function bindImportDeclaration(
   program: program.Program,
   sourceFile: Required<ast.SourceFile>,
-  importStatement: ast.ImportDeclaration,
+  importDeclaration: ast.ImportDeclaration,
 ): void {
-  const moduleAlias = ast.getOrCalculateModuleAlias(importStatement);
-  const members = program.sourceFiles[importStatement.resolvedFileName].exports;
+  if (program.sourceFiles[importDeclaration.resolvedFileName].binderState != symbols.BinderState.Finished) {
+    bindSourceFile(program, sourceFile);
+  }
 
-  importStatement.symbol = {
-    sourceFileName: sourceFile.fileName,
-    name: moduleAlias,
-    flags: symbols.Flags.Module,
-    members,
-  };
+  const exports = program.sourceFiles[importDeclaration.resolvedFileName].exports;
 
-  sourceFile.locals[moduleAlias] = importStatement.symbol!;
+  if (importDeclaration.alias?.value) {
+    importDeclaration.symbol = {
+      sourceFileName: sourceFile.fileName,
+      name: importDeclaration.alias.value,
+      flags: symbols.Flags.Module,
+      members: exports,
+    };
+
+    sourceFile.locals[importDeclaration.alias.value] = importDeclaration.symbol!;
+  } else {
+    for (const [key, value] of Object.entries(exports)) {
+      // TODO: Check for symobl name conflicts
+      sourceFile.locals[key] = value;
+    }
+  }
 }
 
 function bindEnumDeclaration(
@@ -169,7 +184,7 @@ function bindEnumDeclaration(
   sourceFile: Required<ast.SourceFile>,
   enumDeclaration: ast.EnumDeclaration,
 ): void {
-  const members: symbols.Table = {};
+  const members: symbols.SymbolTable = {};
   for (const enumMember of enumDeclaration.members) {
     bindEnumMember(program, sourceFile, enumMember);
     members[enumMember.symbol!.name] = enumMember.symbol!;
@@ -222,7 +237,7 @@ function bindStructDeclaration(
   sourceFile: Required<ast.SourceFile>,
   structDeclaration: ast.StructDeclaration,
 ): void {
-  const members: symbols.Table = {};
+  const members: symbols.SymbolTable = {};
   for (const structMember of structDeclaration.members) {
     bindStructMember(program, sourceFile, structMember);
     members[structMember.symbol!.name] = structMember.symbol!;
@@ -258,7 +273,7 @@ function bindVarDeclaration(
   sourceFile: Required<ast.SourceFile>,
   variableDeclaration: ast.VarDeclaration,
 ): void {
-  let members: symbols.Table | undefined;
+  let members: symbols.SymbolTable | undefined;
 
   if (variableDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
     const typeReference = <ast.TypeReference> variableDeclaration.type;
