@@ -257,15 +257,15 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
       break;
 
     case scanner.TokenType.Enum:
-      result = parseEnumDeclaration(context, isExported);
+      result = parseEnumDeclaration(context, { isExported });
       break;
 
     case scanner.TokenType.Func:
-      result = parseFunctionDeclaration(context, isExported);
+      result = parseFunctionDeclaration(context, { isExported });
       break;
 
     case scanner.TokenType.Struct:
-      result = parseStructDeclaration(context, isExported);
+      result = parseStructDeclaration(context, { isExported });
       break;
 
     default:
@@ -367,10 +367,13 @@ function parseVariableDeclaration(
   };
 }
 
-// TODO: isExported should be moved into an options object like in parseVariableDeclaration.
+interface ParseEnumDeclarationOptions {
+  isExported?: bool;
+}
+
 function parseEnumDeclaration(
   context: ParserSourceFileContext,
-  isExported: boolean,
+  options: ParseEnumDeclarationOptions = {},
 ): ast.EnumDeclaration {
   context.logger.enter(nameof(parseEnumDeclaration));
   const startPos = getPos(context);
@@ -401,7 +404,7 @@ function parseEnumDeclaration(
     kind: ast.SyntaxKind.EnumDeclaration,
     startPos,
     endPos,
-    isExported,
+    isExported: !!options.isExported,
     name,
     members,
   };
@@ -430,9 +433,13 @@ function parseEnumMember(context: ParserSourceFileContext): ast.EnumMember {
   };
 }
 
+interface ParseFunctionDeclarationOptions {
+  isExported?: bool;
+}
+
 function parseFunctionDeclaration(
   context: ParserSourceFileContext,
-  isExported: boolean,
+  options: ParseFunctionDeclarationOptions = {},
 ): ast.FunctionDeclaration {
   context.logger.enter(nameof(parseFunctionDeclaration));
   const startPos = getPos(context);
@@ -471,7 +478,7 @@ function parseFunctionDeclaration(
     kind: ast.SyntaxKind.FunctionDeclaration,
     startPos,
     endPos,
-    isExported,
+    isExported: !!options.isExported,
     name,
     arguments: args,
     returnType,
@@ -479,9 +486,13 @@ function parseFunctionDeclaration(
   };
 }
 
+interface ParseStructDeclarationOptions {
+  isExported?: bool;
+}
+
 function parseStructDeclaration(
   context: ParserSourceFileContext,
-  isExported: boolean,
+  options: ParseStructDeclarationOptions = {},
 ): ast.StructDeclaration {
   context.logger.enter(nameof(parseStructDeclaration));
   const startPos = getPos(context);
@@ -508,7 +519,7 @@ function parseStructDeclaration(
     kind: ast.SyntaxKind.StructDeclaration,
     startPos,
     endPos,
-    isExported,
+    isExported: !!options.isExported,
     name,
     members,
   };
