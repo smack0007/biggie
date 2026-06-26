@@ -253,7 +253,7 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
 
     case scanner.TokenType.Var:
       // TODO: export var?
-      result = parseVariableDeclaration(context);
+      result = parseVarDeclaration(context);
       break;
 
     case scanner.TokenType.Enum:
@@ -261,7 +261,7 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
       break;
 
     case scanner.TokenType.Func:
-      result = parseFunctionDeclaration(context, { isExported });
+      result = parseFuncDeclaration(context, { isExported });
       break;
 
     case scanner.TokenType.Struct:
@@ -325,21 +325,21 @@ interface ParseVariableDeclarationOptions {
   isFunctionArgument?: bool;
 }
 
-function parseVariableDeclaration(
+function parseVarDeclaration(
   context: ParserSourceFileContext,
   options: ParseVariableDeclarationOptions = {},
-): ast.VariableDeclaration {
-  context.logger.enter(nameof(parseVariableDeclaration));
+): ast.VarDeclaration {
+  context.logger.enter(nameof(parseVarDeclaration));
   const startPos = getPos(context);
 
   if (!options.isFunctionArgument) {
-    expect(context, scanner.TokenType.Var, nameof(parseVariableDeclaration));
+    expect(context, scanner.TokenType.Var, nameof(parseVarDeclaration));
     advance(context);
   }
 
   const identifier = parseIdentifier(context);
 
-  expect(context, scanner.TokenType.Colon, nameof(parseVariableDeclaration));
+  expect(context, scanner.TokenType.Colon, nameof(parseVarDeclaration));
   advance(context);
 
   const type = parseType(context);
@@ -351,14 +351,14 @@ function parseVariableDeclaration(
   }
 
   if (!options.isFunctionArgument) {
-    expect(context, scanner.TokenType.Semicolon, nameof(parseVariableDeclaration));
+    expect(context, scanner.TokenType.Semicolon, nameof(parseVarDeclaration));
     advance(context);
   }
 
   const endPos = getPos(context);
 
   return {
-    kind: ast.SyntaxKind.VariableDeclaration,
+    kind: ast.SyntaxKind.VarDeclaration,
     startPos,
     endPos,
     name: identifier,
@@ -437,35 +437,35 @@ interface ParseFunctionDeclarationOptions {
   isExported?: bool;
 }
 
-function parseFunctionDeclaration(
+function parseFuncDeclaration(
   context: ParserSourceFileContext,
   options: ParseFunctionDeclarationOptions = {},
-): ast.FunctionDeclaration {
-  context.logger.enter(nameof(parseFunctionDeclaration));
+): ast.FuncDeclaration {
+  context.logger.enter(nameof(parseFuncDeclaration));
   const startPos = getPos(context);
 
-  expect(context, scanner.TokenType.Func, nameof(parseFunctionDeclaration));
+  expect(context, scanner.TokenType.Func, nameof(parseFuncDeclaration));
   advance(context);
 
   const name = parseIdentifier(context);
 
-  expect(context, scanner.TokenType.OpenParen, nameof(parseFunctionDeclaration));
+  expect(context, scanner.TokenType.OpenParen, nameof(parseFuncDeclaration));
   advance(context);
 
-  const args: ast.VariableDeclaration[] = [];
+  const args: ast.VarDeclaration[] = [];
   while (check(context, scanner.TokenType.Identifier)) {
-    args.push(parseVariableDeclaration(context, { isFunctionArgument: true }));
+    args.push(parseVarDeclaration(context, { isFunctionArgument: true }));
 
     if (peek(context).type == scanner.TokenType.Comma) {
       advance(context);
     }
   }
 
-  expect(context, scanner.TokenType.CloseParen, nameof(parseFunctionDeclaration));
+  expect(context, scanner.TokenType.CloseParen, nameof(parseFuncDeclaration));
   advance(context);
 
   // TODO: Should we just remove the colon before the return type?
-  expect(context, scanner.TokenType.Colon, nameof(parseFunctionDeclaration));
+  expect(context, scanner.TokenType.Colon, nameof(parseFuncDeclaration));
   advance(context);
 
   const returnType = parseType(context);
@@ -475,7 +475,7 @@ function parseFunctionDeclaration(
   const endPos = getPos(context);
 
   return {
-    kind: ast.SyntaxKind.FunctionDeclaration,
+    kind: ast.SyntaxKind.FuncDeclaration,
     startPos,
     endPos,
     isExported: !!options.isExported,
@@ -593,7 +593,7 @@ function parseBlockLevelStatement(context: ParserSourceFileContext): ast.Stateme
   let result: ast.Statement;
   switch (token.type) {
     case scanner.TokenType.Var:
-      result = parseVariableDeclaration(context);
+      result = parseVarDeclaration(context);
       break;
 
     case scanner.TokenType.Defer:

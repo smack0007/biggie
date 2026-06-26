@@ -36,7 +36,7 @@ export function bind(program: program.Program): void {
 
 const SYMBOL_SCOPE_SYNTAX_KIND = [
   ast.SyntaxKind.SourceFile,
-  ast.SyntaxKind.FunctionDeclaration,
+  ast.SyntaxKind.FuncDeclaration,
   ast.SyntaxKind.StatementBlock,
 ];
 
@@ -121,16 +121,16 @@ function bindSourceFile(program: program.Program, sourceFile: Required<ast.Sourc
         bindEnumDeclaration(program, sourceFile, <ast.EnumDeclaration> node);
         return false;
 
-      case ast.SyntaxKind.FunctionDeclaration:
-        bindFunctionDeclaration(program, sourceFile, <ast.FunctionDeclaration> node);
+      case ast.SyntaxKind.FuncDeclaration:
+        bindFuncDeclaration(program, sourceFile, <ast.FuncDeclaration> node);
         return true;
 
       case ast.SyntaxKind.StructDeclaration:
         bindStructDeclaration(program, sourceFile, <ast.StructDeclaration> node);
         return false;
 
-      case ast.SyntaxKind.VariableDeclaration:
-        bindVariableDeclaration(program, sourceFile, <ast.VariableDeclaration> node);
+      case ast.SyntaxKind.VarDeclaration:
+        bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> node);
         return false;
 
       case ast.SyntaxKind.PropertyAccessExpression:
@@ -200,10 +200,10 @@ function bindEnumMember(
   };
 }
 
-function bindFunctionDeclaration(
+function bindFuncDeclaration(
   program: program.Program,
   sourceFile: Required<ast.SourceFile>,
-  functionDeclaration: ast.FunctionDeclaration,
+  functionDeclaration: ast.FuncDeclaration,
 ): void {
   functionDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
@@ -253,10 +253,10 @@ function bindStructMember(
   };
 }
 
-function bindVariableDeclaration(
+function bindVarDeclaration(
   program: program.Program,
   sourceFile: Required<ast.SourceFile>,
-  variableDeclaration: ast.VariableDeclaration,
+  variableDeclaration: ast.VarDeclaration,
 ): void {
   let members: symbols.Table | undefined;
 

@@ -12,7 +12,7 @@ import {
   EnumMember,
   EqualityExpression,
   ExpressionStatement,
-  FunctionDeclaration,
+  FuncDeclaration,
   IfStatement,
   ImportDeclaration,
   LogicalExpression,
@@ -32,7 +32,7 @@ import {
   SyntaxNode,
   TypeReference,
   UnaryExpression,
-  VariableDeclaration,
+  VarDeclaration,
   WhileStatement,
 } from "./syntaxTree.ts";
 import { bool } from "../../shims.ts";
@@ -79,9 +79,9 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         walkParent(importDeclaration.module, <WalkCallback> callback, importDeclaration);
       }
       break;
-    case SyntaxKind.VariableDeclaration:
+    case SyntaxKind.VarDeclaration:
       {
-        const variableDeclaration = <VariableDeclaration> node;
+        const variableDeclaration = <VarDeclaration> node;
         walkParent(variableDeclaration.name, <WalkCallback> callback, variableDeclaration);
         walkParent(variableDeclaration.type, <WalkCallback> callback, variableDeclaration);
         if (variableDeclaration.initializer) {
@@ -105,9 +105,9 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         }
       }
       break;
-    case SyntaxKind.FunctionDeclaration:
+    case SyntaxKind.FuncDeclaration:
       {
-        const functionDeclaration = <FunctionDeclaration> node;
+        const functionDeclaration = <FuncDeclaration> node;
         walkParent(functionDeclaration.name, <WalkCallback> callback, functionDeclaration);
         walkArrayParent(functionDeclaration.arguments, <WalkCallback> callback, functionDeclaration);
         walkParent(functionDeclaration.returnType, <WalkCallback> callback, functionDeclaration);

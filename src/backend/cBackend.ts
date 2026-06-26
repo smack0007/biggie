@@ -204,8 +204,8 @@ function emitTopLevelStatement(context: EmitContext, sourceFile: ast.SourceFile,
       emitEnumDeclaration(context, sourceFile, <ast.EnumDeclaration> node);
       break;
 
-    case ast.SyntaxKind.FunctionDeclaration:
-      emitFunctionDeclaration(context, sourceFile, <ast.FunctionDeclaration> node);
+    case ast.SyntaxKind.FuncDeclaration:
+      emitFuncDeclaration(context, sourceFile, <ast.FuncDeclaration> node);
       break;
 
     case ast.SyntaxKind.StructDeclaration:
@@ -268,10 +268,10 @@ function emitEnumDeclaration(
   context.output.appendLine();
 }
 
-function emitFunctionDeclaration(
+function emitFuncDeclaration(
   context: EmitContext,
   sourceFile: ast.SourceFile,
-  functionDeclaration: ast.FunctionDeclaration,
+  functionDeclaration: ast.FuncDeclaration,
 ): void {
   emitType(context, sourceFile, functionDeclaration.returnType);
 
@@ -358,8 +358,8 @@ function emitBlockLevelStatement(context: EmitContext, sourceFile: ast.SourceFil
       emitStatementBlock(context, sourceFile, <ast.StatementBlock> node);
       break;
 
-    case ast.SyntaxKind.VariableDeclaration:
-      emitVariableDeclaration(context, sourceFile, <ast.VariableDeclaration> node);
+    case ast.SyntaxKind.VarDeclaration:
+      emitVarDeclaration(context, sourceFile, <ast.VarDeclaration> node);
       break;
 
     case ast.SyntaxKind.WhileStatement:
@@ -431,10 +431,10 @@ function emitReturnStatement(context: EmitContext, sourceFile: ast.SourceFile, r
   context.output.appendLine(";");
 }
 
-function emitVariableDeclaration(
+function emitVarDeclaration(
   context: EmitContext,
   sourceFile: ast.SourceFile,
-  variableDeclaration: ast.VariableDeclaration,
+  variableDeclaration: ast.VarDeclaration,
 ) {
   const emitTypeResult = emitType(context, sourceFile, variableDeclaration.type);
   context.output.append(" ");

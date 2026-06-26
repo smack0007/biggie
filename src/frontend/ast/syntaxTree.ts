@@ -30,9 +30,9 @@ export enum SyntaxKind {
 
   ExpressionStatement,
 
-  FunctionArgument,
+  FuncArgument,
 
-  FunctionDeclaration,
+  FuncDeclaration,
 
   Identifier,
 
@@ -76,7 +76,7 @@ export enum SyntaxKind {
 
   UnaryExpression,
 
-  VariableDeclaration,
+  VarDeclaration,
 
   WhileStatement,
 }
@@ -153,8 +153,8 @@ export interface ImportDeclaration extends SyntaxNode, symbols.Declaration {
   resolvedFileName: string;
 }
 
-export interface VariableDeclaration extends SyntaxNode, symbols.Declaration {
-  kind: SyntaxKind.VariableDeclaration;
+export interface VarDeclaration extends SyntaxNode, symbols.Declaration {
+  kind: SyntaxKind.VarDeclaration;
 
   name: Identifier;
 
@@ -181,14 +181,14 @@ export interface EnumMember extends SyntaxNode, symbols.Declaration {
   initializer?: Expression;
 }
 
-export interface FunctionDeclaration extends SyntaxNode, symbols.Declaration, symbols.Scope {
-  kind: SyntaxKind.FunctionDeclaration;
+export interface FuncDeclaration extends SyntaxNode, symbols.Declaration, symbols.Scope {
+  kind: SyntaxKind.FuncDeclaration;
 
   isExported: boolean;
 
   name: Identifier;
 
-  arguments: VariableDeclaration[];
+  arguments: VarDeclaration[];
 
   returnType: TypeNode;
 
