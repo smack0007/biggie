@@ -40,7 +40,9 @@ describe("hasFlag", () => {
 });
 
 describe("nameof", () => {
+  function foo() {}
+
   it("returns the name of a function", () => {
-    assert.equal(nameof(describe), "describe");
+    assert.equal(nameof(foo), "foo");
   });
 });
