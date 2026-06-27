@@ -4,7 +4,6 @@ import * as ast from "./ast/mod.ts";
 import * as scanner from "./scanner.ts";
 import * as program from "./program.ts";
 import { bool, int, nameof } from "../shims.ts";
-import { BinderState } from "./symbols.ts";
 
 export interface ParserLogger {
   enter(name: string, fileName: string, token?: scanner.Token): void;
@@ -213,7 +212,7 @@ export async function parseSourceFile(
     endPos,
     fileName,
     statements,
-    binderState: BinderState.Uninitialized,
+    bindState: ast.BindState.Uninitialized,
     exports: {},
     locals: {},
   };
@@ -320,6 +319,7 @@ async function parseImportDeclaration(
     alias: alias,
     module: module,
     resolvedFileName,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -366,6 +366,7 @@ function parseVarDeclaration(
     name: identifier,
     type: type,
     initializer: initializer,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -409,6 +410,7 @@ function parseEnumDeclaration(
     isExported: !!options.isExported,
     name,
     members,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -432,6 +434,7 @@ function parseEnumMember(context: ParserSourceFileContext): ast.EnumMember {
     endPos,
     name,
     initializer,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -485,6 +488,8 @@ function parseFuncDeclaration(
     arguments: args,
     returnType,
     body,
+    bindState: ast.BindState.Uninitialized,
+    locals: {},
   };
 }
 
@@ -524,6 +529,7 @@ function parseStructDeclaration(
     isExported: !!options.isExported,
     name,
     members,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -549,6 +555,7 @@ function parseStructMember(context: ParserSourceFileContext): ast.StructMember {
     endPos,
     name,
     type,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -584,6 +591,7 @@ function parseStatementBlock(context: ParserSourceFileContext): ast.StatementBlo
     startPos,
     endPos,
     statements,
+    bindState: ast.BindState.Uninitialized,
     locals: {},
   };
 }
@@ -1118,6 +1126,7 @@ function parseParenthesizedExpression(context: ParserSourceFileContext): ast.Par
     startPos,
     endPos,
     expression,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1144,6 +1153,7 @@ function parseCallExpression(
     endPos,
     expression,
     arguments: args,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1170,6 +1180,7 @@ function parseElementAccessExpression(
     endPos,
     expression,
     argumentExpression,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1193,6 +1204,7 @@ function parsePropertyAccessExpression(
     endPos,
     expression,
     name,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1337,6 +1349,7 @@ function parseIdentifier(context: ParserSourceFileContext): ast.Identifier {
     startPos,
     endPos,
     value: token.text,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1398,6 +1411,7 @@ function parseStructLiteral(context: ParserSourceFileContext): ast.StructLiteral
     startPos,
     endPos,
     elements,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1437,6 +1451,7 @@ function parseArrayLiteral(context: ParserSourceFileContext): ast.ArrayLiteral {
     startPos,
     endPos,
     elements,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1454,6 +1469,7 @@ function parseBooleanLiteral(context: ParserSourceFileContext): ast.BooleanLiter
     startPos,
     endPos,
     value: token.type == scanner.TokenType.True,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1481,6 +1497,7 @@ function parseIntegerLiteral(context: ParserSourceFileContext): ast.IntegerLiter
     startPos,
     endPos,
     value: token.text,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1508,5 +1525,6 @@ function parseStringLiteral(context: ParserSourceFileContext): ast.StringLiteral
     startPos,
     endPos,
     value: token.text,
+    bindState: ast.BindState.Uninitialized,
   };
 }

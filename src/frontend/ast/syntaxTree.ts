@@ -1,5 +1,4 @@
 import { TextPosition } from "../program.ts";
-import * as symbols from "../symbols.ts";
 
 export enum SyntaxKind {
   AdditiveExpression,
@@ -131,19 +130,75 @@ export interface SyntaxNode {
   parent?: SyntaxNode;
 }
 
-export interface SourceFile extends SyntaxNode, symbols.BinderNode, symbols.Scope {
+export enum BindState {
+  Uninitialized = 0,
+
+  Initialized = 1,
+
+  Finished = 2,
+}
+
+export enum BindFlags {
+  None = 0,
+
+  Module = 1 << 0,
+
+  Enum = 1 << 1,
+
+  EnumMember = 1 << 2,
+
+  Func = 1 << 3,
+
+  Struct = 1 << 4,
+
+  StructMember = 1 << 5,
+
+  Var = 1 << 6,
+}
+
+export type SymbolTable = Record<string, Symbol>;
+
+export interface Symbol {
+  sourceFileName: string;
+
+  name: string;
+
+  flags: BindFlags;
+
+  members?: SymbolTable;
+}
+
+export interface BindNode extends SyntaxNode {
+  bindState: BindState;
+}
+
+export interface Declaration extends BindNode {
+  symbol?: Symbol;
+}
+
+export interface Reference extends BindNode {
+  symbol?: Symbol;
+}
+
+export interface Scope extends BindNode {
+  locals: SymbolTable;
+
+  nextSymbolScope?: Scope;
+}
+
+export interface SourceFile extends SyntaxNode, Scope {
   kind: SyntaxKind.SourceFile;
 
   fileName: string;
 
   statements: Statement[];
 
-  exports: symbols.SymbolTable;
+  exports: SymbolTable;
 }
 
 export interface Statement extends SyntaxNode {}
 
-export interface ImportDeclaration extends SyntaxNode, symbols.Declaration {
+export interface ImportDeclaration extends SyntaxNode, Declaration {
   kind: SyntaxKind.ImportDeclaration;
 
   alias?: Identifier;
@@ -153,7 +208,7 @@ export interface ImportDeclaration extends SyntaxNode, symbols.Declaration {
   resolvedFileName: string;
 }
 
-export interface VarDeclaration extends SyntaxNode, symbols.Declaration {
+export interface VarDeclaration extends SyntaxNode, Declaration {
   kind: SyntaxKind.VarDeclaration;
 
   name: Identifier;
@@ -163,7 +218,7 @@ export interface VarDeclaration extends SyntaxNode, symbols.Declaration {
   initializer?: Expression;
 }
 
-export interface EnumDeclaration extends SyntaxNode, symbols.Declaration {
+export interface EnumDeclaration extends SyntaxNode, Declaration {
   kind: SyntaxKind.EnumDeclaration;
 
   isExported: boolean;
@@ -173,7 +228,7 @@ export interface EnumDeclaration extends SyntaxNode, symbols.Declaration {
   members: EnumMember[];
 }
 
-export interface EnumMember extends SyntaxNode, symbols.Declaration {
+export interface EnumMember extends SyntaxNode, Declaration {
   kind: SyntaxKind.EnumMember;
 
   name: Identifier;
@@ -181,7 +236,7 @@ export interface EnumMember extends SyntaxNode, symbols.Declaration {
   initializer?: Expression;
 }
 
-export interface FuncDeclaration extends SyntaxNode, symbols.Declaration, symbols.Scope {
+export interface FuncDeclaration extends SyntaxNode, Declaration, Scope {
   kind: SyntaxKind.FuncDeclaration;
 
   isExported: boolean;
@@ -195,7 +250,7 @@ export interface FuncDeclaration extends SyntaxNode, symbols.Declaration, symbol
   body: StatementBlock;
 }
 
-export interface StructDeclaration extends SyntaxNode, symbols.Declaration {
+export interface StructDeclaration extends SyntaxNode, Declaration {
   kind: SyntaxKind.StructDeclaration;
 
   isExported: boolean;
@@ -205,7 +260,7 @@ export interface StructDeclaration extends SyntaxNode, symbols.Declaration {
   members: StructMember[];
 }
 
-export interface StructMember extends SyntaxNode, symbols.Declaration {
+export interface StructMember extends SyntaxNode, Declaration {
   kind: SyntaxKind.StructMember;
 
   name: Identifier;
@@ -249,13 +304,13 @@ export interface ReturnStatement extends Statement {
   expression: Expression;
 }
 
-export interface StatementBlock extends SyntaxNode, symbols.Scope {
+export interface StatementBlock extends SyntaxNode, Scope {
   kind: SyntaxKind.StatementBlock;
 
   statements: Statement[];
 }
 
-export interface Expression extends SyntaxNode, symbols.Reference {}
+export interface Expression extends SyntaxNode, Reference {}
 
 export interface LogicalExpression extends Expression {
   kind: SyntaxKind.LogicalExpression;
@@ -388,7 +443,7 @@ export interface QualifiedName extends SyntaxNode {
   right: Identifier;
 }
 
-export interface Identifier extends Expression, symbols.Reference {
+export interface Identifier extends Expression, Reference {
   kind: SyntaxKind.Identifier;
 
   value: string;

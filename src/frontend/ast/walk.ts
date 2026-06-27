@@ -84,11 +84,11 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       break;
     case SyntaxKind.VarDeclaration:
       {
-        const variableDeclaration = <VarDeclaration> node;
-        walkParent(variableDeclaration.name, <WalkCallback> callback, variableDeclaration);
-        walkParent(variableDeclaration.type, <WalkCallback> callback, variableDeclaration);
-        if (variableDeclaration.initializer) {
-          walkParent(variableDeclaration.initializer, <WalkCallback> callback, variableDeclaration);
+        const varDeclaration = <VarDeclaration> node;
+        walkParent(varDeclaration.name, <WalkCallback> callback, varDeclaration);
+        walkParent(varDeclaration.type, <WalkCallback> callback, varDeclaration);
+        if (varDeclaration.initializer) {
+          walkParent(varDeclaration.initializer, <WalkCallback> callback, varDeclaration);
         }
       }
       break;
@@ -110,11 +110,11 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       break;
     case SyntaxKind.FuncDeclaration:
       {
-        const functionDeclaration = <FuncDeclaration> node;
-        walkParent(functionDeclaration.name, <WalkCallback> callback, functionDeclaration);
-        walkArrayParent(functionDeclaration.arguments, <WalkCallback> callback, functionDeclaration);
-        walkParent(functionDeclaration.returnType, <WalkCallback> callback, functionDeclaration);
-        walkParent(functionDeclaration.body, <WalkCallback> callback, functionDeclaration);
+        const funcDeclaration = <FuncDeclaration> node;
+        walkParent(funcDeclaration.name, <WalkCallback> callback, funcDeclaration);
+        walkArrayParent(funcDeclaration.arguments, <WalkCallback> callback, funcDeclaration);
+        walkParent(funcDeclaration.returnType, <WalkCallback> callback, funcDeclaration);
+        walkParent(funcDeclaration.body, <WalkCallback> callback, funcDeclaration);
       }
       break;
     case SyntaxKind.StructDeclaration:

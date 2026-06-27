@@ -1,11 +1,12 @@
 import * as ast from "./ast/mod.ts";
 import * as program from "./program.ts";
-import * as symbols from "./symbols.ts";
 import { bool, nameof } from "../shims.ts";
+import { BindState } from "./ast/syntaxTree.ts";
 
 export enum BindErrorKind {
   Unexpected,
   MissingSymbol,
+  DuplicateSymbol,
 }
 
 export interface BindError extends program.Diagnostic {
@@ -31,55 +32,49 @@ export function bind(program: program.Program): void {
 
   for (const sourceFile of Object.values(program.sourceFiles)) {
     // Import declarations lead to source files being finished before we get here.
-    if (sourceFile.binderState != symbols.BinderState.Finished) {
+    if (sourceFile.bindState != ast.BindState.Finished) {
       bindSourceFile(program, <Required<ast.SourceFile>> sourceFile);
     }
   }
 }
 
-const SYMBOL_SCOPE_SYNTAX_KIND = [
-  ast.SyntaxKind.SourceFile,
-  ast.SyntaxKind.FuncDeclaration,
-  ast.SyntaxKind.StatementBlock,
-];
-
 function bindInitialize(program: program.Program): void {
   for (const sourceFile of Object.values(program.sourceFiles)) {
-    sourceFile.binderState = symbols.BinderState.Initialized;
-    sourceFile.locals = {};
-
     ast.walkChildren(
       sourceFile,
       (node: ast.SyntaxNode, parent: ast.SyntaxNode): bool => {
         node.parent = parent;
 
-        if (SYMBOL_SCOPE_SYNTAX_KIND.includes(node.kind)) {
-          const scope = <symbols.Scope> node;
-          scope.locals = {};
+        if (ast.isBindNode(node)) {
+          if (ast.isScope(node)) {
+            node.nextSymbolScope = getParentNode<Required<ast.Scope>>(node, ast.isScope);
+          }
 
-          scope.nextSymbolScope = getParentNodeByKinds<Required<symbols.Scope>>(node, SYMBOL_SCOPE_SYNTAX_KIND);
+          node.bindState = ast.BindState.Initialized;
         }
 
         return true;
       },
     );
+
+    sourceFile.bindState = ast.BindState.Initialized;
   }
 }
 
-function getParentNodeByKinds<T>(node: ast.SyntaxNode, kinds: ast.SyntaxKind[]): T {
+function getParentNode<T>(node: ast.SyntaxNode, typeGuard: (node: ast.SyntaxNode) => bool): T {
   if (node.parent == null) {
     throw bindError(BindErrorKind.Unexpected, `${ast.SyntaxKind[node.kind]} node has no parent.`, node);
   }
 
   node = node.parent;
-  while (!kinds.includes(node.kind) && node.parent != null) {
+  while (!typeGuard(node) && node.parent != null) {
     node = node.parent;
   }
 
-  if (!kinds.includes(node.kind)) {
+  if (!typeGuard(node)) {
     throw bindError(
       BindErrorKind.Unexpected,
-      `Failed to get parent node of ${kinds.map((x) => ast.SyntaxKind[x]).join(", ")}.`,
+      `Failed to get parent node matching type guard "${typeGuard.name}".`,
       node,
     );
   }
@@ -88,21 +83,21 @@ function getParentNodeByKinds<T>(node: ast.SyntaxNode, kinds: ast.SyntaxKind[]):
 }
 
 function getSourceFileFromNode(node: ast.SyntaxNode): Required<ast.SourceFile> {
-  return getParentNodeByKinds<Required<ast.SourceFile>>(node, [ast.SyntaxKind.SourceFile]);
+  return getParentNode<Required<ast.SourceFile>>(node, (node) => node.kind == ast.SyntaxKind.SourceFile);
 }
 
-function getSymbolScopeFromNode(node: ast.SyntaxNode): Required<symbols.Scope> {
-  return getParentNodeByKinds<Required<symbols.Scope>>(node, SYMBOL_SCOPE_SYNTAX_KIND);
+function getScopeFromNode(node: ast.SyntaxNode): Required<ast.Scope> {
+  return getParentNode<Required<ast.Scope>>(node, ast.isScope);
 }
 
-function getSymbolByName(node: ast.SyntaxNode, name: string): symbols.Symbol {
-  let scope = getSymbolScopeFromNode(node);
+function getSymbolByName(node: ast.SyntaxNode, name: string): ast.Symbol {
+  let scope = getScopeFromNode(node);
 
   while (scope.nextSymbolScope) {
     if (scope.locals[name]) {
       return scope.locals[name];
     }
-    scope = <Required<symbols.Scope>> scope.nextSymbolScope;
+    scope = <Required<ast.Scope>> scope.nextSymbolScope;
   }
 
   if (scope.locals[name]) {
@@ -110,6 +105,26 @@ function getSymbolByName(node: ast.SyntaxNode, name: string): symbols.Symbol {
   }
 
   throw bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${name}".`, node);
+}
+
+function setLocal(node: ast.SyntaxNode, scope: ast.Scope, name: string, value: ast.Symbol): void {
+  if (scope.locals[name] !== undefined) {
+    throw bindError(BindErrorKind.DuplicateSymbol, `Symbol named "${name}" already exists in scope.`, node);
+  }
+
+  scope.locals[name] = value;
+}
+
+function setExport(node: ast.SyntaxNode, sourceFile: ast.SourceFile, name: string, value: ast.Symbol): void {
+  if (sourceFile.exports[name] !== undefined) {
+    throw bindError(
+      BindErrorKind.DuplicateSymbol,
+      `Symbol named "${name}" already exported in source file "${sourceFile.fileName}".`,
+      node,
+    );
+  }
+
+  sourceFile.exports[name] = value;
 }
 
 function bindSourceFile(program: program.Program, sourceFile: Required<ast.SourceFile>): void {
@@ -148,7 +163,7 @@ function bindSourceFile(program: program.Program, sourceFile: Required<ast.Sourc
     return true;
   });
 
-  sourceFile.binderState = symbols.BinderState.Finished;
+  sourceFile.bindState = ast.BindState.Finished;
 }
 
 function bindImportDeclaration(
@@ -156,7 +171,7 @@ function bindImportDeclaration(
   sourceFile: Required<ast.SourceFile>,
   importDeclaration: ast.ImportDeclaration,
 ): void {
-  if (program.sourceFiles[importDeclaration.resolvedFileName].binderState != symbols.BinderState.Finished) {
+  if (program.sourceFiles[importDeclaration.resolvedFileName].bindState != ast.BindState.Finished) {
     bindSourceFile(program, sourceFile);
   }
 
@@ -166,17 +181,18 @@ function bindImportDeclaration(
     importDeclaration.symbol = {
       sourceFileName: sourceFile.fileName,
       name: importDeclaration.alias.value,
-      flags: symbols.Flags.Module,
+      flags: ast.BindFlags.Module,
       members: exports,
     };
 
     sourceFile.locals[importDeclaration.alias.value] = importDeclaration.symbol!;
   } else {
-    for (const [key, value] of Object.entries(exports)) {
-      // TODO: Check for symobl name conflicts
-      sourceFile.locals[key] = value;
+    for (const [name, symbol] of Object.entries(exports)) {
+      setLocal(importDeclaration, sourceFile, name, symbol);
     }
   }
+
+  importDeclaration.bindState = ast.BindState.Finished;
 }
 
 function bindEnumDeclaration(
@@ -184,7 +200,7 @@ function bindEnumDeclaration(
   sourceFile: Required<ast.SourceFile>,
   enumDeclaration: ast.EnumDeclaration,
 ): void {
-  const members: symbols.SymbolTable = {};
+  const members: ast.SymbolTable = {};
   for (const enumMember of enumDeclaration.members) {
     bindEnumMember(program, sourceFile, enumMember);
     members[enumMember.symbol!.name] = enumMember.symbol!;
@@ -193,14 +209,16 @@ function bindEnumDeclaration(
   enumDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: enumDeclaration.name.value,
-    flags: symbols.Flags.Enum,
+    flags: ast.BindFlags.Enum,
     members,
   };
 
-  sourceFile.locals[enumDeclaration.symbol!.name] = enumDeclaration.symbol!;
+  setLocal(enumDeclaration, sourceFile, enumDeclaration.symbol.name, enumDeclaration.symbol);
   if (enumDeclaration.isExported) {
-    sourceFile.exports[enumDeclaration.symbol!.name] = enumDeclaration.symbol!;
+    setExport(enumDeclaration, sourceFile, enumDeclaration.symbol.name, enumDeclaration.symbol);
   }
+
+  enumDeclaration.bindState = ast.BindState.Finished;
 }
 
 function bindEnumMember(
@@ -211,25 +229,29 @@ function bindEnumMember(
   enumMember.symbol = {
     sourceFileName: sourceFile.fileName,
     name: enumMember.name.value,
-    flags: symbols.Flags.EnumMember,
+    flags: ast.BindFlags.EnumMember,
   };
+
+  enumMember.bindState = ast.BindState.Finished;
 }
 
 function bindFuncDeclaration(
   program: program.Program,
   sourceFile: Required<ast.SourceFile>,
-  functionDeclaration: ast.FuncDeclaration,
+  funcDeclaration: ast.FuncDeclaration,
 ): void {
-  functionDeclaration.symbol = {
+  funcDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
-    name: functionDeclaration.name.value,
-    flags: symbols.Flags.Func,
+    name: funcDeclaration.name.value,
+    flags: ast.BindFlags.Func,
   };
 
-  sourceFile.locals[functionDeclaration.symbol!.name] = functionDeclaration.symbol!;
-  if (functionDeclaration.isExported) {
-    sourceFile.exports[functionDeclaration.symbol!.name] = functionDeclaration.symbol!;
+  setLocal(funcDeclaration, sourceFile, funcDeclaration.symbol.name, funcDeclaration.symbol);
+  if (funcDeclaration.isExported) {
+    setExport(funcDeclaration, sourceFile, funcDeclaration.symbol.name, funcDeclaration.symbol);
   }
+
+  funcDeclaration.bindState = ast.BindState.Finished;
 }
 
 function bindStructDeclaration(
@@ -237,7 +259,7 @@ function bindStructDeclaration(
   sourceFile: Required<ast.SourceFile>,
   structDeclaration: ast.StructDeclaration,
 ): void {
-  const members: symbols.SymbolTable = {};
+  const members: ast.SymbolTable = {};
   for (const structMember of structDeclaration.members) {
     bindStructMember(program, sourceFile, structMember);
     members[structMember.symbol!.name] = structMember.symbol!;
@@ -246,14 +268,16 @@ function bindStructDeclaration(
   structDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structDeclaration.name.value,
-    flags: symbols.Flags.Var,
+    flags: ast.BindFlags.Var,
     members,
   };
 
-  sourceFile.locals[structDeclaration.symbol!.name] = structDeclaration.symbol!;
+  setLocal(structDeclaration, sourceFile, structDeclaration.symbol.name, structDeclaration.symbol);
   if (structDeclaration.isExported) {
-    sourceFile.exports[structDeclaration.name.value] = structDeclaration.symbol!;
+    setExport(structDeclaration, sourceFile, structDeclaration.symbol.name, structDeclaration.symbol);
   }
+
+  structDeclaration.bindState = ast.BindState.Finished;
 }
 
 function bindStructMember(
@@ -264,23 +288,25 @@ function bindStructMember(
   structMember.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structMember.name.value,
-    flags: symbols.Flags.StructMember,
+    flags: ast.BindFlags.StructMember,
   };
+
+  structMember.bindState = ast.BindState.Finished;
 }
 
 function bindVarDeclaration(
   program: program.Program,
   sourceFile: Required<ast.SourceFile>,
-  variableDeclaration: ast.VarDeclaration,
+  varDeclaration: ast.VarDeclaration,
 ): void {
-  let members: symbols.SymbolTable | undefined;
+  let members: ast.SymbolTable | undefined;
 
-  if (variableDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
-    const typeReference = <ast.TypeReference> variableDeclaration.type;
+  if (varDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
+    const typeReference = <ast.TypeReference> varDeclaration.type;
     if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
       const qualifiedName = <ast.QualifiedName> typeReference.typeName;
 
-      const module = getSymbolByName(variableDeclaration, qualifiedName.left.value);
+      const module = getSymbolByName(varDeclaration, qualifiedName.left.value);
 
       // TODO: Check members is set
 
@@ -294,21 +320,23 @@ function bindVarDeclaration(
 
       // HACK: Ignore int32 for now.
       if (identifier.value != "int32") {
-        const symbol = getSymbolByName(variableDeclaration, identifier.value);
+        const symbol = getSymbolByName(varDeclaration, identifier.value);
         members = symbol.members;
       }
     }
   }
 
-  variableDeclaration.symbol = {
+  varDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
-    name: variableDeclaration.name.value,
-    flags: symbols.Flags.Var,
+    name: varDeclaration.name.value,
+    flags: ast.BindFlags.Var,
     members,
   };
 
-  const scope = getSymbolScopeFromNode(variableDeclaration);
-  scope.locals[variableDeclaration.symbol!.name] = variableDeclaration.symbol!;
+  const scope = getScopeFromNode(varDeclaration);
+  setLocal(varDeclaration, scope, varDeclaration.symbol.name, varDeclaration.symbol);
+
+  varDeclaration.bindState = ast.BindState.Finished;
 }
 
 function bindPropertyAccessExpression(
@@ -316,7 +344,7 @@ function bindPropertyAccessExpression(
   sourceFile: Required<ast.SourceFile>,
   propertyAccessExpression: ast.PropertyAccessExpression,
 ): void {
-  let lhsSymbol: symbols.Symbol | undefined;
+  let lhsSymbol: ast.Symbol | undefined;
 
   if (propertyAccessExpression.expression.kind == ast.SyntaxKind.Identifier) {
     const leftIdentifier = <ast.Identifier> propertyAccessExpression.expression;
@@ -346,13 +374,15 @@ function bindPropertyAccessExpression(
 
   bindIdentifier(program, sourceFile, propertyAccessExpression.name, lhsSymbol);
   propertyAccessExpression.symbol = propertyAccessExpression.name.symbol;
+
+  propertyAccessExpression.bindState = BindState.Finished;
 }
 
 function bindIdentifier(
   program: program.Program,
   sourceFile: Required<ast.SourceFile>,
   identifier: ast.Identifier,
-  parentSymbol?: symbols.Symbol,
+  parentSymbol?: ast.Symbol,
 ): void {
   if (identifier.symbol) {
     return;
@@ -384,4 +414,6 @@ function bindIdentifier(
 
     identifier.symbol = parentSymbol.members[identifier.value];
   }
+
+  identifier.bindState = ast.BindState.Finished;
 }

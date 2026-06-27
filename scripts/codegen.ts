@@ -37,7 +37,8 @@ function createAstOutputWriter(): OutputWriter {
 async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
   const output = createAstOutputWriter();
 
-  const typeMap: Record<string, string[]> = {};
+  const typeMap: Record<string, string[]> = { BindNode: [] };
+  const bindNodeInterfaces: string[] = [];
 
   for (const line of syntaxTreeContents) {
     if (line.startsWith("export interface ") && !line.endsWith("{}")) {
@@ -50,17 +51,25 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
           .map((x) => x.endsWith(",") ? x.substring(0, x.length - 1) : x);
 
         for (const extendedInterface of extendedInterfaces) {
-          if (typeMap[extendedInterface] == undefined) {
-            typeMap[extendedInterface] = [];
-          }
+          if (extendedInterface != "BindNode") {
+            if (typeMap[extendedInterface] == undefined) {
+              typeMap[extendedInterface] = [];
+            }
 
-          typeMap[extendedInterface].push(interfaceName);
+            typeMap[extendedInterface].push(interfaceName);
+
+            if (bindNodeInterfaces.includes(extendedInterface) && !typeMap["BindNode"].includes(interfaceName)) {
+              typeMap["BindNode"].push(interfaceName);
+            }
+          } else {
+            bindNodeInterfaces.push(interfaceName);
+          }
         }
       }
     }
   }
 
-  const typeGuardsToEmit = ["Expression", "Statement", "TypeNode"];
+  const typeGuardsToEmit = ["BindNode", "Declaration", "Expression", "Statement", "Reference", "Scope", "TypeNode"];
   output.appendLine(`import { SyntaxKind, SyntaxNode, ${typeGuardsToEmit.join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
 
@@ -101,6 +110,9 @@ async function writeAstWalk(syntaxTreeContents: string[]): Promise<void> {
   output.appendLine(
     `import { bool } from "../../shims.ts";
 
+/**
+ * @return Indicates whether or not descending further into the tree should continue.
+ */
 export type WalkCallback = (node: SyntaxNode, parent?: SyntaxNode) => bool;
 
 export function walk(node: SyntaxNode, callback: WalkCallback): void {
@@ -140,7 +152,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       const parts = line.split(" ");
       interfaceName = parts[2];
 
-      if (["SyntaxNode", "BlockScope", "Declaration"].includes(interfaceName)) {
+      if (["SyntaxNode", "BlockScope", "Declaration", "Symbol", "BindNode", "Scope"].includes(interfaceName)) {
         interfaceName = null;
         continue;
       }
@@ -152,9 +164,10 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         let propertyName = parts[0].replaceAll(":", "");
 
         if (
-          ["kind", "endPos", "exports?", "fileName", "isExported", "operator", "startPos", "symbol?", "value"].includes(
-            propertyName,
-          )
+          ["kind", "endPos", "exports", "locals", "fileName", "isExported", "operator", "startPos", "symbol?", "value"]
+            .includes(
+              propertyName,
+            )
         ) {
           continue;
         }
