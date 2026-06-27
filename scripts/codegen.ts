@@ -10,16 +10,10 @@ import { formatFile } from "./utils.ts";
 
 const ROOT_PATH = resolve(import.meta.dirname!, "..");
 
-const TYPE_GUARDS_TO_EMIT = [
-  "BindNode",
-  "Declaration",
-  "Expression",
-  "PropertyAccessExpression",
-  "Statement",
-  "Reference",
-  "Scope",
-  "TypeNode",
-] as const;
+const TYPE_GUARDS_NOT_TO_EMIT = [
+  "SyntaxNode",
+  "Symbol",
+];
 
 main(argv.slice(2)).then(exit);
 
@@ -48,6 +42,7 @@ function createAstOutputWriter(): OutputWriter {
 async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
   const output = createAstOutputWriter();
 
+  const typeGuardsToEmit: string[] = [];
   const typeMap: Record<string, string[]> = { BindNode: [] };
   const bindNodeInterfaces: string[] = [];
 
@@ -55,8 +50,12 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
     if (line.startsWith("export interface ") && !line.endsWith("{}")) {
       const parts = line.split(" ");
 
+      const interfaceName = parts[2];
+      if (!TYPE_GUARDS_NOT_TO_EMIT.includes(interfaceName)) {
+        typeGuardsToEmit.push(interfaceName);
+      }
+
       if (parts[3] == "extends") {
-        const interfaceName = parts[2];
         const extendedInterfaces = parts.slice(4)
           .filter((x) => x != "{")
           .map((x) => x.endsWith(",") ? x.substring(0, x.length - 1) : x);
@@ -80,19 +79,19 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
     }
   }
 
-  output.appendLine(`import { SyntaxKind, SyntaxNode, ${TYPE_GUARDS_TO_EMIT.join(", ")} } from "./syntaxTree.ts";`);
+  output.appendLine(`import { SyntaxKind, SyntaxNode, ${typeGuardsToEmit.join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
 
-  for (const typeGuard of TYPE_GUARDS_TO_EMIT) {
+  typeGuardsToEmit.sort();
+  for (const typeGuard of typeGuardsToEmit) {
     output.appendLine(`export function is${typeGuard}(node: SyntaxNode): node is ${typeGuard} {`);
     output.indent();
 
-    output.appendLine("return (");
-    output.indent();
-
     const kinds = typeMap[typeGuard]?.toSorted();
-
     if (kinds) {
+      output.appendLine("return (");
+      output.indent();
+
       for (let i = 0; i < kinds.length; i += 1) {
         if (i != 0) {
           output.append("|| ");
@@ -100,12 +99,12 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
 
         output.appendLine(`node.kind == SyntaxKind.${kinds[i]}`);
       }
-    } else {
-      output.appendLine(`node.kind == SyntaxKind.${typeGuard}`);
-    }
 
-    output.unindent();
-    output.appendLine(");");
+      output.unindent();
+      output.appendLine(");");
+    } else {
+      output.appendLine(`return node.kind == SyntaxKind.${typeGuard};`);
+    }
 
     output.unindent();
     output.appendLine("}");
