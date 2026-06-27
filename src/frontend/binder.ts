@@ -1,4 +1,5 @@
 import * as ast from "./ast/mod.ts";
+import * as builtins from "./builtins.ts";
 import * as program from "./program.ts";
 import { bool, nameof } from "../shims.ts";
 import { BindState } from "./ast/syntaxTree.ts";
@@ -47,7 +48,7 @@ function bindInitialize(program: program.Program): void {
 
         if (ast.isBindNode(node)) {
           if (ast.isScope(node)) {
-            node.nextSymbolScope = getParentNode<Required<ast.Scope>>(node, ast.isScope);
+            node.nextSymbolScope = getParentNode<ast.Scope>(node, ast.isScope);
           }
 
           node.bindState = ast.BindState.Initialized;
@@ -301,18 +302,33 @@ function bindVarDeclaration(
 ): void {
   let members: ast.SymbolTable | undefined;
 
-  if (varDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
+  if (varDeclaration.type.kind == ast.SyntaxKind.ArrayType) {
+    members = builtins.ArraySymbolTable;
+  } else if (varDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
     const typeReference = <ast.TypeReference> varDeclaration.type;
+
     if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
       const qualifiedName = <ast.QualifiedName> typeReference.typeName;
 
       const module = getSymbolByName(varDeclaration, qualifiedName.left.value);
 
-      // TODO: Check members is set
+      if (!module.members) {
+        throw bindError(
+          BindErrorKind.Unexpected,
+          `module.members is null in ${nameof(bindVarDeclaration)}: ${varDeclaration.name.value}`,
+          varDeclaration,
+        );
+      }
 
-      const moduleExport = module.members![qualifiedName.right.value];
+      const moduleExport = module.members[qualifiedName.right.value];
 
-      // TODO: Check members is set.
+      if (!moduleExport.members) {
+        throw bindError(
+          BindErrorKind.Unexpected,
+          `moduleExport.members is null in ${nameof(bindVarDeclaration)}: ${varDeclaration.name.value}`,
+          varDeclaration,
+        );
+      }
 
       members = moduleExport.members;
     } else {

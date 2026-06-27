@@ -10,6 +10,17 @@ import { formatFile } from "./utils.ts";
 
 const ROOT_PATH = resolve(import.meta.dirname!, "..");
 
+const TYPE_GUARDS_TO_EMIT = [
+  "BindNode",
+  "Declaration",
+  "Expression",
+  "PropertyAccessExpression",
+  "Statement",
+  "Reference",
+  "Scope",
+  "TypeNode",
+] as const;
+
 main(argv.slice(2)).then(exit);
 
 async function main(_argv: string[]): Promise<int> {
@@ -69,25 +80,28 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
     }
   }
 
-  const typeGuardsToEmit = ["BindNode", "Declaration", "Expression", "Statement", "Reference", "Scope", "TypeNode"];
-  output.appendLine(`import { SyntaxKind, SyntaxNode, ${typeGuardsToEmit.join(", ")} } from "./syntaxTree.ts";`);
+  output.appendLine(`import { SyntaxKind, SyntaxNode, ${TYPE_GUARDS_TO_EMIT.join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
 
-  for (const typeGuard of typeGuardsToEmit) {
+  for (const typeGuard of TYPE_GUARDS_TO_EMIT) {
     output.appendLine(`export function is${typeGuard}(node: SyntaxNode): node is ${typeGuard} {`);
     output.indent();
 
     output.appendLine("return (");
     output.indent();
 
-    const kinds = typeMap[typeGuard].toSorted();
+    const kinds = typeMap[typeGuard]?.toSorted();
 
-    for (let i = 0; i < kinds.length; i += 1) {
-      if (i != 0) {
-        output.append("|| ");
+    if (kinds) {
+      for (let i = 0; i < kinds.length; i += 1) {
+        if (i != 0) {
+          output.append("|| ");
+        }
+
+        output.appendLine(`node.kind == SyntaxKind.${kinds[i]}`);
       }
-
-      output.appendLine(`node.kind == SyntaxKind.${kinds[i]}`);
+    } else {
+      output.appendLine(`node.kind == SyntaxKind.${typeGuard}`);
     }
 
     output.unindent();

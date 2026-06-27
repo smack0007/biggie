@@ -141,19 +141,23 @@ export enum BindState {
 export enum BindFlags {
   None = 0,
 
-  Module = 1 << 0,
+  Builtin = 1 << 0,
 
-  Enum = 1 << 1,
+  Module = 1 << 1,
 
-  EnumMember = 1 << 2,
+  Var = 1 << 2,
 
-  Func = 1 << 3,
+  Enum = 1 << 3,
 
-  Struct = 1 << 4,
+  EnumMember = 1 << 4,
 
-  StructMember = 1 << 5,
+  Func = 1 << 5,
 
-  Var = 1 << 6,
+  Struct = 1 << 6,
+
+  StructMember = 1 << 7,
+
+  Method = 1 << 8,
 }
 
 export type SymbolTable = Record<string, Symbol>;
@@ -166,6 +170,8 @@ export interface Symbol {
   flags: BindFlags;
 
   members?: SymbolTable;
+
+  builtinName?: string;
 }
 
 export interface BindNode extends SyntaxNode {

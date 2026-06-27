@@ -2,7 +2,7 @@ import * as ast from "../frontend/ast/mod.ts";
 import * as program from "../frontend/program.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
-import { inspect } from "node:util";
+import { dump } from "../utils.ts";
 
 interface EmitContext {
   output: OutputWriter;
@@ -50,7 +50,7 @@ export function emit(program: program.Program): EmitResult {
 
   emitSourceFile(context, entrySourceFile);
 
-  context.output.appendLine(`/* ${inspect(context.moduleTypeNameMap)} */`);
+  context.output.appendLine(`/* ${dump(context.moduleTypeNameMap)} */`);
 
   return {
     code: context.output.toString(),
@@ -754,15 +754,29 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     popOutput(context);
   }
 
-  emitExpression(context, sourceFile, callExpression.expression);
+  // Copy the arguments into a new array, if we have a method we'll push into the
+  // front of the array.
+  const args = [...callExpression.arguments];
+
+  if (
+    ast.isPropertyAccessExpression(callExpression.expression) &&
+    callExpression.expression.name.symbol &&
+    hasFlag(callExpression.expression.name.symbol.flags, ast.BindFlags.Method)
+  ) {
+    emitIdentifier(context, sourceFile, callExpression.expression.name);
+    args.unshift(callExpression.expression.expression);
+    beginVaradicArgs += 1;
+  } else {
+    emitExpression(context, sourceFile, callExpression.expression);
+  }
   context.output.append("(");
 
-  for (let i = 0; i < beginVaradicArgs; i++) {
+  for (let i = 0; i < beginVaradicArgs; i += 1) {
     if (i != 0) {
       context.output.append(", ");
     }
 
-    emitExpression(context, sourceFile, callExpression.arguments[i]);
+    emitExpression(context, sourceFile, args[i]);
   }
 
   if (isVaradicCall) {
@@ -816,6 +830,7 @@ function emitPropertyAccessExpression(
       context.output.append(".");
     }
   } else {
+    // TODO: Just make this branch an error.
     emitExpression(context, sourceFile, propertyAccessExpression.expression);
     context.output.append(".");
   }
@@ -864,6 +879,11 @@ function emitEqualityExpression(context: EmitContext, sourceFile: ast.SourceFile
 }
 
 function emitIdentifier(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier) {
+  if (identifier.symbol && hasFlag(identifier.symbol.flags, ast.BindFlags.Builtin)) {
+    emitBuiltin(context, sourceFile, identifier);
+    return;
+  }
+
   const mappedName = getMappedModuleTypeName(context, sourceFile, identifier.value);
 
   if (mappedName) {
@@ -871,6 +891,18 @@ function emitIdentifier(context: EmitContext, sourceFile: ast.SourceFile, identi
   } else {
     context.output.append(identifier.value);
   }
+}
+
+function emitBuiltin(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier) {
+  if (
+    !identifier.symbol ||
+    !identifier.symbol.builtinName
+  ) {
+    context.output.append(`/* ${identifier.value} is not a builtin */ ${identifier.value}`);
+    return;
+  }
+
+  context.output.append(identifier.symbol.builtinName);
 }
 
 function emitIntegerLiteral(context: EmitContext, sourceFile: ast.SourceFile, integerLiteral: ast.IntegerLiteral) {

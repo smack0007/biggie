@@ -22,6 +22,7 @@ typedef size_t usize;
 //   ptrdiff_t length;
 // } Array;
 // #define ARRAY(arr, type) ((Array){arr, sizeof(arr) / sizeof(type)})
+#define array_length(x) (sizeof(x) / sizeof((x)[0]))
 
 typedef struct String {
   char* data;

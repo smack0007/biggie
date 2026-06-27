@@ -3,6 +3,7 @@ import {
   BindNode,
   Declaration,
   Expression,
+  PropertyAccessExpression,
   Reference,
   Scope,
   Statement,
@@ -57,6 +58,12 @@ export function isExpression(node: SyntaxNode): node is Expression {
     node.kind == SyntaxKind.StringLiteral ||
     node.kind == SyntaxKind.StructLiteral ||
     node.kind == SyntaxKind.UnaryExpression
+  );
+}
+
+export function isPropertyAccessExpression(node: SyntaxNode): node is PropertyAccessExpression {
+  return (
+    node.kind == SyntaxKind.PropertyAccessExpression
   );
 }
 
