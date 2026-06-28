@@ -11,8 +11,10 @@ import { formatFile } from "./utils.ts";
 const ROOT_PATH = resolve(import.meta.dirname!, "..");
 
 const TYPE_GUARDS_NOT_TO_EMIT = [
+  "Diagnostic",
   "SyntaxNode",
   "Symbol",
+  "TextPosition",
 ];
 
 main(argv.slice(2)).then(exit);
@@ -139,12 +141,14 @@ function walkParent(node: SyntaxNode, callback: WalkCallback, parent?: SyntaxNod
   }
 }
 
-export function walkArray(nodes: SyntaxNode[], callback: WalkCallback): void {
-  walkArrayParent(nodes, callback);
-}
-
 function walkArrayParent(nodes: SyntaxNode[], callback: WalkCallback, parent?: SyntaxNode): void {
   for (const node of nodes) {
+    walkParent(node, callback, parent);
+  }
+}
+
+function walkRecordParent(nodes: Record<string, SyntaxNode>, callback: WalkCallback, parent?: SyntaxNode): void {
+  for (const node of Object.values(nodes)) {
     walkParent(node, callback, parent);
   }
 }
@@ -165,7 +169,10 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       const parts = line.split(" ");
       interfaceName = parts[2];
 
-      if (["SyntaxNode", "BlockScope", "Declaration", "Symbol", "BindNode", "Scope"].includes(interfaceName)) {
+      if (
+        ["TextPosition", "Diagnostic", "SyntaxNode", "BlockScope", "Declaration", "Symbol", "BindNode", "Scope"]
+          .includes(interfaceName)
+      ) {
         interfaceName = null;
         continue;
       }
@@ -177,7 +184,19 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         let propertyName = parts[0].replaceAll(":", "");
 
         if (
-          ["kind", "endPos", "exports", "locals", "fileName", "isExported", "operator", "startPos", "symbol?", "value"]
+          [
+            "diagnostics",
+            "endPos",
+            "exports",
+            "fileName",
+            "isExported",
+            "kind",
+            "locals",
+            "operator",
+            "startPos",
+            "symbol?",
+            "value",
+          ]
             .includes(
               propertyName,
             )
@@ -213,6 +232,8 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         let walkFunc = "walkParent";
         if (type.endsWith("[]")) {
           walkFunc = "walkArrayParent";
+        } else if (type.startsWith("Record<")) {
+          walkFunc = "walkRecordParent";
         }
 
         output.appendLine(

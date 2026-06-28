@@ -1,5 +1,5 @@
 import { char } from "../shims.ts";
-import * as program from "./program.ts";
+import * as ast from "./ast/mod.ts";
 
 export enum TokenType {
   // Used internally to indicate we're currently looking for a token.
@@ -165,7 +165,7 @@ export enum TokenType {
 export interface Token {
   type: TokenType;
   text: string | null;
-  pos: program.TextPosition;
+  pos: ast.TextPosition;
 }
 
 function isDigit(ch: char): boolean {

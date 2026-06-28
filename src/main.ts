@@ -3,10 +3,10 @@ import * as path from "node:path";
 import * as process from "node:process";
 import * as args from "./args.ts";
 import * as cBackend from "./backend/cBackend.ts";
+import * as ast from "./frontend/ast/mod.ts";
 import * as binder from "./frontend/binder.ts";
 import * as parser from "./frontend/parser.ts";
 import * as scanner from "./frontend/scanner.ts";
-import * as program from "./frontend/program.ts";
 import { int } from "./shims.ts";
 
 main(process.argv.slice(2)).then(process.exit);
@@ -30,7 +30,7 @@ async function main(argv: string[]): Promise<int> {
   const oldDirectory = process.cwd();
   process.chdir(entryDirectory);
 
-  let program: program.Program;
+  let program: ast.Program;
 
   try {
     program = await parser.parse(entryFileName, {
@@ -73,8 +73,6 @@ async function main(argv: string[]): Promise<int> {
     );
     return 1;
   }
-
-  // console.info(`/* ${inspect(parseResult.value.sourceFiles[parseResult.value.entryFileName], { depth: 6 })} */`);
 
   const emitResult = cBackend.emit(program);
 

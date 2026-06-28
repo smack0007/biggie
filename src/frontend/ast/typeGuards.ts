@@ -24,6 +24,7 @@ import {
   MultiplicativeExpression,
   ParenthesizedExpression,
   PointerType,
+  Program,
   PropertyAccessExpression,
   QualifiedName,
   Reference,
@@ -67,6 +68,7 @@ export function isBindNode(node: SyntaxNode): node is BindNode {
     node.kind == SyntaxKind.FuncDeclaration ||
     node.kind == SyntaxKind.Identifier ||
     node.kind == SyntaxKind.ImportDeclaration ||
+    node.kind == SyntaxKind.Program ||
     node.kind == SyntaxKind.SourceFile ||
     node.kind == SyntaxKind.StatementBlock ||
     node.kind == SyntaxKind.StructDeclaration ||
@@ -159,6 +161,10 @@ export function isPointerType(node: SyntaxNode): node is PointerType {
   return node.kind == SyntaxKind.PointerType;
 }
 
+export function isProgram(node: SyntaxNode): node is Program {
+  return node.kind == SyntaxKind.Program;
+}
+
 export function isPropertyAccessExpression(node: SyntaxNode): node is PropertyAccessExpression {
   return node.kind == SyntaxKind.PropertyAccessExpression;
 }
@@ -180,6 +186,7 @@ export function isReturnStatement(node: SyntaxNode): node is ReturnStatement {
 export function isScope(node: SyntaxNode): node is Scope {
   return (
     node.kind == SyntaxKind.FuncDeclaration ||
+    node.kind == SyntaxKind.Program ||
     node.kind == SyntaxKind.SourceFile ||
     node.kind == SyntaxKind.StatementBlock
   );

@@ -1,8 +1,8 @@
 import * as ast from "./ast/mod.ts";
 import * as builtins from "./builtins.ts";
-import * as program from "./program.ts";
 import { bool, nameof } from "../shims.ts";
 import { BindState } from "./ast/syntaxTree.ts";
+import { dump } from "../utils.ts";
 
 export enum BindErrorKind {
   Unexpected,
@@ -10,11 +10,11 @@ export enum BindErrorKind {
   DuplicateSymbol,
 }
 
-export interface BindError extends program.Diagnostic {
+export interface BindError extends ast.Diagnostic {
   kind: BindErrorKind;
   message: string;
   fileName: string;
-  pos: program.TextPosition;
+  pos: ast.TextPosition;
 }
 
 function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): BindError {
@@ -28,7 +28,7 @@ function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): 
   };
 }
 
-export function bind(program: program.Program): void {
+export function bind(program: ast.Program): void {
   bindInitialize(program);
 
   for (const sourceFile of Object.values(program.sourceFiles)) {
@@ -37,10 +37,23 @@ export function bind(program: program.Program): void {
       bindSourceFile(program, <Required<ast.SourceFile>> sourceFile);
     }
   }
+
+  program.bindState = ast.BindState.Finished;
 }
 
-function bindInitialize(program: program.Program): void {
+function setLocal(node: ast.SyntaxNode, scope: ast.Scope, name: string, value: ast.Symbol): void {
+  if (scope.locals[name] !== undefined) {
+    throw bindError(BindErrorKind.DuplicateSymbol, `Symbol named "${name}" already exists in scope.`, node);
+  }
+
+  scope.locals[name] = value;
+}
+
+function bindInitialize(program: ast.Program): void {
   for (const sourceFile of Object.values(program.sourceFiles)) {
+    sourceFile.parent = program;
+    sourceFile.nextSymbolScope = program;
+
     ast.walkChildren(
       sourceFile,
       (node: ast.SyntaxNode, parent: ast.SyntaxNode): bool => {
@@ -60,6 +73,11 @@ function bindInitialize(program: program.Program): void {
 
     sourceFile.bindState = ast.BindState.Initialized;
   }
+
+  for (const [name, value] of Object.entries(builtins.globals)) {
+    setLocal(program, program, name, value);
+  }
+  program.bindState = ast.BindState.Initialized;
 }
 
 function getParentNode<T>(node: ast.SyntaxNode, typeGuard: (node: ast.SyntaxNode) => bool): T {
@@ -87,6 +105,7 @@ function getSourceFileFromNode(node: ast.SyntaxNode): Required<ast.SourceFile> {
   return getParentNode<Required<ast.SourceFile>>(node, (node) => node.kind == ast.SyntaxKind.SourceFile);
 }
 
+// TODO: Can we get away with fewer Required<>s?
 function getScopeFromNode(node: ast.SyntaxNode): Required<ast.Scope> {
   return getParentNode<Required<ast.Scope>>(node, ast.isScope);
 }
@@ -108,14 +127,6 @@ function getSymbolByName(node: ast.SyntaxNode, name: string): ast.Symbol {
   throw bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${name}".`, node);
 }
 
-function setLocal(node: ast.SyntaxNode, scope: ast.Scope, name: string, value: ast.Symbol): void {
-  if (scope.locals[name] !== undefined) {
-    throw bindError(BindErrorKind.DuplicateSymbol, `Symbol named "${name}" already exists in scope.`, node);
-  }
-
-  scope.locals[name] = value;
-}
-
 function setExport(node: ast.SyntaxNode, sourceFile: ast.SourceFile, name: string, value: ast.Symbol): void {
   if (sourceFile.exports[name] !== undefined) {
     throw bindError(
@@ -128,7 +139,7 @@ function setExport(node: ast.SyntaxNode, sourceFile: ast.SourceFile, name: strin
   sourceFile.exports[name] = value;
 }
 
-function bindSourceFile(program: program.Program, sourceFile: Required<ast.SourceFile>): void {
+function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFile>): void {
   ast.walk(sourceFile, (node: ast.SyntaxNode): bool => {
     // TODO: All the cases in the switch should return false that binding only occurs once.
     switch (node.kind) {
@@ -168,7 +179,7 @@ function bindSourceFile(program: program.Program, sourceFile: Required<ast.Sourc
 }
 
 function bindImportDeclaration(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   importDeclaration: ast.ImportDeclaration,
 ): void {
@@ -197,7 +208,7 @@ function bindImportDeclaration(
 }
 
 function bindEnumDeclaration(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   enumDeclaration: ast.EnumDeclaration,
 ): void {
@@ -223,7 +234,7 @@ function bindEnumDeclaration(
 }
 
 function bindEnumMember(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   enumMember: ast.EnumMember,
 ): void {
@@ -237,7 +248,7 @@ function bindEnumMember(
 }
 
 function bindFuncDeclaration(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   funcDeclaration: ast.FuncDeclaration,
 ): void {
@@ -256,7 +267,7 @@ function bindFuncDeclaration(
 }
 
 function bindStructDeclaration(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   structDeclaration: ast.StructDeclaration,
 ): void {
@@ -282,7 +293,7 @@ function bindStructDeclaration(
 }
 
 function bindStructMember(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   structMember: ast.StructMember,
 ): void {
@@ -296,14 +307,14 @@ function bindStructMember(
 }
 
 function bindVarDeclaration(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   varDeclaration: ast.VarDeclaration,
 ): void {
   let members: ast.SymbolTable | undefined;
 
-  if (varDeclaration.type.kind == ast.SyntaxKind.ArrayType) {
-    members = builtins.ArraySymbolTable;
+  if (ast.isArrayType(varDeclaration.type)) {
+    members = builtins.globals["Array"].members;
   } else if (varDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
     const typeReference = <ast.TypeReference> varDeclaration.type;
 
@@ -356,7 +367,7 @@ function bindVarDeclaration(
 }
 
 function bindPropertyAccessExpression(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   propertyAccessExpression: ast.PropertyAccessExpression,
 ): void {
@@ -395,7 +406,7 @@ function bindPropertyAccessExpression(
 }
 
 function bindIdentifier(
-  program: program.Program,
+  program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   identifier: ast.Identifier,
   parentSymbol?: ast.Symbol,

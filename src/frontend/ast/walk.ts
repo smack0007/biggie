@@ -19,6 +19,7 @@ import {
   MultiplicativeExpression,
   ParenthesizedExpression,
   PointerType,
+  Program,
   PropertyAccessExpression,
   QualifiedName,
   ReturnStatement,
@@ -53,12 +54,14 @@ function walkParent(node: SyntaxNode, callback: WalkCallback, parent?: SyntaxNod
   }
 }
 
-export function walkArray(nodes: SyntaxNode[], callback: WalkCallback): void {
-  walkArrayParent(nodes, callback);
-}
-
 function walkArrayParent(nodes: SyntaxNode[], callback: WalkCallback, parent?: SyntaxNode): void {
   for (const node of nodes) {
+    walkParent(node, callback, parent);
+  }
+}
+
+function walkRecordParent(nodes: Record<string, SyntaxNode>, callback: WalkCallback, parent?: SyntaxNode): void {
+  for (const node of Object.values(nodes)) {
     walkParent(node, callback, parent);
   }
 }
@@ -67,6 +70,12 @@ export type WalkChildrenCallback = (node: SyntaxNode, parent: SyntaxNode) => boo
 
 export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): void {
   switch (node.kind) {
+    case SyntaxKind.Program:
+      {
+        const program = <Program> node;
+        walkRecordParent(program.sourceFiles, <WalkCallback> callback, program);
+      }
+      break;
     case SyntaxKind.SourceFile:
       {
         const sourceFile = <SourceFile> node;

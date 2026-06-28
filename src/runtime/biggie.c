@@ -22,14 +22,15 @@ typedef size_t usize;
 //   ptrdiff_t length;
 // } Array;
 // #define ARRAY(arr, type) ((Array){arr, sizeof(arr) / sizeof(type)})
-#define array_length(x) (sizeof(x) / sizeof((x)[0]))
+#define ARRAY_LENGTH(x) (sizeof(x) / sizeof((x)[0]))
 
 typedef struct String {
   char* data;
   usize length;
 } String;
-#define STRING(str) ((String){str, sizeof(str) - 1})
 typedef String string;
+#define STRING(str) ((String){str, sizeof(str) - 1})
+#define STRING_LENGTH(x) (x.length)
 
 void println(string format, void* args[]) {
   int argIndex = 0;

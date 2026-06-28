@@ -1,5 +1,4 @@
 import * as ast from "../frontend/ast/mod.ts";
-import * as program from "../frontend/program.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
 import { dump } from "../utils.ts";
@@ -30,7 +29,7 @@ interface EmitResult {
   code: string;
 }
 
-export function emit(program: program.Program): EmitResult {
+export function emit(program: ast.Program): EmitResult {
   const context: EmitContext = {
     output: new OutputWriter(),
     outputStack: [],
@@ -893,16 +892,29 @@ function emitIdentifier(context: EmitContext, sourceFile: ast.SourceFile, identi
   }
 }
 
-function emitBuiltin(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier) {
+function emitBuiltin(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier): void {
   if (
     !identifier.symbol ||
-    !identifier.symbol.builtinName
+    !hasFlag(identifier.symbol.flags, ast.BindFlags.Builtin)
   ) {
     context.output.append(`/* ${identifier.value} is not a builtin */ ${identifier.value}`);
     return;
   }
 
-  context.output.append(identifier.symbol.builtinName);
+  let name = ast.getQualifiedNameForSymbol(identifier.symbol);
+
+  // TODO: This should just be a lookup table somewhere.
+  switch (name) {
+    case "Array.length":
+      name = "ARRAY_LENGTH";
+      break;
+
+    case "string.length":
+      name = "STRING_LENGTH";
+      break;
+  }
+
+  context.output.append(name);
 }
 
 function emitIntegerLiteral(context: EmitContext, sourceFile: ast.SourceFile, integerLiteral: ast.IntegerLiteral) {

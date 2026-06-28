@@ -1,4 +1,4 @@
-import { TextPosition } from "../program.ts";
+import { uint } from "../../shims.ts";
 
 export enum SyntaxKind {
   AdditiveExpression,
@@ -48,6 +48,8 @@ export enum SyntaxKind {
   ParenthesizedExpression,
 
   PointerType,
+
+  Program,
 
   PropertyAccessExpression,
 
@@ -120,6 +122,11 @@ export enum Operator {
   SlashEquals,
 }
 
+export interface TextPosition {
+  line: uint;
+  column: uint;
+}
+
 export interface SyntaxNode {
   kind: SyntaxKind;
 
@@ -145,24 +152,28 @@ export enum BindFlags {
 
   Module = 1 << 1,
 
-  Var = 1 << 2,
+  Type = 1 << 2,
 
-  Enum = 1 << 3,
+  Var = 1 << 3,
 
-  EnumMember = 1 << 4,
+  Enum = 1 << 4,
 
-  Func = 1 << 5,
+  EnumMember = 1 << 5,
 
-  Struct = 1 << 6,
+  Func = 1 << 6,
 
-  StructMember = 1 << 7,
+  Struct = 1 << 7,
 
-  Method = 1 << 8,
+  StructMember = 1 << 8,
+
+  Method = 1 << 9,
 }
 
 export type SymbolTable = Record<string, Symbol>;
 
 export interface Symbol {
+  parent?: Symbol;
+
   sourceFileName: string;
 
   name: string;
@@ -170,8 +181,6 @@ export interface Symbol {
   flags: BindFlags;
 
   members?: SymbolTable;
-
-  builtinName?: string;
 }
 
 export interface BindNode extends SyntaxNode {
@@ -190,6 +199,29 @@ export interface Scope extends BindNode {
   locals: SymbolTable;
 
   nextSymbolScope?: Scope;
+}
+
+export interface Diagnostic {
+  // The fileName of the source file the diagnositic is associated with.
+  fileName: string;
+
+  // The position in the source file.
+  pos: TextPosition;
+
+  // The message of the diagnostic.
+  message: string;
+}
+
+export interface Program extends SyntaxNode, Scope {
+  kind: SyntaxKind.Program;
+
+  // Path to the entry source file.
+  entryFileName: string;
+
+  // Map of [sourceFilePath] => SourceFile
+  sourceFiles: Record<string, SourceFile>;
+
+  diagnostics: Diagnostic[];
 }
 
 export interface SourceFile extends SyntaxNode, Scope {

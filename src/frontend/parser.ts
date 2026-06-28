@@ -2,7 +2,6 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import * as ast from "./ast/mod.ts";
 import * as scanner from "./scanner.ts";
-import * as program from "./program.ts";
 import { bool, int, nameof } from "../shims.ts";
 
 export interface ParserLogger {
@@ -13,7 +12,7 @@ interface ParserContext {
   logger?: ParserLogger;
   entryFileName: string;
   sourceFiles: Record<string, ast.SourceFile>;
-  diagnostics: program.Diagnostic[];
+  diagnostics: ast.Diagnostic[];
 }
 
 interface ParserSourceFileContext {
@@ -39,10 +38,10 @@ export enum ParserErrorKind {
   UnknownExpression,
 }
 
-export interface ParserError extends program.Diagnostic {
+export interface ParserError extends ast.Diagnostic {
   kind: ParserErrorKind;
   fileName: string;
-  pos: program.TextPosition;
+  pos: ast.TextPosition;
   message: string;
 }
 
@@ -64,7 +63,7 @@ function parserError(
   };
 }
 
-function getPos(context: ParserSourceFileContext): program.TextPosition {
+function getPos(context: ParserSourceFileContext): ast.TextPosition {
   return context.tokens[context.index].pos;
 }
 
@@ -152,7 +151,7 @@ function resync(context: ParserSourceFileContext, tokenTypes: scanner.TokenType[
 export async function parse(
   entryFileName: string,
   logger?: ParserLogger,
-): Promise<program.Program> {
+): Promise<ast.Program> {
   const context: ParserContext = {
     logger,
     entryFileName,
@@ -163,9 +162,14 @@ export async function parse(
   context.sourceFiles[entryFileName] = await parseSourceFile(context, entryFileName);
 
   return {
+    kind: ast.SyntaxKind.Program,
+    startPos: { line: 0, column: 0 },
+    endPos: { line: 0, column: 0 },
     entryFileName,
     sourceFiles: context.sourceFiles,
     diagnostics: context.diagnostics,
+    bindState: ast.BindState.Uninitialized,
+    locals: {},
   };
 }
 
@@ -197,7 +201,7 @@ export async function parseSourceFile(
     try {
       statements.push(await parseTopLevelStatement(context));
     } catch (error) {
-      context.base.diagnostics.push(<program.Diagnostic> error);
+      context.base.diagnostics.push(<ast.Diagnostic> error);
       resync(context, TOP_LEVEL_STATEMENT_TOKEN_TYPES);
     }
   }
@@ -571,7 +575,7 @@ function parseStatementBlock(context: ParserSourceFileContext): ast.StatementBlo
     try {
       statements.push(parseBlockLevelStatement(context));
     } catch (error) {
-      context.base.diagnostics.push(<program.Diagnostic> error);
+      context.base.diagnostics.push(<ast.Diagnostic> error);
       resync(context, [scanner.TokenType.Semicolon, scanner.TokenType.CloseBrace]);
 
       // TODO: peek(context).type can be replaced with check
