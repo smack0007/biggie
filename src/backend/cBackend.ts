@@ -758,9 +758,9 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
   const args = [...callExpression.arguments];
 
   if (
-    ast.isPropertyAccessExpression(callExpression.expression) &&
-    callExpression.expression.name.symbol &&
-    hasFlag(callExpression.expression.name.symbol.flags, ast.BindFlags.Method)
+    callExpression.symbol &&
+    hasFlag(callExpression.symbol.flags, ast.BindFlags.Method) &&
+    ast.isPropertyAccessExpression(callExpression.expression)
   ) {
     emitIdentifier(context, sourceFile, callExpression.expression.name);
     args.unshift(callExpression.expression.expression);

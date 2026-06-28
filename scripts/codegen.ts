@@ -49,7 +49,7 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
   const bindNodeInterfaces: string[] = [];
 
   for (const line of syntaxTreeContents) {
-    if (line.startsWith("export interface ") && !line.endsWith("{}")) {
+    if (line.startsWith("export interface ")) {
       const parts = line.split(" ");
 
       const interfaceName = parts[2];

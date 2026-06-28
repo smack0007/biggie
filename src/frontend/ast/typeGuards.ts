@@ -14,6 +14,7 @@ import {
   EnumDeclaration,
   EnumMember,
   EqualityExpression,
+  Expression,
   ExpressionStatement,
   FuncDeclaration,
   Identifier,
@@ -31,6 +32,7 @@ import {
   ReturnStatement,
   Scope,
   SourceFile,
+  Statement,
   StatementBlock,
   StringLiteral,
   StructDeclaration,
@@ -39,6 +41,7 @@ import {
   StructMember,
   SyntaxKind,
   SyntaxNode,
+  TypeNode,
   TypeReference,
   UnaryExpression,
   VarDeclaration,
@@ -65,6 +68,7 @@ export function isBindNode(node: SyntaxNode): node is BindNode {
   return (
     node.kind == SyntaxKind.EnumDeclaration ||
     node.kind == SyntaxKind.EnumMember ||
+    node.kind == SyntaxKind.Expression ||
     node.kind == SyntaxKind.FuncDeclaration ||
     node.kind == SyntaxKind.Identifier ||
     node.kind == SyntaxKind.ImportDeclaration ||
@@ -121,6 +125,28 @@ export function isEqualityExpression(node: SyntaxNode): node is EqualityExpressi
   return node.kind == SyntaxKind.EqualityExpression;
 }
 
+export function isExpression(node: SyntaxNode): node is Expression {
+  return (
+    node.kind == SyntaxKind.AdditiveExpression ||
+    node.kind == SyntaxKind.ArrayLiteral ||
+    node.kind == SyntaxKind.AssignmentExpression ||
+    node.kind == SyntaxKind.BooleanLiteral ||
+    node.kind == SyntaxKind.CallExpression ||
+    node.kind == SyntaxKind.ComparisonExpression ||
+    node.kind == SyntaxKind.ElementAccessExpression ||
+    node.kind == SyntaxKind.EqualityExpression ||
+    node.kind == SyntaxKind.Identifier ||
+    node.kind == SyntaxKind.IntegerLiteral ||
+    node.kind == SyntaxKind.LogicalExpression ||
+    node.kind == SyntaxKind.MultiplicativeExpression ||
+    node.kind == SyntaxKind.ParenthesizedExpression ||
+    node.kind == SyntaxKind.PropertyAccessExpression ||
+    node.kind == SyntaxKind.StringLiteral ||
+    node.kind == SyntaxKind.StructLiteral ||
+    node.kind == SyntaxKind.UnaryExpression
+  );
+}
+
 export function isExpressionStatement(node: SyntaxNode): node is ExpressionStatement {
   return node.kind == SyntaxKind.ExpressionStatement;
 }
@@ -175,6 +201,7 @@ export function isQualifiedName(node: SyntaxNode): node is QualifiedName {
 
 export function isReference(node: SyntaxNode): node is Reference {
   return (
+    node.kind == SyntaxKind.Expression ||
     node.kind == SyntaxKind.Identifier
   );
 }
@@ -194,6 +221,16 @@ export function isScope(node: SyntaxNode): node is Scope {
 
 export function isSourceFile(node: SyntaxNode): node is SourceFile {
   return node.kind == SyntaxKind.SourceFile;
+}
+
+export function isStatement(node: SyntaxNode): node is Statement {
+  return (
+    node.kind == SyntaxKind.DeferStatement ||
+    node.kind == SyntaxKind.ExpressionStatement ||
+    node.kind == SyntaxKind.IfStatement ||
+    node.kind == SyntaxKind.ReturnStatement ||
+    node.kind == SyntaxKind.WhileStatement
+  );
 }
 
 export function isStatementBlock(node: SyntaxNode): node is StatementBlock {
@@ -218,6 +255,14 @@ export function isStructLiteralElement(node: SyntaxNode): node is StructLiteralE
 
 export function isStructMember(node: SyntaxNode): node is StructMember {
   return node.kind == SyntaxKind.StructMember;
+}
+
+export function isTypeNode(node: SyntaxNode): node is TypeNode {
+  return (
+    node.kind == SyntaxKind.ArrayType ||
+    node.kind == SyntaxKind.PointerType ||
+    node.kind == SyntaxKind.TypeReference
+  );
 }
 
 export function isTypeReference(node: SyntaxNode): node is TypeReference {

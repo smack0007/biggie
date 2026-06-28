@@ -162,14 +162,15 @@ function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFil
       case ast.SyntaxKind.VarDeclaration:
         bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> node);
         return false;
+    }
 
-      case ast.SyntaxKind.PropertyAccessExpression:
-        bindPropertyAccessExpression(program, sourceFile, <ast.PropertyAccessExpression> node);
-        return true;
+    if (ast.isExpression(node)) {
+      return bindExpression(program, sourceFile, node);
+    }
 
-      // Just ignoring types for now.
-      case ast.SyntaxKind.TypeReference:
-        return false;
+    if (ast.isTypeNode(node)) {
+      bindTypeNode(program, sourceFile, node);
+      return false;
     }
 
     return true;
@@ -363,40 +364,51 @@ function bindVarDeclaration(
   varDeclaration.bindState = ast.BindState.Finished;
 }
 
+function bindExpression(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  expression: ast.Expression,
+): bool {
+  switch (expression.kind) {
+    case ast.SyntaxKind.CallExpression:
+      bindCallExpression(program, sourceFile, <ast.CallExpression> expression);
+      return false;
+
+    case ast.SyntaxKind.PropertyAccessExpression:
+      bindPropertyAccessExpression(program, sourceFile, <ast.PropertyAccessExpression> expression);
+      return false;
+
+    case ast.SyntaxKind.Identifier:
+      bindIdentifier(program, sourceFile, <ast.Identifier> expression);
+      return false;
+  }
+
+  return true;
+}
+
+function bindCallExpression(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  callExpression: ast.CallExpression,
+): void {
+  bindExpression(program, sourceFile, callExpression.expression);
+  for (const arg of callExpression.arguments) {
+    bindExpression(program, sourceFile, arg);
+  }
+
+  callExpression.symbol = callExpression.expression.symbol;
+
+  callExpression.bindState = BindState.Finished;
+}
+
 function bindPropertyAccessExpression(
   program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   propertyAccessExpression: ast.PropertyAccessExpression,
 ): void {
-  let lhsSymbol: ast.Symbol | undefined;
+  bindExpression(program, sourceFile, propertyAccessExpression.expression);
+  bindIdentifier(program, sourceFile, propertyAccessExpression.name, propertyAccessExpression.expression.symbol);
 
-  if (propertyAccessExpression.expression.kind == ast.SyntaxKind.Identifier) {
-    const leftIdentifier = <ast.Identifier> propertyAccessExpression.expression;
-    bindIdentifier(program, sourceFile, leftIdentifier);
-    lhsSymbol = leftIdentifier.symbol;
-  } else if (propertyAccessExpression.expression.kind == ast.SyntaxKind.PropertyAccessExpression) {
-    const leftPropertyAccessExpression = <ast.PropertyAccessExpression> propertyAccessExpression.expression;
-    bindPropertyAccessExpression(program, sourceFile, leftPropertyAccessExpression);
-    lhsSymbol = leftPropertyAccessExpression.symbol;
-  } else {
-    throw bindError(
-      BindErrorKind.Unexpected,
-      `Unexpected lhs expression in ${nameof(bindPropertyAccessExpression)}: ${
-        ast.SyntaxKind[propertyAccessExpression.expression.kind]
-      }`,
-      propertyAccessExpression,
-    );
-  }
-
-  if (!lhsSymbol) {
-    throw bindError(
-      BindErrorKind.Unexpected,
-      `LHS symbol in ${nameof(bindPropertyAccessExpression)} is null.`,
-      propertyAccessExpression,
-    );
-  }
-
-  bindIdentifier(program, sourceFile, propertyAccessExpression.name, lhsSymbol);
   propertyAccessExpression.symbol = propertyAccessExpression.name.symbol;
 
   propertyAccessExpression.bindState = BindState.Finished;
@@ -435,4 +447,12 @@ function bindIdentifier(
   }
 
   identifier.bindState = ast.BindState.Finished;
+}
+
+function bindTypeNode(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  typeNode: ast.TypeNode,
+): void {
+  // TODO: Implement this.
 }
