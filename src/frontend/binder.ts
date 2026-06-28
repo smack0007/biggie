@@ -345,11 +345,8 @@ function bindVarDeclaration(
     } else {
       const identifier = <ast.Identifier> typeReference.typeName;
 
-      // HACK: Ignore int32 for now.
-      if (identifier.value != "int32") {
-        const symbol = getSymbolByName(varDeclaration, identifier.value);
-        members = symbol.members;
-      }
+      const symbol = getSymbolByName(varDeclaration, identifier.value);
+      members = symbol.members;
     }
   }
 
@@ -412,11 +409,6 @@ function bindIdentifier(
   parentSymbol?: ast.Symbol,
 ): void {
   if (identifier.symbol) {
-    return;
-  }
-
-  // HACK: Ignore println for now.
-  if (identifier.value == "println") {
     return;
   }
 

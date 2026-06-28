@@ -40,6 +40,14 @@ export const globals = builtinSymbolTable(
     ),
   ),
   builtinSymbol(
+    "int32",
+    BindFlags.Type,
+  ),
+  builtinSymbol(
+    "println",
+    BindFlags.Func,
+  ),
+  builtinSymbol(
     "string",
     BindFlags.Type,
     builtinSymbolTable(
