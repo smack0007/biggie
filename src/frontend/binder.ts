@@ -454,5 +454,36 @@ function bindTypeNode(
   sourceFile: Required<ast.SourceFile>,
   typeNode: ast.TypeNode,
 ): void {
-  // TODO: Implement this.
+  if (ast.isArrayType(typeNode)) {
+    bindArrayType(program, sourceFile, typeNode);
+  } else if (ast.isPointerType(typeNode)) {
+    bindPointerType(program, sourceFile, typeNode);
+  } else {
+    bindTypeReference(program, sourceFile, <ast.TypeReference> typeNode);
+  }
+}
+
+function bindArrayType(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  arrayType: ast.ArrayType,
+): void {
+}
+
+function bindPointerType(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  pointerType: ast.PointerType,
+): void {
+}
+
+function bindTypeReference(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  typeReference: ast.TypeReference,
+): void {
+  if (ast.isQualifiedName(typeReference.typeName)) {
+  } else {
+    typeReference.symbol = getSymbolByName(typeReference, typeReference.typeName.value);
+  }
 }

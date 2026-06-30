@@ -25,8 +25,6 @@ export enum SyntaxKind {
 
   EqualityExpression,
 
-  Expression,
-
   ExpressionStatement,
 
   FuncArgument,
@@ -453,7 +451,7 @@ export interface PropertyAccessExpression extends Expression {
   name: Identifier;
 }
 
-export interface TypeNode extends SyntaxNode {}
+export interface TypeNode extends SyntaxNode, Reference {}
 
 export interface ArrayType extends TypeNode {
   kind: SyntaxKind.ArrayType;

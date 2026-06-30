@@ -1261,6 +1261,7 @@ function parsePointerType(context: ParserSourceFileContext): ast.PointerType {
     startPos,
     endPos,
     elementType,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1283,6 +1284,7 @@ function parseArrayType(context: ParserSourceFileContext): ast.ArrayType {
     startPos,
     endPos,
     elementType,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1299,6 +1301,7 @@ function parseTypeReference(context: ParserSourceFileContext): ast.TypeReference
     startPos,
     endPos,
     typeName,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 

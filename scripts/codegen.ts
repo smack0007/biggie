@@ -10,6 +10,11 @@ import { formatFile } from "./utils.ts";
 
 const ROOT_PATH = resolve(import.meta.dirname!, "..");
 
+const BASE_NODES = [
+  "Expression",
+  "TypeNode",
+];
+
 const TYPE_GUARDS_NOT_TO_EMIT = [
   "Diagnostic",
   "SyntaxNode",
@@ -47,6 +52,7 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
   const typeGuardsToEmit: string[] = [];
   const typeMap: Record<string, string[]> = { BindNode: [] };
   const bindNodeInterfaces: string[] = [];
+  const baseNodeInterfaces: Record<string, string[]> = Object.fromEntries(BASE_NODES.map((x) => [x, []]));
 
   for (const line of syntaxTreeContents) {
     if (line.startsWith("export interface ")) {
@@ -63,7 +69,9 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
           .map((x) => x.endsWith(",") ? x.substring(0, x.length - 1) : x);
 
         for (const extendedInterface of extendedInterfaces) {
-          if (extendedInterface != "BindNode") {
+          const isBindNode = extendedInterface == "BindNode";
+          const isBaseNode = BASE_NODES.includes(extendedInterface);
+          if (!isBindNode && !isBaseNode) {
             if (typeMap[extendedInterface] == undefined) {
               typeMap[extendedInterface] = [];
             }
@@ -73,13 +81,28 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
             if (bindNodeInterfaces.includes(extendedInterface) && !typeMap["BindNode"].includes(interfaceName)) {
               typeMap["BindNode"].push(interfaceName);
             }
-          } else {
+          } else if (isBindNode) {
             bindNodeInterfaces.push(interfaceName);
+          } else if (isBaseNode) {
+            baseNodeInterfaces[extendedInterface].push(interfaceName);
           }
         }
       }
     }
   }
+
+  typeMap["Expression"] = baseNodeInterfaces["Expression"];
+  typeMap["TypeNode"] = baseNodeInterfaces["TypeNode"];
+
+  for (const key of Object.keys(typeMap)) {
+    for (const baseNode of BASE_NODES) {
+      if (typeMap[key].includes(baseNode)) {
+        typeMap[key] = [...new Set([...typeMap[key].filter((x) => x != baseNode), ...baseNodeInterfaces[baseNode]])];
+      }
+    }
+  }
+
+  console.info(typeMap);
 
   output.appendLine(`import { SyntaxKind, SyntaxNode, ${typeGuardsToEmit.join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();

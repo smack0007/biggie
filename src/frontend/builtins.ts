@@ -40,6 +40,10 @@ export const globals = builtinSymbolTable(
     ),
   ),
   builtinSymbol(
+    "int",
+    BindFlags.Type,
+  ),
+  builtinSymbol(
     "int32",
     BindFlags.Type,
   ),
@@ -53,5 +57,9 @@ export const globals = builtinSymbolTable(
     builtinSymbolTable(
       builtinSymbol("length", BindFlags.Method),
     ),
+  ),
+  builtinSymbol(
+    "void",
+    BindFlags.Type,
   ),
 );
