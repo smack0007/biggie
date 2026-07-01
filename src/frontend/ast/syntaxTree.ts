@@ -471,7 +471,7 @@ export interface TypeReference extends TypeNode {
   typeName: QualifiedName | Identifier;
 }
 
-export interface QualifiedName extends SyntaxNode {
+export interface QualifiedName extends SyntaxNode, Reference {
   kind: SyntaxKind.QualifiedName;
 
   left: Identifier;

@@ -127,6 +127,26 @@ function getSymbolByName(node: ast.SyntaxNode, name: string): ast.Symbol {
   throw bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${name}".`, node);
 }
 
+function getSymbolMemberByIdentifier(symbol: ast.Symbol, identifier: ast.Identifier): ast.Symbol {
+  if (!symbol.members) {
+    throw bindError(
+      BindErrorKind.Unexpected,
+      `members is null in symbol "${symbol.name}"`,
+      identifier,
+    );
+  }
+
+  if (!symbol.members[identifier.value]) {
+    throw bindError(
+      BindErrorKind.MissingSymbol,
+      `Failed to get member symbol "${identifier.value}" from "${symbol.name}"`,
+      identifier,
+    );
+  }
+
+  return symbol.members[identifier.value];
+}
+
 function setExport(node: ast.SyntaxNode, sourceFile: ast.SourceFile, name: string, value: ast.Symbol): void {
   if (sourceFile.exports[name] !== undefined) {
     throw bindError(
@@ -427,23 +447,7 @@ function bindIdentifier(
   if (!parentSymbol) {
     identifier.symbol = getSymbolByName(identifier, identifier.value);
   } else {
-    if (!parentSymbol.members) {
-      throw bindError(
-        BindErrorKind.Unexpected,
-        `parentSymbol.members is null in ${nameof(bindIdentifier)}: ${identifier.value}`,
-        identifier,
-      );
-    }
-
-    if (!parentSymbol.members[identifier.value]) {
-      throw bindError(
-        BindErrorKind.MissingSymbol,
-        `Failed to get member symbol ${identifier.value} from ${parentSymbol.name}`,
-        identifier,
-      );
-    }
-
-    identifier.symbol = parentSymbol.members[identifier.value];
+    identifier.symbol = getSymbolMemberByIdentifier(parentSymbol, identifier);
   }
 
   identifier.bindState = ast.BindState.Finished;
@@ -483,7 +487,22 @@ function bindTypeReference(
   typeReference: ast.TypeReference,
 ): void {
   if (ast.isQualifiedName(typeReference.typeName)) {
+    typeReference.typeName.left.symbol = getSymbolByName(typeReference, typeReference.typeName.left.value);
+    typeReference.typeName.left.bindState = ast.BindState.Finished;
+
+    typeReference.typeName.right.symbol = getSymbolMemberByIdentifier(
+      typeReference.typeName.left.symbol,
+      typeReference.typeName.right,
+    );
+    typeReference.typeName.right.bindState = ast.BindState.Finished;
+
+    typeReference.typeName.symbol = typeReference.typeName.right.symbol;
   } else {
-    typeReference.symbol = getSymbolByName(typeReference, typeReference.typeName.value);
+    typeReference.typeName.symbol = getSymbolByName(typeReference, typeReference.typeName.value);
   }
+
+  typeReference.typeName.bindState = ast.BindState.Finished;
+
+  typeReference.symbol = typeReference.typeName.symbol;
+  typeReference.bindState = ast.BindState.Finished;
 }

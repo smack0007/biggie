@@ -1326,6 +1326,7 @@ function parseQualifiedTypeOrIdentifier(context: ParserSourceFileContext): ast.Q
       endPos,
       left: result,
       right: right,
+      bindState: ast.BindState.Uninitialized,
     };
   }
 
