@@ -1,7 +1,6 @@
 import * as assert from "node:assert";
 import { describe, it } from "node:test";
 import * as args from "./args.ts";
-import { ParserError } from "./frontend/parser.ts";
 
 describe("args", () => {
   describe("parse", () => {
@@ -33,21 +32,21 @@ describe("args", () => {
 
     it("fails with no args", () => {
       assert.throws(() => args.parse([]), (error) => {
-        assert.equal((error as ParserError).kind, args.ParseErrorKind.NoInputFiles);
+        assert.equal((error as args.ParseError).kind, args.ParseErrorKind.NoInputFiles);
         return true;
       });
     });
 
     it("fails with unknown option", () => {
       assert.throws(() => args.parse(["--foo", "bar", "input.big"]), (error) => {
-        assert.equal((error as ParserError).kind, args.ParseErrorKind.UnkownOption);
+        assert.equal((error as args.ParseError).kind, args.ParseErrorKind.UnkownOption);
         return true;
       });
     });
 
     it("fails when no input files are provided", () => {
       assert.throws(() => args.parse(["-o", "output.c"]), (error) => {
-        assert.equal((error as ParserError).kind, args.ParseErrorKind.NoInputFiles);
+        assert.equal((error as args.ParseError).kind, args.ParseErrorKind.NoInputFiles);
         return true;
       });
     });

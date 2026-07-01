@@ -192,7 +192,9 @@ function isLetter(ch: char): boolean {
 }
 
 export function scan(text: string): Array<Token> {
-  text += "\n"; // Ensure new line at EOF
+  // TODO: Don't know why we need 2 newlines here but otherwise
+  // some edge cases don't work.
+  text += "\n\n"; // Ensure new line at EOF
 
   const token: Array<Token> = [];
 
