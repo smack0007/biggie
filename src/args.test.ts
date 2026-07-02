@@ -1,10 +1,10 @@
 import * as assert from "node:assert";
 import { describe, it } from "node:test";
-import * as args from "./args.ts";
+import { parse, ParseError, ParseErrorKind, ParseResult } from "./args.ts";
 
 describe("args", () => {
   describe("parse", () => {
-    const testData: [string[], args.ParseResult][] = [
+    const testData: [string[], ParseResult][] = [
       [["--output", "./output.c", "./input.big"], {
         debug: false,
         output: "./output.c",
@@ -26,27 +26,27 @@ describe("args", () => {
 
     for (const [input, output] of testData) {
       it(`parses "${input.join(" ")}" correctly`, () => {
-        assert.deepStrictEqual(args.parse(input), output);
+        assert.deepStrictEqual(parse(input), output);
       });
     }
 
     it("fails with no args", () => {
-      assert.throws(() => args.parse([]), (error) => {
-        assert.equal((error as args.ParseError).kind, args.ParseErrorKind.NoInputFiles);
+      assert.throws(() => parse([]), (error) => {
+        assert.equal((error as ParseError).kind, ParseErrorKind.NoInputFiles);
         return true;
       });
     });
 
     it("fails with unknown option", () => {
-      assert.throws(() => args.parse(["--foo", "bar", "input.big"]), (error) => {
-        assert.equal((error as args.ParseError).kind, args.ParseErrorKind.UnkownOption);
+      assert.throws(() => parse(["--foo", "bar", "input.big"]), (error) => {
+        assert.equal((error as ParseError).kind, ParseErrorKind.UnkownOption);
         return true;
       });
     });
 
     it("fails when no input files are provided", () => {
-      assert.throws(() => args.parse(["-o", "output.c"]), (error) => {
-        assert.equal((error as args.ParseError).kind, args.ParseErrorKind.NoInputFiles);
+      assert.throws(() => parse(["-o", "output.c"]), (error) => {
+        assert.equal((error as ParseError).kind, ParseErrorKind.NoInputFiles);
         return true;
       });
     });
