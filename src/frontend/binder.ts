@@ -1,6 +1,6 @@
 import * as ast from "./ast/mod.ts";
 import * as builtins from "./builtins.ts";
-import { bool, nameof } from "../shims.ts";
+import { bool, hasFlag, nameof } from "../shims.ts";
 import { BindState } from "./ast/syntaxTree.ts";
 import { dump } from "../utils.ts";
 
@@ -8,6 +8,7 @@ export enum BindErrorKind {
   Unexpected,
   MissingSymbol,
   DuplicateSymbol,
+  DuplicateSymbolMember,
 }
 
 export interface BindError extends ast.Diagnostic {
@@ -19,6 +20,9 @@ export interface BindError extends ast.Diagnostic {
 
 function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): BindError {
   const sourceFile = getSourceFileFromNode(node);
+
+  // TODO: There should be some --debug flag that will pack this into the error.
+  //console.error((new Error()).stack);
 
   return {
     kind,
@@ -47,6 +51,20 @@ function setLocal(node: ast.SyntaxNode, scope: ast.Scope, name: string, value: a
   }
 
   scope.locals[name] = value;
+}
+
+function setMember(node: ast.SyntaxNode, symbol: ast.Symbol, name: string, value: ast.Symbol): void {
+  if (!symbol.members) {
+    throw bindError(BindErrorKind.Unexpected, `Symbol named "${symbol.name}" does not have members.`, node);
+  }
+  if (symbol.members[name] !== undefined) {
+    throw bindError(
+      BindErrorKind.DuplicateSymbolMember,
+      `Symbol "${symbol.name}" already has a member named "${name}".`,
+      node,
+    );
+  }
+  symbol.members[name] = value;
 }
 
 function bindInitialize(program: ast.Program): void {
@@ -82,7 +100,12 @@ function bindInitialize(program: ast.Program): void {
 
 function getParentNode<T>(node: ast.SyntaxNode, typeGuard: (node: ast.SyntaxNode) => bool): T {
   if (node.parent == null) {
-    throw bindError(BindErrorKind.Unexpected, `${ast.SyntaxKind[node.kind]} node has no parent.`, node);
+    // Cannot use bindError here as that will try and find the parent SourceFile. This error
+    // indicates an error in the binder anyways.
+    throw <BindError> {
+      kind: BindErrorKind.Unexpected,
+      message: `${ast.SyntaxKind[node.kind]} node has no parent.`,
+    };
   }
 
   node = node.parent;
@@ -110,7 +133,21 @@ function getScopeFromNode(node: ast.SyntaxNode): Required<ast.Scope> {
   return getParentNode<Required<ast.Scope>>(node, ast.isScope);
 }
 
-function getSymbolByName(node: ast.SyntaxNode, name: string): ast.Symbol {
+function getSymbol(node: ast.Declaration | ast.Reference, expectedFlags: ast.BindFlags): ast.Symbol {
+  if (!node.symbol) {
+    throw bindError(BindErrorKind.Unexpected, `symbol is null in ${ast.SyntaxKind[node.kind]} node`, node);
+  }
+  if (!hasFlag(node.symbol.flags, expectedFlags)) {
+    throw bindError(
+      BindErrorKind.Unexpected,
+      `symbol did not have expected flag ${ast.BindFlags[expectedFlags]} in ${ast.SyntaxKind[node.kind]} node`,
+      node,
+    );
+  }
+  return node.symbol;
+}
+
+function getSymbolFromScopeByName(node: ast.SyntaxNode, name: string): ast.Symbol {
   let scope = getScopeFromNode(node);
 
   while (scope.nextSymbolScope) {
@@ -161,7 +198,6 @@ function setExport(node: ast.SyntaxNode, sourceFile: ast.SourceFile, name: strin
 
 function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFile>): void {
   ast.walk(sourceFile, (node: ast.SyntaxNode): bool => {
-    // TODO: All the cases in the switch should return false that binding only occurs once.
     switch (node.kind) {
       case ast.SyntaxKind.ImportDeclaration:
         bindImportDeclaration(program, sourceFile, <ast.ImportDeclaration> node);
@@ -173,7 +209,11 @@ function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFil
 
       case ast.SyntaxKind.FuncDeclaration:
         bindFuncDeclaration(program, sourceFile, <ast.FuncDeclaration> node);
-        return true;
+        return false;
+
+      case ast.SyntaxKind.MethodDeclaration:
+        bindMethodDeclaration(program, sourceFile, <ast.MethodDeclaration> node);
+        return false;
 
       case ast.SyntaxKind.StructDeclaration:
         bindStructDeclaration(program, sourceFile, <ast.StructDeclaration> node);
@@ -182,15 +222,6 @@ function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFil
       case ast.SyntaxKind.VarDeclaration:
         bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> node);
         return false;
-    }
-
-    if (ast.isExpression(node)) {
-      return bindExpression(program, sourceFile, node);
-    }
-
-    if (ast.isTypeNode(node)) {
-      bindTypeNode(program, sourceFile, node);
-      return false;
     }
 
     return true;
@@ -273,6 +304,14 @@ function bindFuncDeclaration(
   sourceFile: Required<ast.SourceFile>,
   funcDeclaration: ast.FuncDeclaration,
 ): void {
+  for (const arg of funcDeclaration.arguments) {
+    // TODO: Do we need to have bindFuncArgument here?
+    bindVarDeclaration(program, sourceFile, arg);
+  }
+
+  bindTypeNode(program, sourceFile, funcDeclaration.returnType);
+  bindStatementBlock(program, sourceFile, funcDeclaration.body);
+
   funcDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: funcDeclaration.name.value,
@@ -285,6 +324,38 @@ function bindFuncDeclaration(
   }
 
   funcDeclaration.bindState = ast.BindState.Finished;
+}
+
+function bindMethodDeclaration(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  methodDeclaration: ast.MethodDeclaration,
+): void {
+  bindVarDeclaration(program, sourceFile, methodDeclaration.receiver);
+
+  for (const arg of methodDeclaration.arguments) {
+    // TODO: Do we need to have bindMethodArgument here?
+    bindVarDeclaration(program, sourceFile, arg);
+  }
+
+  bindTypeNode(program, sourceFile, methodDeclaration.returnType);
+  bindStatementBlock(program, sourceFile, methodDeclaration.body);
+
+  methodDeclaration.symbol = {
+    sourceFileName: sourceFile.fileName,
+    name: methodDeclaration.name.value,
+    flags: ast.BindFlags.Method,
+  };
+
+  const receiverType = getSymbol(methodDeclaration.receiver.type, ast.BindFlags.Struct);
+  setMember(methodDeclaration, receiverType, methodDeclaration.symbol.name, methodDeclaration.symbol);
+
+  // TODO: How do we export methods?
+  // if (methodDeclaration.isExported) {
+  //   setExport(methodDeclaration, sourceFile, methodDeclaration.symbol.name, methodDeclaration.symbol);
+  // }
+
+  methodDeclaration.bindState = ast.BindState.Finished;
 }
 
 function bindStructDeclaration(
@@ -301,7 +372,7 @@ function bindStructDeclaration(
   structDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structDeclaration.name.value,
-    flags: ast.BindFlags.Var,
+    flags: ast.BindFlags.Struct,
     members,
   };
 
@@ -332,6 +403,8 @@ function bindVarDeclaration(
   sourceFile: Required<ast.SourceFile>,
   varDeclaration: ast.VarDeclaration,
 ): void {
+  bindTypeNode(program, sourceFile, varDeclaration.type);
+
   let members: ast.SymbolTable | undefined;
 
   if (ast.isArrayType(varDeclaration.type)) {
@@ -342,7 +415,7 @@ function bindVarDeclaration(
     if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
       const qualifiedName = <ast.QualifiedName> typeReference.typeName;
 
-      const module = getSymbolByName(varDeclaration, qualifiedName.left.value);
+      const module = getSymbolFromScopeByName(varDeclaration, qualifiedName.left.value);
 
       if (!module.members) {
         throw bindError(
@@ -366,7 +439,7 @@ function bindVarDeclaration(
     } else {
       const identifier = <ast.Identifier> typeReference.typeName;
 
-      const symbol = getSymbolByName(varDeclaration, identifier.value);
+      const symbol = getSymbolFromScopeByName(varDeclaration, identifier.value);
       members = symbol.members;
     }
   }
@@ -382,6 +455,32 @@ function bindVarDeclaration(
   setLocal(varDeclaration, scope, varDeclaration.symbol.name, varDeclaration.symbol);
 
   varDeclaration.bindState = ast.BindState.Finished;
+}
+
+function bindStatementBlock(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  statementBlock: ast.StatementBlock,
+): void {
+  for (const statement of statementBlock.statements) {
+    switch (statement.kind) {
+      case ast.SyntaxKind.ExpressionStatement:
+        bindExpressionStatement(program, sourceFile, <ast.ExpressionStatement> statement);
+        break;
+
+      case ast.SyntaxKind.VarDeclaration:
+        bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> statement);
+        break;
+    }
+  }
+}
+
+function bindExpressionStatement(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  expressionStatement: ast.ExpressionStatement,
+): void {
+  bindExpression(program, sourceFile, expressionStatement.expression);
 }
 
 function bindExpression(
@@ -445,7 +544,7 @@ function bindIdentifier(
   }
 
   if (!parentSymbol) {
-    identifier.symbol = getSymbolByName(identifier, identifier.value);
+    identifier.symbol = getSymbolFromScopeByName(identifier, identifier.value);
   } else {
     identifier.symbol = getSymbolMemberByIdentifier(parentSymbol, identifier);
   }
@@ -487,7 +586,7 @@ function bindTypeReference(
   typeReference: ast.TypeReference,
 ): void {
   if (ast.isQualifiedName(typeReference.typeName)) {
-    typeReference.typeName.left.symbol = getSymbolByName(typeReference, typeReference.typeName.left.value);
+    typeReference.typeName.left.symbol = getSymbolFromScopeByName(typeReference, typeReference.typeName.left.value);
     typeReference.typeName.left.bindState = ast.BindState.Finished;
 
     typeReference.typeName.right.symbol = getSymbolMemberByIdentifier(
@@ -498,7 +597,7 @@ function bindTypeReference(
 
     typeReference.typeName.symbol = typeReference.typeName.right.symbol;
   } else {
-    typeReference.typeName.symbol = getSymbolByName(typeReference, typeReference.typeName.value);
+    typeReference.typeName.symbol = getSymbolFromScopeByName(typeReference, typeReference.typeName.value);
   }
 
   typeReference.typeName.bindState = ast.BindState.Finished;

@@ -210,6 +210,10 @@ function emitTopLevelStatement(context: EmitContext, sourceFile: ast.SourceFile,
       emitFuncDeclaration(context, sourceFile, <ast.FuncDeclaration> node);
       break;
 
+    case ast.SyntaxKind.MethodDeclaration:
+      emitMethodDeclaration(context, sourceFile, <ast.MethodDeclaration> node);
+      break;
+
     case ast.SyntaxKind.StructDeclaration:
       emitStructDeclaration(context, sourceFile, <ast.StructDeclaration> node);
       break;
@@ -287,17 +291,17 @@ function emitEnumDeclaration(
 function emitFuncDeclaration(
   context: EmitContext,
   sourceFile: ast.SourceFile,
-  functionDeclaration: ast.FuncDeclaration,
+  funcDeclaration: ast.FuncDeclaration,
 ): void {
-  emitType(context, sourceFile, functionDeclaration.returnType);
+  emitType(context, sourceFile, funcDeclaration.returnType);
 
-  const mappedFunctionName = getNamePrefix(context) + functionDeclaration.name.value;
-  mapModuleTypeName(context, sourceFile, functionDeclaration.name.value, mappedFunctionName);
+  const mappedFunctionName = getNamePrefix(context) + funcDeclaration.name.value;
+  mapModuleTypeName(context, sourceFile, funcDeclaration.name.value, mappedFunctionName);
 
   context.output.append(` ${mappedFunctionName}(`);
 
-  for (let i = 0; i < functionDeclaration.arguments.length; i++) {
-    const arg = functionDeclaration.arguments[i];
+  for (let i = 0; i < funcDeclaration.arguments.length; i++) {
+    const arg = funcDeclaration.arguments[i];
 
     if (i != 0) {
       context.output.append(", ");
@@ -309,7 +313,41 @@ function emitFuncDeclaration(
 
   context.output.append(") ");
 
-  emitStatementBlock(context, sourceFile, functionDeclaration.body);
+  emitStatementBlock(context, sourceFile, funcDeclaration.body);
+
+  context.output.appendLine();
+}
+
+function emitMethodDeclaration(
+  context: EmitContext,
+  sourceFile: ast.SourceFile,
+  methodDeclaration: ast.MethodDeclaration,
+): void {
+  emitType(context, sourceFile, methodDeclaration.returnType);
+
+  // TODO: Get rid of !.
+  const mappedReceiverName = getMappedModuleTypeName(context, sourceFile, methodDeclaration.receiver.type.symbol!.name);
+
+  const mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
+  mapModuleTypeName(context, sourceFile, methodDeclaration.name.value, mappedFunctionName);
+
+  context.output.append(` ${mappedFunctionName}(`);
+
+  emitType(context, sourceFile, methodDeclaration.receiver.type);
+  context.output.append(` ${methodDeclaration.receiver.name.value}`);
+
+  for (let i = 0; i < methodDeclaration.arguments.length; i++) {
+    const arg = methodDeclaration.arguments[i];
+
+    context.output.append(", ");
+
+    emitType(context, sourceFile, arg.type);
+    context.output.append(` ${arg.name.value}`);
+  }
+
+  context.output.append(") ");
+
+  emitStatementBlock(context, sourceFile, methodDeclaration.body);
 
   context.output.appendLine();
 }
@@ -479,7 +517,7 @@ interface EmitTypeResult {
   arrayDepth: int;
 }
 
-function newEmitTypeResult(): EmitTypeResult {
+function makeEmitTypeResult(): EmitTypeResult {
   return {
     arrayDepth: 0,
   };
@@ -492,7 +530,7 @@ function emitType(
   result: EmitTypeResult | undefined = undefined,
 ): EmitTypeResult {
   if (result == undefined) {
-    result = newEmitTypeResult();
+    result = makeEmitTypeResult();
   }
 
   switch (type.kind) {
@@ -519,7 +557,7 @@ function emitArrayType(
   result: EmitTypeResult | undefined = undefined,
 ): EmitTypeResult {
   if (result == undefined) {
-    result = newEmitTypeResult();
+    result = makeEmitTypeResult();
   }
 
   result.arrayDepth += 1;
@@ -535,7 +573,7 @@ function emitPointerType(
   result: EmitTypeResult | undefined = undefined,
 ): EmitTypeResult {
   if (result == undefined) {
-    result = newEmitTypeResult();
+    result = makeEmitTypeResult();
   }
 
   emitType(context, sourceFile, pointerType.elementType, result);
@@ -551,7 +589,7 @@ function emitTypeReference(
   result: EmitTypeResult | undefined = undefined,
 ): EmitTypeResult {
   if (result == undefined) {
-    result = newEmitTypeResult();
+    result = makeEmitTypeResult();
   }
 
   if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {

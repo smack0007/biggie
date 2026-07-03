@@ -16,6 +16,7 @@ import {
   IfStatement,
   ImportDeclaration,
   LogicalExpression,
+  MethodDeclaration,
   MultiplicativeExpression,
   ParenthesizedExpression,
   PointerType,
@@ -124,6 +125,16 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         walkArrayParent(funcDeclaration.arguments, <WalkCallback> callback, funcDeclaration);
         walkParent(funcDeclaration.returnType, <WalkCallback> callback, funcDeclaration);
         walkParent(funcDeclaration.body, <WalkCallback> callback, funcDeclaration);
+      }
+      break;
+    case SyntaxKind.MethodDeclaration:
+      {
+        const methodDeclaration = <MethodDeclaration> node;
+        walkParent(methodDeclaration.receiver, <WalkCallback> callback, methodDeclaration);
+        walkParent(methodDeclaration.name, <WalkCallback> callback, methodDeclaration);
+        walkArrayParent(methodDeclaration.arguments, <WalkCallback> callback, methodDeclaration);
+        walkParent(methodDeclaration.returnType, <WalkCallback> callback, methodDeclaration);
+        walkParent(methodDeclaration.body, <WalkCallback> callback, methodDeclaration);
       }
       break;
     case SyntaxKind.StructDeclaration:

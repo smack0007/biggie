@@ -41,6 +41,8 @@ export enum SyntaxKind {
 
   LogicalExpression,
 
+  MethodDeclaration,
+
   MultiplicativeExpression,
 
   ParenthesizedExpression,
@@ -276,6 +278,22 @@ export interface FuncDeclaration extends SyntaxNode, Declaration, Scope {
   kind: SyntaxKind.FuncDeclaration;
 
   isExported: boolean;
+
+  name: Identifier;
+
+  arguments: VarDeclaration[];
+
+  returnType: TypeNode;
+
+  body: StatementBlock;
+}
+
+export interface MethodDeclaration extends SyntaxNode, Declaration, Scope {
+  kind: SyntaxKind.MethodDeclaration;
+
+  isExported: boolean;
+
+  receiver: VarDeclaration;
 
   name: Identifier;
 

@@ -22,6 +22,7 @@ import {
   ImportDeclaration,
   IntegerLiteral,
   LogicalExpression,
+  MethodDeclaration,
   MultiplicativeExpression,
   ParenthesizedExpression,
   PointerType,
@@ -82,11 +83,13 @@ export function isBindNode(node: SyntaxNode): node is BindNode {
     node.kind == SyntaxKind.ImportDeclaration ||
     node.kind == SyntaxKind.IntegerLiteral ||
     node.kind == SyntaxKind.LogicalExpression ||
+    node.kind == SyntaxKind.MethodDeclaration ||
     node.kind == SyntaxKind.MultiplicativeExpression ||
     node.kind == SyntaxKind.ParenthesizedExpression ||
     node.kind == SyntaxKind.PointerType ||
     node.kind == SyntaxKind.Program ||
     node.kind == SyntaxKind.PropertyAccessExpression ||
+    node.kind == SyntaxKind.QualifiedName ||
     node.kind == SyntaxKind.SourceFile ||
     node.kind == SyntaxKind.StatementBlock ||
     node.kind == SyntaxKind.StringLiteral ||
@@ -117,6 +120,7 @@ export function isDeclaration(node: SyntaxNode): node is Declaration {
     node.kind == SyntaxKind.EnumMember ||
     node.kind == SyntaxKind.FuncDeclaration ||
     node.kind == SyntaxKind.ImportDeclaration ||
+    node.kind == SyntaxKind.MethodDeclaration ||
     node.kind == SyntaxKind.StructDeclaration ||
     node.kind == SyntaxKind.StructMember ||
     node.kind == SyntaxKind.VarDeclaration
@@ -193,6 +197,10 @@ export function isLogicalExpression(node: SyntaxNode): node is LogicalExpression
   return node.kind == SyntaxKind.LogicalExpression;
 }
 
+export function isMethodDeclaration(node: SyntaxNode): node is MethodDeclaration {
+  return node.kind == SyntaxKind.MethodDeclaration;
+}
+
 export function isMultiplicativeExpression(node: SyntaxNode): node is MultiplicativeExpression {
   return node.kind == SyntaxKind.MultiplicativeExpression;
 }
@@ -235,6 +243,7 @@ export function isReference(node: SyntaxNode): node is Reference {
     node.kind == SyntaxKind.ParenthesizedExpression ||
     node.kind == SyntaxKind.PointerType ||
     node.kind == SyntaxKind.PropertyAccessExpression ||
+    node.kind == SyntaxKind.QualifiedName ||
     node.kind == SyntaxKind.StringLiteral ||
     node.kind == SyntaxKind.StructLiteral ||
     node.kind == SyntaxKind.TypeReference ||
@@ -249,6 +258,7 @@ export function isReturnStatement(node: SyntaxNode): node is ReturnStatement {
 export function isScope(node: SyntaxNode): node is Scope {
   return (
     node.kind == SyntaxKind.FuncDeclaration ||
+    node.kind == SyntaxKind.MethodDeclaration ||
     node.kind == SyntaxKind.Program ||
     node.kind == SyntaxKind.SourceFile ||
     node.kind == SyntaxKind.StatementBlock

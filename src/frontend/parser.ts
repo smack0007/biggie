@@ -104,7 +104,12 @@ function peek(context: ParserSourceFileContext): scanner.Token {
 
 function previous(context: ParserSourceFileContext): scanner.Token {
   const index = context.index > 0 ? context.index - 1 : 0;
-  return context.tokens[index < context.tokens.length ? index : context.tokens.length - 1];
+  return context.tokens[index];
+}
+
+function next(context: ParserSourceFileContext): scanner.Token {
+  const index = context.index + 1 < context.tokens.length ? context.index + 1 : context.tokens.length - 1;
+  return context.tokens[index];
 }
 
 function expect(
@@ -266,7 +271,7 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
       break;
 
     case scanner.TokenType.Func:
-      result = parseFuncDeclaration(context, { isExported });
+      result = parseFuncOrMethodDeclaration(context, { isExported });
       break;
 
     case scanner.TokenType.Struct:
@@ -328,7 +333,8 @@ async function parseImportDeclaration(
 }
 
 interface ParseVariableDeclarationOptions {
-  isFunctionArgument?: bool;
+  skipInitializer?: bool;
+  skipVarKeyword?: bool;
 }
 
 function parseVarDeclaration(
@@ -338,7 +344,7 @@ function parseVarDeclaration(
   context.logger.enter(nameof(parseVarDeclaration));
   const startPos = getPos(context);
 
-  if (!options.isFunctionArgument) {
+  if (!options.skipVarKeyword) {
     expect(context, scanner.TokenType.Var, nameof(parseVarDeclaration));
     advance(context);
   }
@@ -351,12 +357,14 @@ function parseVarDeclaration(
   const type = parseType(context);
 
   let initializer: ast.Expression | undefined = undefined;
-  if (check(context, scanner.TokenType.Equals)) {
-    advance(context);
-    initializer = parseExpression(context);
+  if (!options.skipInitializer) {
+    if (check(context, scanner.TokenType.Equals)) {
+      advance(context);
+      initializer = parseExpression(context);
+    }
   }
 
-  if (!options.isFunctionArgument) {
+  if (!options.skipVarKeyword) {
     expect(context, scanner.TokenType.Semicolon, nameof(parseVarDeclaration));
     advance(context);
   }
@@ -442,13 +450,28 @@ function parseEnumMember(context: ParserSourceFileContext): ast.EnumMember {
   };
 }
 
-interface ParseFunctionDeclarationOptions {
+interface ParseFuncOrMethodDeclarationOptions {
   isExported?: bool;
+}
+
+function parseFuncOrMethodDeclaration(
+  context: ParserSourceFileContext,
+  options: ParseFuncOrMethodDeclarationOptions = {},
+): ast.FuncDeclaration | ast.MethodDeclaration {
+  context.logger.enter(nameof(parseFuncOrMethodDeclaration));
+
+  expect(context, scanner.TokenType.Func, nameof(parseFuncOrMethodDeclaration));
+
+  if (next(context).type != scanner.TokenType.OpenParen) {
+    return parseFuncDeclaration(context, options);
+  }
+
+  return parseMethodDeclaration(context, options);
 }
 
 function parseFuncDeclaration(
   context: ParserSourceFileContext,
-  options: ParseFunctionDeclarationOptions = {},
+  options: ParseFuncOrMethodDeclarationOptions = {},
 ): ast.FuncDeclaration {
   context.logger.enter(nameof(parseFuncDeclaration));
   const startPos = getPos(context);
@@ -463,7 +486,7 @@ function parseFuncDeclaration(
 
   const args: ast.VarDeclaration[] = [];
   while (check(context, scanner.TokenType.Identifier)) {
-    args.push(parseVarDeclaration(context, { isFunctionArgument: true }));
+    args.push(parseVarDeclaration(context, { skipVarKeyword: true }));
 
     if (peek(context).type == scanner.TokenType.Comma) {
       advance(context);
@@ -488,6 +511,69 @@ function parseFuncDeclaration(
     startPos,
     endPos,
     isExported: !!options.isExported,
+    name,
+    arguments: args,
+    returnType,
+    body,
+    bindState: ast.BindState.Uninitialized,
+    locals: {},
+  };
+}
+
+function parseMethodDeclaration(
+  context: ParserSourceFileContext,
+  options: ParseFuncOrMethodDeclarationOptions = {},
+): ast.MethodDeclaration {
+  context.logger.enter(nameof(parseMethodDeclaration));
+  const startPos = getPos(context);
+
+  expect(context, scanner.TokenType.Func, nameof(parseMethodDeclaration));
+  advance(context);
+
+  expect(context, scanner.TokenType.OpenParen, nameof(parseMethodDeclaration));
+  advance(context);
+
+  const receiver = parseVarDeclaration(context, {
+    skipVarKeyword: true,
+    skipInitializer: true,
+  });
+
+  expect(context, scanner.TokenType.CloseParen, nameof(parseMethodDeclaration));
+  advance(context);
+
+  const name = parseIdentifier(context);
+
+  expect(context, scanner.TokenType.OpenParen, nameof(parseMethodDeclaration));
+  advance(context);
+
+  const args: ast.VarDeclaration[] = [];
+  while (check(context, scanner.TokenType.Identifier)) {
+    args.push(parseVarDeclaration(context, { skipVarKeyword: true }));
+
+    if (peek(context).type == scanner.TokenType.Comma) {
+      advance(context);
+    }
+  }
+
+  expect(context, scanner.TokenType.CloseParen, nameof(parseMethodDeclaration));
+  advance(context);
+
+  // TODO: Should we just remove the colon before the return type?
+  expect(context, scanner.TokenType.Colon, nameof(parseMethodDeclaration));
+  advance(context);
+
+  const returnType = parseType(context);
+
+  const body = parseStatementBlock(context);
+
+  const endPos = getPos(context);
+
+  return {
+    kind: ast.SyntaxKind.MethodDeclaration,
+    startPos,
+    endPos,
+    isExported: !!options.isExported,
+    receiver,
     name,
     arguments: args,
     returnType,

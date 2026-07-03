@@ -1,0 +1,16 @@
+struct Person {
+  name: string;
+  age: int;
+}
+
+func (person: Person) sayHello(): void {
+  println("Hello %s, you are %d years old!", person.name, person.age);
+}
+
+func main(): int {  
+  var person: Person = { "Buddy", 42 };
+  
+  person.sayHello();
+
+  return 0;
+}
