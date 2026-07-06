@@ -533,10 +533,7 @@ function parseMethodDeclaration(
   expect(context, scanner.TokenType.OpenParen, nameof(parseMethodDeclaration));
   advance(context);
 
-  const receiver = parseVarDeclaration(context, {
-    skipVarKeyword: true,
-    skipInitializer: true,
-  });
+  const receiver = parseMethodReciever(context);
 
   expect(context, scanner.TokenType.CloseParen, nameof(parseMethodDeclaration));
   advance(context);
@@ -580,6 +577,31 @@ function parseMethodDeclaration(
     body,
     bindState: ast.BindState.Uninitialized,
     locals: {},
+  };
+}
+
+function parseMethodReciever(
+  context: ParserSourceFileContext,
+): ast.MethodReceiver {
+  context.logger.enter(nameof(parseMethodReciever));
+  const startPos = getPos(context);
+
+  const identifier = parseIdentifier(context);
+
+  expect(context, scanner.TokenType.Colon, nameof(parseVarDeclaration));
+  advance(context);
+
+  const type = parseTypeReference(context);
+
+  const endPos = getPos(context);
+
+  return {
+    kind: ast.SyntaxKind.MethodReceiver,
+    startPos,
+    endPos,
+    name: identifier,
+    type: type,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 

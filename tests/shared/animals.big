@@ -1,0 +1,4 @@
+export struct Dog {
+  name: string;
+  isGood: bool;
+}

@@ -1,0 +1,24 @@
+import "../shared/person.big"
+import animals "../shared/animals.big"
+
+func (person: Person) sayHello(): void {
+  println("Hello %s, you are %d years old!", person.name, person.age);
+}
+
+func (dog: animals.Dog) sayHello(): void {
+  if (dog.isGood) {
+    println("Who's a good boy? %s is a good boy!", dog.name);
+  } else {
+
+  }
+}
+
+func main(): int {  
+  var person: Person = { "Buddy", 42 };  
+  person.sayHello();
+
+  var rex: animals.Dog = { "Rex", true };
+  rex.sayHello();
+
+  return 0;
+}

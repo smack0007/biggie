@@ -2,8 +2,13 @@ import * as ast from "../frontend/ast/mod.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
 import { dump } from "../utils.ts";
+import { getSymbol } from "./shared.ts";
 
 interface EmitContext {
+  // TODO: We probably just need to have a reference to
+  // the program at this point.
+  entryFileName: string;
+
   output: OutputWriter;
   outputStack: OutputWriter[];
 
@@ -31,6 +36,7 @@ interface EmitResult {
 
 export function emit(program: ast.Program): EmitResult {
   const context: EmitContext = {
+    entryFileName: program.entryFileName,
     output: new OutputWriter(),
     outputStack: [],
     sourceFiles: program.sourceFiles,
@@ -158,6 +164,20 @@ function getBlockLevelStatementPlaceholder(context: EmitContext): OutputWriter {
   }
 
   return context.blockLevelStatementPlaceholderStack[context.blockLevelStatementPlaceholderStack.length - 1];
+}
+
+function getSourceFileFromSymbol(context: EmitContext, symbol: ast.Symbol): ast.SourceFile {
+  if (symbol.sourceFileName == "<builtin>") {
+    return context.sourceFiles[context.entryFileName];
+  }
+
+  const sourceFile = context.sourceFiles[symbol.sourceFileName];
+
+  if (!sourceFile) {
+    throw new Error(`Unknown source file "${symbol.sourceFileName}" in ${nameof(getSourceFileFromSymbol)}`);
+  }
+
+  return sourceFile;
 }
 
 function emitPreamble(context: EmitContext): void {
@@ -325,11 +345,36 @@ function emitMethodDeclaration(
 ): void {
   emitType(context, sourceFile, methodDeclaration.returnType);
 
-  // TODO: Get rid of !.
-  const mappedReceiverName = getMappedModuleTypeName(context, sourceFile, methodDeclaration.receiver.type.symbol!.name);
+  let mappedFunctionName = "";
+  if (ast.isQualifiedName(methodDeclaration.receiver.type.typeName)) {
+    const module = getImportedModuleByAlias(context, methodDeclaration.receiver.type.typeName.left.value);
 
-  const mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
-  mapModuleTypeName(context, sourceFile, methodDeclaration.name.value, mappedFunctionName);
+    let mappedReceiverName = "";
+
+    if (module) {
+      mappedReceiverName = getMappedModuleTypeName(
+        context,
+        module,
+        getSymbol(methodDeclaration.receiver.type.typeName.right, ast.BindFlags.Type).name,
+      ) ?? "";
+
+      mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
+      mapModuleTypeName(context, module, methodDeclaration.name.value, mappedFunctionName);
+    }
+
+    if (!mappedReceiverName) {
+      mappedReceiverName = methodDeclaration.receiver.type.typeName.left.value + "." +
+        methodDeclaration.receiver.type.typeName.right.value;
+    }
+  } else {
+    const mappedReceiverName = getMappedModuleTypeName(
+      context,
+      sourceFile,
+      getSymbol(methodDeclaration.receiver.type, ast.BindFlags.Struct).name,
+    )!;
+    mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
+    mapModuleTypeName(context, sourceFile, methodDeclaration.name.value, mappedFunctionName);
+  }
 
   context.output.append(` ${mappedFunctionName}(`);
 
@@ -592,7 +637,7 @@ function emitTypeReference(
     result = makeEmitTypeResult();
   }
 
-  if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
+  if (ast.isQualifiedName(typeReference.typeName)) {
     const module = getImportedModuleByAlias(context, typeReference.typeName.left.value);
 
     // TODO: emitIdentifier also does mapping, maybe this is unnecessary.
@@ -800,7 +845,21 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     hasFlag(callExpression.symbol.flags, ast.BindFlags.Method) &&
     ast.isPropertyAccessExpression(callExpression.expression)
   ) {
-    emitIdentifier(context, sourceFile, callExpression.expression.name);
+    const receiver = callExpression.expression.expression.symbol?.type;
+
+    if (!receiver) {
+      throw new Error("Expected receiver not to be null.");
+    }
+
+    const module = getSourceFileFromSymbol(context, receiver);
+    const mappedFunctionName = getMappedModuleTypeName(context, module, callExpression.expression.name.value);
+
+    if (mappedFunctionName) {
+      context.output.append(mappedFunctionName);
+    } else {
+      emitIdentifier(context, sourceFile, callExpression.expression.name);
+    }
+
     args.unshift(callExpression.expression.expression);
     beginVaradicArgs += 1;
   } else {

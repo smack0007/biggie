@@ -197,35 +197,33 @@ function setExport(node: ast.SyntaxNode, sourceFile: ast.SourceFile, name: strin
 }
 
 function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFile>): void {
-  ast.walk(sourceFile, (node: ast.SyntaxNode): bool => {
+  for (const node of sourceFile.statements) {
     switch (node.kind) {
       case ast.SyntaxKind.ImportDeclaration:
         bindImportDeclaration(program, sourceFile, <ast.ImportDeclaration> node);
-        return false;
+        break;
 
       case ast.SyntaxKind.EnumDeclaration:
         bindEnumDeclaration(program, sourceFile, <ast.EnumDeclaration> node);
-        return false;
+        break;
 
       case ast.SyntaxKind.FuncDeclaration:
         bindFuncDeclaration(program, sourceFile, <ast.FuncDeclaration> node);
-        return false;
+        break;
 
       case ast.SyntaxKind.MethodDeclaration:
         bindMethodDeclaration(program, sourceFile, <ast.MethodDeclaration> node);
-        return false;
+        break;
 
       case ast.SyntaxKind.StructDeclaration:
         bindStructDeclaration(program, sourceFile, <ast.StructDeclaration> node);
-        return false;
+        break;
 
       case ast.SyntaxKind.VarDeclaration:
         bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> node);
-        return false;
+        break;
     }
-
-    return true;
-  });
+  }
 
   sourceFile.bindState = ast.BindState.Finished;
 }
@@ -331,7 +329,7 @@ function bindMethodDeclaration(
   sourceFile: Required<ast.SourceFile>,
   methodDeclaration: ast.MethodDeclaration,
 ): void {
-  bindVarDeclaration(program, sourceFile, methodDeclaration.receiver);
+  bindMethodReceiver(program, sourceFile, methodDeclaration.receiver);
 
   for (const arg of methodDeclaration.arguments) {
     // TODO: Do we need to have bindMethodArgument here?
@@ -358,6 +356,26 @@ function bindMethodDeclaration(
   methodDeclaration.bindState = ast.BindState.Finished;
 }
 
+function bindMethodReceiver(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  methodReceiver: ast.MethodReceiver,
+): void {
+  bindTypeReference(program, sourceFile, methodReceiver.type);
+
+  methodReceiver.symbol = {
+    sourceFileName: sourceFile.fileName,
+    name: methodReceiver.name.value,
+    flags: ast.BindFlags.Var,
+    members: methodReceiver.type.symbol?.members,
+  };
+
+  const scope = getScopeFromNode(methodReceiver);
+  setLocal(methodReceiver, scope, methodReceiver.symbol.name, methodReceiver.symbol);
+
+  methodReceiver.bindState = ast.BindState.Finished;
+}
+
 function bindStructDeclaration(
   program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
@@ -372,7 +390,7 @@ function bindStructDeclaration(
   structDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structDeclaration.name.value,
-    flags: ast.BindFlags.Struct,
+    flags: ast.BindFlags.Type | ast.BindFlags.Struct,
     members,
   };
 
@@ -405,9 +423,12 @@ function bindVarDeclaration(
 ): void {
   bindTypeNode(program, sourceFile, varDeclaration.type);
 
+  let type: ast.Symbol | undefined = varDeclaration.type.symbol;
   let members: ast.SymbolTable | undefined;
 
   if (ast.isArrayType(varDeclaration.type)) {
+    // TODO: Implement this correctly.
+    type = builtins.globals["Array"];
     members = builtins.globals["Array"].members;
   } else if (varDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
     const typeReference = <ast.TypeReference> varDeclaration.type;
@@ -448,6 +469,7 @@ function bindVarDeclaration(
     sourceFileName: sourceFile.fileName,
     name: varDeclaration.name.value,
     flags: ast.BindFlags.Var,
+    type,
     members,
   };
 

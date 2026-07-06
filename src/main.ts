@@ -8,6 +8,7 @@ import * as binder from "./frontend/binder.ts";
 import * as parser from "./frontend/parser.ts";
 import * as scanner from "./frontend/scanner.ts";
 import { int } from "./shims.ts";
+import { dump } from "./utils.ts";
 
 main(process.argv.slice(2)).then(process.exit);
 
@@ -84,6 +85,14 @@ async function main(argv: string[]): Promise<int> {
   }
 
   await fs.writeFile(outputFileName, emitResult.code, "utf-8");
+
+  // TODO: The output from this is almost impossible to read. Make a function
+  // that will produce more readable output.
+  // await fs.writeFile(
+  //   path.join(path.dirname(outputFileName), path.basename(outputFileName)) + ".ast",
+  //   dump(program, { depth: 100 }),
+  //   "utf-8",
+  // );
 
   return 0;
 }

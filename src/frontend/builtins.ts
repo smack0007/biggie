@@ -40,6 +40,10 @@ export const globals = builtinSymbolTable(
     ),
   ),
   builtinSymbol(
+    "bool",
+    BindFlags.Type,
+  ),
+  builtinSymbol(
     "int",
     BindFlags.Type,
   ),

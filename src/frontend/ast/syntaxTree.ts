@@ -43,6 +43,8 @@ export enum SyntaxKind {
 
   MethodDeclaration,
 
+  MethodReceiver,
+
   MultiplicativeExpression,
 
   ParenthesizedExpression,
@@ -180,6 +182,8 @@ export interface Symbol {
 
   flags: BindFlags;
 
+  type?: Symbol;
+
   members?: SymbolTable;
 }
 
@@ -293,7 +297,7 @@ export interface MethodDeclaration extends SyntaxNode, Declaration, Scope {
 
   isExported: boolean;
 
-  receiver: VarDeclaration;
+  receiver: MethodReceiver;
 
   name: Identifier;
 
@@ -302,6 +306,14 @@ export interface MethodDeclaration extends SyntaxNode, Declaration, Scope {
   returnType: TypeNode;
 
   body: StatementBlock;
+}
+
+export interface MethodReceiver extends SyntaxNode, Declaration {
+  kind: SyntaxKind.MethodReceiver;
+
+  name: Identifier;
+
+  type: TypeReference;
 }
 
 export interface StructDeclaration extends SyntaxNode, Declaration {

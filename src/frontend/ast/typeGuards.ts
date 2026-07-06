@@ -23,6 +23,7 @@ import {
   IntegerLiteral,
   LogicalExpression,
   MethodDeclaration,
+  MethodReceiver,
   MultiplicativeExpression,
   ParenthesizedExpression,
   PointerType,
@@ -84,6 +85,7 @@ export function isBindNode(node: SyntaxNode): node is BindNode {
     node.kind == SyntaxKind.IntegerLiteral ||
     node.kind == SyntaxKind.LogicalExpression ||
     node.kind == SyntaxKind.MethodDeclaration ||
+    node.kind == SyntaxKind.MethodReceiver ||
     node.kind == SyntaxKind.MultiplicativeExpression ||
     node.kind == SyntaxKind.ParenthesizedExpression ||
     node.kind == SyntaxKind.PointerType ||
@@ -121,6 +123,7 @@ export function isDeclaration(node: SyntaxNode): node is Declaration {
     node.kind == SyntaxKind.FuncDeclaration ||
     node.kind == SyntaxKind.ImportDeclaration ||
     node.kind == SyntaxKind.MethodDeclaration ||
+    node.kind == SyntaxKind.MethodReceiver ||
     node.kind == SyntaxKind.StructDeclaration ||
     node.kind == SyntaxKind.StructMember ||
     node.kind == SyntaxKind.VarDeclaration
@@ -199,6 +202,10 @@ export function isLogicalExpression(node: SyntaxNode): node is LogicalExpression
 
 export function isMethodDeclaration(node: SyntaxNode): node is MethodDeclaration {
   return node.kind == SyntaxKind.MethodDeclaration;
+}
+
+export function isMethodReceiver(node: SyntaxNode): node is MethodReceiver {
+  return node.kind == SyntaxKind.MethodReceiver;
 }
 
 export function isMultiplicativeExpression(node: SyntaxNode): node is MultiplicativeExpression {

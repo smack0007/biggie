@@ -17,6 +17,7 @@ import {
   ImportDeclaration,
   LogicalExpression,
   MethodDeclaration,
+  MethodReceiver,
   MultiplicativeExpression,
   ParenthesizedExpression,
   PointerType,
@@ -135,6 +136,13 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         walkArrayParent(methodDeclaration.arguments, <WalkCallback> callback, methodDeclaration);
         walkParent(methodDeclaration.returnType, <WalkCallback> callback, methodDeclaration);
         walkParent(methodDeclaration.body, <WalkCallback> callback, methodDeclaration);
+      }
+      break;
+    case SyntaxKind.MethodReceiver:
+      {
+        const methodReceiver = <MethodReceiver> node;
+        walkParent(methodReceiver.name, <WalkCallback> callback, methodReceiver);
+        walkParent(methodReceiver.type, <WalkCallback> callback, methodReceiver);
       }
       break;
     case SyntaxKind.StructDeclaration:

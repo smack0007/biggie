@@ -4,8 +4,14 @@ export type Mutable<T> = {
   -readonly [P in keyof T]: T[P];
 };
 
-export function dump(value: unknown): string {
-  return inspect(value);
+export interface DumpOptions {
+  depth?: number;
+}
+
+export function dump(value: unknown, options: DumpOptions = {}): string {
+  return inspect(value, {
+    depth: options.depth,
+  });
 }
 
 export function firstLetterToLower(value: string): string {
