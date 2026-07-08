@@ -2,7 +2,6 @@ import * as ast from "../ast/mod.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
 import { dump } from "../utils.ts";
-import { getSymbol } from "./shared.ts";
 
 interface EmitContext {
   // TODO: We probably just need to have a reference to
@@ -355,7 +354,7 @@ function emitMethodDeclaration(
       mappedReceiverName = getMappedModuleTypeName(
         context,
         module,
-        getSymbol(methodDeclaration.receiver.type.typeName.right, ast.BindFlags.Type).name,
+        ast.getSymbol(methodDeclaration.receiver.type.typeName.right, ast.BindFlags.Type).name,
       ) ?? "";
 
       mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
@@ -370,7 +369,7 @@ function emitMethodDeclaration(
     const mappedReceiverName = getMappedModuleTypeName(
       context,
       sourceFile,
-      getSymbol(methodDeclaration.receiver.type, ast.BindFlags.Struct).name,
+      ast.getSymbol(methodDeclaration.receiver.type, ast.BindFlags.Struct).name,
     )!;
     mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
     mapModuleTypeName(context, sourceFile, methodDeclaration.name.value, mappedFunctionName);

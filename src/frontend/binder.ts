@@ -18,7 +18,7 @@ export interface BindError extends ast.Diagnostic {
 }
 
 function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): BindError {
-  const sourceFile = getSourceFileFromNode(node);
+  const sourceFile = ast.getSourceFileFromNode(node);
 
   // TODO: There should be some --debug flag that will pack this into the error.
   //console.error((new Error()).stack);
@@ -26,7 +26,7 @@ function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): 
   return {
     kind,
     message,
-    fileName: sourceFile.fileName,
+    fileName: sourceFile?.fileName ?? "<unknown>",
     pos: node.startPos,
   };
 }
@@ -121,27 +121,9 @@ function getParentNode<T>(node: ast.SyntaxNode, typeGuard: (node: ast.SyntaxNode
   return <T> node;
 }
 
-function getSourceFileFromNode(node: ast.SyntaxNode): Required<ast.SourceFile> {
-  return getParentNode<Required<ast.SourceFile>>(node, (node) => node.kind == ast.SyntaxKind.SourceFile);
-}
-
 // TODO: Can we get away with fewer Required<>s?
 function getScopeFromNode(node: ast.SyntaxNode): Required<ast.Scope> {
   return getParentNode<Required<ast.Scope>>(node, ast.isScope);
-}
-
-function getSymbol(node: ast.Declaration | ast.Reference, expectedFlags: ast.BindFlags): ast.Symbol {
-  if (!node.symbol) {
-    throw bindError(BindErrorKind.Unexpected, `symbol is null in ${ast.SyntaxKind[node.kind]} node`, node);
-  }
-  if (!hasFlag(node.symbol.flags, expectedFlags)) {
-    throw bindError(
-      BindErrorKind.Unexpected,
-      `symbol did not have expected flag ${ast.BindFlags[expectedFlags]} in ${ast.SyntaxKind[node.kind]} node`,
-      node,
-    );
-  }
-  return node.symbol;
 }
 
 function getSymbolFromScopeByName(node: ast.SyntaxNode, name: string): ast.Symbol {
@@ -342,7 +324,7 @@ function bindMethodDeclaration(
     flags: ast.BindFlags.Method,
   };
 
-  const receiverType = getSymbol(methodDeclaration.receiver.type, ast.BindFlags.Struct);
+  const receiverType = ast.getSymbol(methodDeclaration.receiver.type, ast.BindFlags.Struct);
   setMember(methodDeclaration, receiverType, methodDeclaration.symbol.name, methodDeclaration.symbol);
 
   // TODO: How do we export methods?
