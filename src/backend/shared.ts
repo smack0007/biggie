@@ -1,4 +1,4 @@
-import * as ast from "../frontend/ast/mod.ts";
+import * as ast from "../ast/mod.ts";
 import { hasFlag } from "../shims.ts";
 
 export enum BackendErrorKind {

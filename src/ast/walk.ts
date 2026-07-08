@@ -38,7 +38,7 @@ import {
   VarDeclaration,
   WhileStatement,
 } from "./syntaxTree.ts";
-import { bool } from "../../shims.ts";
+import { bool } from "../shims.ts";
 
 /**
  * @return Indicates whether or not descending further into the tree should continue.

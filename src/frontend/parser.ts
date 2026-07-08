@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import * as ast from "./ast/mod.ts";
+import * as ast from "../ast/mod.ts";
 import * as scanner from "./scanner.ts";
 import { bool, int, nameof } from "../shims.ts";
 

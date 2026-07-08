@@ -1,4 +1,4 @@
-import * as ast from "../frontend/ast/mod.ts";
+import * as ast from "../ast/mod.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
 import { dump } from "../utils.ts";

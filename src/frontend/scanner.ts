@@ -1,6 +1,6 @@
 import * as assert from "../assert.ts";
 import { char } from "../shims.ts";
-import { TextPosition } from "./ast/mod.ts";
+import { TextPosition } from "../ast/mod.ts";
 
 export enum TokenType {
   // Used to indicate the end of a list of tokens.

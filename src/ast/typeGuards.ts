@@ -65,7 +65,7 @@ export function isAssignmentExpression(node: SyntaxNode): node is AssignmentExpr
   return node.kind == SyntaxKind.AssignmentExpression;
 }
 
-export function isBooleanLiteral(node: SyntaxNode): node is BoolLiteral {
+export function isBoolLiteral(node: SyntaxNode): node is BoolLiteral {
   return node.kind == SyntaxKind.BoolLiteral;
 }
 
@@ -153,7 +153,7 @@ export function isImportDeclaration(node: SyntaxNode): node is ImportDeclaration
   return node.kind == SyntaxKind.ImportDeclaration;
 }
 
-export function isIntegerLiteral(node: SyntaxNode): node is IntLiteral {
+export function isIntLiteral(node: SyntaxNode): node is IntLiteral {
   return node.kind == SyntaxKind.IntLiteral;
 }
 

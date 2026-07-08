@@ -1,4 +1,4 @@
-import { uint } from "../../shims.ts";
+import { uint } from "../shims.ts";
 
 export enum SyntaxKind {
   AdditiveExpression,

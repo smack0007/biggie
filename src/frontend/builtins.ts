@@ -1,4 +1,4 @@
-import { BindFlags, Symbol, SymbolTable } from "./ast/syntaxTree.ts";
+import { BindFlags, Symbol, SymbolTable } from "../ast/syntaxTree.ts";
 
 const BUILTIN_SOURCE_FILE_NAME = "<builtin>";
 

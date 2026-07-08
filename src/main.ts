@@ -3,7 +3,7 @@ import * as path from "node:path";
 import * as process from "node:process";
 import * as args from "./args.ts";
 import * as cBackend from "./backend/cBackend.ts";
-import * as ast from "./frontend/ast/mod.ts";
+import * as ast from "./ast/mod.ts";
 import * as binder from "./frontend/binder.ts";
 import * as parser from "./frontend/parser.ts";
 import * as scanner from "./frontend/scanner.ts";

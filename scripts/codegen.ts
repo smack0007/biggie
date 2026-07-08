@@ -25,7 +25,7 @@ const TYPE_GUARDS_NOT_TO_EMIT = [
 main(argv.slice(2)).then(exit);
 
 async function main(_argv: string[]): Promise<int> {
-  const syntaxTreeContents = (await readFile(join(ROOT_PATH, "src", "frontend", "ast", "syntaxTree.ts"), "utf-8"))
+  const syntaxTreeContents = (await readFile(join(ROOT_PATH, "src", "ast", "syntaxTree.ts"), "utf-8"))
     .split(EOL)
     .map((x) => x.trim());
 
@@ -129,7 +129,7 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
     output.appendLine();
   }
 
-  await writeAndFormatFile(join(ROOT_PATH, "src", "frontend", "ast", "typeGuards.ts"), output);
+  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "typeGuards.ts"), output);
 }
 
 async function writeAstWalk(syntaxTreeContents: string[]): Promise<void> {
@@ -139,7 +139,7 @@ async function writeAstWalk(syntaxTreeContents: string[]): Promise<void> {
   importPlaceholder.append("import { SyntaxKind, SyntaxNode");
 
   output.appendLine(
-    `import { bool } from "../../shims.ts";
+    `import { bool } from "../shims.ts";
 
 /**
  * @return Indicates whether or not descending further into the tree should continue.
@@ -278,7 +278,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
 
   importPlaceholder.append(`} from "./syntaxTree.ts";`);
 
-  await writeAndFormatFile(join(ROOT_PATH, "src", "frontend", "ast", "walk.ts"), output);
+  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "walk.ts"), output);
 }
 
 async function writeAstNameof(syntaxTreeContents: string[]): Promise<void> {
@@ -327,7 +327,7 @@ async function writeAstNameof(syntaxTreeContents: string[]): Promise<void> {
     output.appendLine();
   }
 
-  await writeAndFormatFile(join(ROOT_PATH, "src", "frontend", "ast", "nameof.ts"), output);
+  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "nameof.ts"), output);
 }
 
 async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
@@ -446,7 +446,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   }
 
   const output = createAstOutputWriter();
-  output.appendLine(`import { uint } from "../../shims.ts";`);
+  output.appendLine(`import { uint } from "../shims.ts";`);
   output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
   output.appendLine(`export function makeTextPosition(line: uint, column: uint): TextPosition {
@@ -515,5 +515,5 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
     output.appendLine();
   }
 
-  await writeAndFormatFile(join(ROOT_PATH, "src", "frontend", "ast", "factories.ts"), output);
+  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "factories.ts"), output);
 }

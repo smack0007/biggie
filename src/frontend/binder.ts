@@ -1,7 +1,6 @@
-import * as ast from "./ast/mod.ts";
+import * as ast from "../ast/mod.ts";
 import * as builtins from "./builtins.ts";
 import { bool, hasFlag, nameof } from "../shims.ts";
-import { BindState } from "./ast/syntaxTree.ts";
 import { dump } from "../utils.ts";
 
 export enum BindErrorKind {
@@ -537,7 +536,7 @@ function bindCallExpression(
 
   callExpression.symbol = callExpression.expression.symbol;
 
-  callExpression.bindState = BindState.Finished;
+  callExpression.bindState = ast.BindState.Finished;
 }
 
 function bindPropertyAccessExpression(
@@ -550,7 +549,7 @@ function bindPropertyAccessExpression(
 
   propertyAccessExpression.symbol = propertyAccessExpression.name.symbol;
 
-  propertyAccessExpression.bindState = BindState.Finished;
+  propertyAccessExpression.bindState = ast.BindState.Finished;
 }
 
 function bindIdentifier(
