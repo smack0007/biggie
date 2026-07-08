@@ -4,7 +4,6 @@ import {
   ArrayLiteral,
   ArrayType,
   AssignmentExpression,
-  BindNode,
   BooleanLiteral,
   CallExpression,
   ComparisonExpression,
@@ -64,44 +63,6 @@ export function isArrayType(node: SyntaxNode): node is ArrayType {
 
 export function isAssignmentExpression(node: SyntaxNode): node is AssignmentExpression {
   return node.kind == SyntaxKind.AssignmentExpression;
-}
-
-export function isBindNode(node: SyntaxNode): node is BindNode {
-  return (
-    node.kind == SyntaxKind.AdditiveExpression ||
-    node.kind == SyntaxKind.ArrayLiteral ||
-    node.kind == SyntaxKind.ArrayType ||
-    node.kind == SyntaxKind.AssignmentExpression ||
-    node.kind == SyntaxKind.BooleanLiteral ||
-    node.kind == SyntaxKind.CallExpression ||
-    node.kind == SyntaxKind.ComparisonExpression ||
-    node.kind == SyntaxKind.ElementAccessExpression ||
-    node.kind == SyntaxKind.EnumDeclaration ||
-    node.kind == SyntaxKind.EnumMember ||
-    node.kind == SyntaxKind.EqualityExpression ||
-    node.kind == SyntaxKind.FuncDeclaration ||
-    node.kind == SyntaxKind.Identifier ||
-    node.kind == SyntaxKind.ImportDeclaration ||
-    node.kind == SyntaxKind.IntegerLiteral ||
-    node.kind == SyntaxKind.LogicalExpression ||
-    node.kind == SyntaxKind.MethodDeclaration ||
-    node.kind == SyntaxKind.MethodReceiver ||
-    node.kind == SyntaxKind.MultiplicativeExpression ||
-    node.kind == SyntaxKind.ParenthesizedExpression ||
-    node.kind == SyntaxKind.PointerType ||
-    node.kind == SyntaxKind.Program ||
-    node.kind == SyntaxKind.PropertyAccessExpression ||
-    node.kind == SyntaxKind.QualifiedName ||
-    node.kind == SyntaxKind.SourceFile ||
-    node.kind == SyntaxKind.StatementBlock ||
-    node.kind == SyntaxKind.StringLiteral ||
-    node.kind == SyntaxKind.StructDeclaration ||
-    node.kind == SyntaxKind.StructLiteral ||
-    node.kind == SyntaxKind.StructMember ||
-    node.kind == SyntaxKind.TypeReference ||
-    node.kind == SyntaxKind.UnaryExpression ||
-    node.kind == SyntaxKind.VarDeclaration
-  );
 }
 
 export function isBooleanLiteral(node: SyntaxNode): node is BooleanLiteral {

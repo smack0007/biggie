@@ -137,6 +137,8 @@ export interface SyntaxNode {
   endPos: TextPosition;
 
   parent?: SyntaxNode;
+
+  bindState: BindState;
 }
 
 export enum BindState {
@@ -187,19 +189,15 @@ export interface Symbol {
   members?: SymbolTable;
 }
 
-export interface BindNode extends SyntaxNode {
-  bindState: BindState;
-}
-
-export interface Declaration extends BindNode {
+export interface Declaration extends SyntaxNode {
   symbol?: Symbol;
 }
 
-export interface Reference extends BindNode {
+export interface Reference extends SyntaxNode {
   symbol?: Symbol;
 }
 
-export interface Scope extends BindNode {
+export interface Scope extends SyntaxNode {
   locals: SymbolTable;
 
   nextSymbolScope?: Scope;
@@ -285,7 +283,7 @@ export interface FuncDeclaration extends SyntaxNode, Declaration, Scope {
 
   name: Identifier;
 
-  arguments: VarDeclaration[];
+  args: VarDeclaration[];
 
   returnType: TypeNode;
 
@@ -301,7 +299,7 @@ export interface MethodDeclaration extends SyntaxNode, Declaration, Scope {
 
   name: Identifier;
 
-  arguments: VarDeclaration[];
+  args: VarDeclaration[];
 
   returnType: TypeNode;
 
@@ -462,7 +460,7 @@ export interface CallExpression extends Expression {
 
   expression: Expression;
 
-  arguments: Expression[];
+  args: Expression[];
 }
 
 export interface ElementAccessExpression extends Expression {

@@ -66,12 +66,18 @@ async function main(argv: string[]): Promise<int> {
   try {
     binder.bind(program);
   } catch (error) {
-    const bindError = <binder.BindError> error;
-    console.error(
-      `Error: (${bindError.pos.line}, ${bindError.pos.column}) ${bindError.fileName} [${
-        binder.BindErrorKind[bindError.kind]
-      }] ${bindError.message}`,
-    );
+    try {
+      const bindError = <binder.BindError> error;
+      console.error(
+        `Error: (${bindError.pos.line}, ${bindError.pos.column}) ${bindError.fileName} [${
+          binder.BindErrorKind[bindError.kind]
+        }] ${bindError.message}`,
+      );
+    } catch {
+      console.error(
+        `Error: ${error}`,
+      );
+    }
     return 1;
   }
 
@@ -88,11 +94,11 @@ async function main(argv: string[]): Promise<int> {
 
   // TODO: The output from this is almost impossible to read. Make a function
   // that will produce more readable output.
-  // await fs.writeFile(
-  //   path.join(path.dirname(outputFileName), path.basename(outputFileName)) + ".ast",
-  //   dump(program, { depth: 100 }),
-  //   "utf-8",
-  // );
+  await fs.writeFile(
+    path.join(path.dirname(outputFileName), path.basename(outputFileName)) + ".ast",
+    ast.toGraphviz(program),
+    "utf-8",
+  );
 
   return 0;
 }

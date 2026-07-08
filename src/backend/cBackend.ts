@@ -320,8 +320,8 @@ function emitFuncDeclaration(
 
   context.output.append(` ${mappedFunctionName}(`);
 
-  for (let i = 0; i < funcDeclaration.arguments.length; i++) {
-    const arg = funcDeclaration.arguments[i];
+  for (let i = 0; i < funcDeclaration.args.length; i++) {
+    const arg = funcDeclaration.args[i];
 
     if (i != 0) {
       context.output.append(", ");
@@ -381,8 +381,8 @@ function emitMethodDeclaration(
   emitType(context, sourceFile, methodDeclaration.receiver.type);
   context.output.append(` ${methodDeclaration.receiver.name.value}`);
 
-  for (let i = 0; i < methodDeclaration.arguments.length; i++) {
-    const arg = methodDeclaration.arguments[i];
+  for (let i = 0; i < methodDeclaration.args.length; i++) {
+    const arg = methodDeclaration.args[i];
 
     context.output.append(", ");
 
@@ -803,7 +803,7 @@ function emitBooleanLiteral(context: EmitContext, sourceFile: ast.SourceFile, bo
 function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, callExpression: ast.CallExpression) {
   // HACK: For now just check for the "println" function to treat it as a varadic function.
   let isVaradicCall = false;
-  let beginVaradicArgs = callExpression.arguments.length;
+  let beginVaradicArgs = callExpression.args.length;
   let varadicArgsArrayName = "";
   if (callExpression.expression.kind == ast.SyntaxKind.Identifier) {
     const functionName = (<ast.Identifier> callExpression.expression).value;
@@ -819,12 +819,12 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     pushOutput(context, placeholder);
 
     const varadicVariableNames: string[] = [];
-    for (let i = beginVaradicArgs; i < callExpression.arguments.length; i += 1) {
+    for (let i = beginVaradicArgs; i < callExpression.args.length; i += 1) {
       const varadicVariableName = `__v${context.tmpVariableIndex++}`;
       varadicVariableNames.push(varadicVariableName);
       // TODO: Would be nice if we didn't have to use 'auto' here.
       context.output.append(`auto ${varadicVariableName} = `);
-      emitExpression(context, sourceFile, callExpression.arguments[i]);
+      emitExpression(context, sourceFile, callExpression.args[i]);
       context.output.appendLine(";");
     }
 
@@ -838,7 +838,7 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
 
   // Copy the arguments into a new array, if we have a method we'll push into the
   // front of the array.
-  const args = [...callExpression.arguments];
+  const args = [...callExpression.args];
 
   if (
     callExpression.symbol &&
@@ -857,6 +857,7 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     if (mappedFunctionName) {
       context.output.append(mappedFunctionName);
     } else {
+      // FIX: This leads to only one method can be set per name.
       emitIdentifier(context, sourceFile, callExpression.expression.name);
     }
 

@@ -77,13 +77,11 @@ function bindInitialize(program: ast.Program): void {
       (node: ast.SyntaxNode, parent: ast.SyntaxNode): bool => {
         node.parent = parent;
 
-        if (ast.isBindNode(node)) {
-          if (ast.isScope(node)) {
-            node.nextSymbolScope = getParentNode<ast.Scope>(node, ast.isScope);
-          }
-
-          node.bindState = ast.BindState.Initialized;
+        if (ast.isScope(node)) {
+          node.nextSymbolScope = getParentNode<ast.Scope>(node, ast.isScope);
         }
+
+        node.bindState = ast.BindState.Initialized;
 
         return true;
       },
@@ -302,7 +300,7 @@ function bindFuncDeclaration(
   sourceFile: Required<ast.SourceFile>,
   funcDeclaration: ast.FuncDeclaration,
 ): void {
-  for (const arg of funcDeclaration.arguments) {
+  for (const arg of funcDeclaration.args) {
     // TODO: Do we need to have bindFuncArgument here?
     bindVarDeclaration(program, sourceFile, arg);
   }
@@ -331,7 +329,7 @@ function bindMethodDeclaration(
 ): void {
   bindMethodReceiver(program, sourceFile, methodDeclaration.receiver);
 
-  for (const arg of methodDeclaration.arguments) {
+  for (const arg of methodDeclaration.args) {
     // TODO: Do we need to have bindMethodArgument here?
     bindVarDeclaration(program, sourceFile, arg);
   }
@@ -533,7 +531,7 @@ function bindCallExpression(
   callExpression: ast.CallExpression,
 ): void {
   bindExpression(program, sourceFile, callExpression.expression);
-  for (const arg of callExpression.arguments) {
+  for (const arg of callExpression.args) {
     bindExpression(program, sourceFile, arg);
   }
 

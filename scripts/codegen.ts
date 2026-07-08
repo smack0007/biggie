@@ -31,6 +31,8 @@ async function main(_argv: string[]): Promise<int> {
 
   await writeAstTypeGuards(syntaxTreeContents);
   await writeAstWalk(syntaxTreeContents);
+  await writeAstNameof(syntaxTreeContents);
+  await writeAstFactories(syntaxTreeContents);
 
   return 0;
 }
@@ -50,7 +52,7 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
   const output = createAstOutputWriter();
 
   const typeGuardsToEmit: string[] = [];
-  const typeMap: Record<string, string[]> = { BindNode: [] };
+  const typeMap: Record<string, string[]> = {};
   const bindNodeInterfaces: string[] = [];
   const baseNodeInterfaces: Record<string, string[]> = Object.fromEntries(BASE_NODES.map((x) => [x, []]));
 
@@ -69,20 +71,13 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
           .map((x) => x.endsWith(",") ? x.substring(0, x.length - 1) : x);
 
         for (const extendedInterface of extendedInterfaces) {
-          const isBindNode = extendedInterface == "BindNode";
           const isBaseNode = BASE_NODES.includes(extendedInterface);
-          if (!isBindNode && !isBaseNode) {
+          if (!isBaseNode) {
             if (typeMap[extendedInterface] == undefined) {
               typeMap[extendedInterface] = [];
             }
 
             typeMap[extendedInterface].push(interfaceName);
-
-            if (bindNodeInterfaces.includes(extendedInterface) && !typeMap["BindNode"].includes(interfaceName)) {
-              typeMap["BindNode"].push(interfaceName);
-            }
-          } else if (isBindNode) {
-            bindNodeInterfaces.push(interfaceName);
           } else if (isBaseNode) {
             baseNodeInterfaces[extendedInterface].push(interfaceName);
           }
@@ -101,8 +96,6 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
       }
     }
   }
-
-  console.info(typeMap);
 
   output.appendLine(`import { SyntaxKind, SyntaxNode, ${typeGuardsToEmit.join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
@@ -286,4 +279,241 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
   importPlaceholder.append(`} from "./syntaxTree.ts";`);
 
   await writeAndFormatFile(join(ROOT_PATH, "src", "frontend", "ast", "walk.ts"), output);
+}
+
+async function writeAstNameof(syntaxTreeContents: string[]): Promise<void> {
+  const output = createAstOutputWriter();
+
+  // Extract enum names and their values
+  const enums: Record<string, string[]> = {};
+  let currentEnumName: string | null = null;
+
+  for (const line of syntaxTreeContents) {
+    if (line.startsWith("export enum ")) {
+      currentEnumName = line.split(" ")[2];
+      enums[currentEnumName] = [];
+    } else if (currentEnumName && line.startsWith("}")) {
+      currentEnumName = null;
+    } else if (currentEnumName && line.includes("=")) {
+      // Handle enum with explicit values
+      const parts = line.split("=");
+      const enumValue = parts[0].trim();
+      enums[currentEnumName].push(enumValue);
+    } else if (currentEnumName && line.endsWith(",")) {
+      // Handle regular enum without explicit values
+      const enumValue = line.substring(0, line.length - 1).trim();
+      enums[currentEnumName].push(enumValue);
+    }
+  }
+
+  output.appendLine(`import { ${Object.keys(enums).toSorted().join(", ")} } from "./syntaxTree.ts";`);
+  output.appendLine();
+
+  // Generate nameof functions for each enum
+  for (const [enumName, values] of Object.entries(enums)) {
+    output.appendLine(`export function nameof${enumName}(kind: ${enumName}): string {`);
+    output.indent();
+    output.appendLine("switch (kind) {");
+    output.indent();
+
+    for (const value of values) {
+      output.appendLine(`case ${enumName}.${value}: return "${value}";`);
+    }
+
+    output.unindent();
+    output.appendLine("}");
+    output.unindent();
+    output.appendLine("}");
+    output.appendLine();
+  }
+
+  await writeAndFormatFile(join(ROOT_PATH, "src", "frontend", "ast", "nameof.ts"), output);
+}
+
+async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
+  const DO_NOT_IMPORT = [
+    "boolean",
+    "string",
+  ];
+  const EXCLUDE_INTERFACES = [
+    "Declaration",
+    "Diagnostic",
+    "Expression",
+    "Reference",
+    "Scope",
+    "Statement",
+    "SyntaxNode",
+    "TextPosition",
+    "TypeNode",
+  ];
+  const EXCLUDE_PROPS = ["kind"];
+  const ALWAYS_OPTIONAL_PROPS = ["diagnostics", "isExported"];
+  const OPTIONAL_DEFAULT_VALUES: Record<string, string> = {
+    "diagnostics": "[]",
+    "isExported": "false",
+  };
+
+  let interfaceName: string | null = null;
+  let collectedLine = "";
+
+  const syntaxTreeImports: string[] = ["BindState", "Operator", "SourceFile", "SyntaxKind", "TextPosition"];
+  const factories: Record<string, {
+    extends: string[];
+    required: Record<string, string>;
+    optional: Record<string, string>;
+  }> = {};
+
+  for (let line of syntaxTreeContents) {
+    line = line.trim();
+
+    if (line.startsWith("//")) {
+      continue;
+    }
+
+    if (interfaceName == null && line.startsWith("export interface ")) {
+      const parts = line.split(" ");
+
+      interfaceName = parts[2];
+
+      if (EXCLUDE_INTERFACES.includes(interfaceName)) {
+        interfaceName = null;
+        continue;
+      }
+
+      factories[interfaceName] = {
+        extends: [],
+        required: {},
+        optional: {},
+      };
+
+      if (parts[3] == "extends") {
+        for (let i = 4; i < parts.length - 1; i += 1) {
+          let extended = parts[i];
+          if (extended.endsWith(",")) {
+            extended = extended.substring(0, extended.length - 1);
+          }
+          factories[interfaceName].extends.push(extended);
+        }
+      }
+
+      if (!syntaxTreeImports.includes(interfaceName)) {
+        syntaxTreeImports.push(interfaceName);
+      }
+    } else if (interfaceName != null) {
+      if (line.startsWith("}")) {
+        interfaceName = null;
+        continue;
+      }
+
+      collectedLine += line;
+
+      if (collectedLine.trimEnd().endsWith(";")) {
+        let [name, type] = collectedLine.split(":");
+        collectedLine = "";
+
+        if (EXCLUDE_PROPS.includes(name)) {
+          continue;
+        }
+
+        type = type.trim();
+        if (type.endsWith(";")) {
+          type = type.substring(0, type.length - 1);
+        }
+        if (type.startsWith("| ")) {
+          type = type.substring("| ".length);
+        }
+
+        if (ALWAYS_OPTIONAL_PROPS.includes(name) || name.endsWith("?")) {
+          if (name.endsWith("?")) {
+            name = name.substring(0, name.length - 1);
+          }
+          factories[interfaceName].optional[name] = type;
+        } else {
+          factories[interfaceName].required[name] = type;
+        }
+
+        if (!DO_NOT_IMPORT.includes(type) && !type.includes("|") && !type.startsWith("Record<")) {
+          if (type.endsWith("[]")) {
+            type = type.substring(0, type.length - "[]".length);
+          }
+
+          if (!syntaxTreeImports.includes(type)) {
+            syntaxTreeImports.push(type);
+          }
+        }
+      }
+    }
+  }
+
+  const output = createAstOutputWriter();
+  output.appendLine(`import { uint } from "../../shims.ts";`);
+  output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
+  output.appendLine();
+  output.appendLine(`export function makeTextPosition(line: uint, column: uint): TextPosition {
+    return { line, column };
+  }`);
+  output.appendLine();
+
+  for (const [name, props] of Object.entries(factories)) {
+    console.info(name, props);
+
+    output.appendLine(`export interface Make${name}OptionalProps {`);
+
+    if (name != "Symbol") {
+      output.appendLine(`startPos?: TextPosition;`);
+      output.appendLine(`endPos?: TextPosition;`);
+    }
+
+    for (const [propName, propType] of Object.entries(props.optional)) {
+      output.appendLine(`${propName}?: ${propType};`);
+    }
+
+    output.appendLine("}");
+    output.appendLine();
+
+    output.appendLine(`export function make${name}(`);
+
+    output.indent();
+    for (const [propName, propType] of Object.entries(props.required)) {
+      output.appendLine(`${propName}: ${propType},`);
+    }
+    output.appendLine(`optional: Make${name}OptionalProps = {},`);
+    output.unindent();
+
+    output.appendLine(`): ${name} {`);
+
+    output.indent();
+    output.appendLine("return {");
+
+    output.indent();
+
+    if (name != "Symbol") {
+      output.appendLine(`kind: SyntaxKind.${name},`);
+      output.appendLine(`startPos: optional.startPos ?? makeTextPosition(0, 0),`);
+      output.appendLine(`endPos: optional.endPos ?? makeTextPosition(0, 0),`);
+      output.appendLine(`bindState: BindState.Uninitialized,`);
+    }
+
+    if (props.extends.includes("Scope")) {
+      output.appendLine(`locals: {},`);
+    }
+
+    for (const propName of Object.keys(props.required)) {
+      output.appendLine(`${propName},`);
+    }
+
+    for (const propName of Object.keys(props.optional)) {
+      output.appendLine(`${propName}: optional.${propName} ?? ${OPTIONAL_DEFAULT_VALUES[propName] ?? "undefined"},`);
+    }
+
+    output.unindent();
+
+    output.appendLine("};");
+    output.unindent();
+
+    output.appendLine("}");
+    output.appendLine();
+  }
+
+  await writeAndFormatFile(join(ROOT_PATH, "src", "frontend", "ast", "factories.ts"), output);
 }

@@ -123,7 +123,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       {
         const funcDeclaration = <FuncDeclaration> node;
         walkParent(funcDeclaration.name, <WalkCallback> callback, funcDeclaration);
-        walkArrayParent(funcDeclaration.arguments, <WalkCallback> callback, funcDeclaration);
+        walkArrayParent(funcDeclaration.args, <WalkCallback> callback, funcDeclaration);
         walkParent(funcDeclaration.returnType, <WalkCallback> callback, funcDeclaration);
         walkParent(funcDeclaration.body, <WalkCallback> callback, funcDeclaration);
       }
@@ -133,7 +133,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         const methodDeclaration = <MethodDeclaration> node;
         walkParent(methodDeclaration.receiver, <WalkCallback> callback, methodDeclaration);
         walkParent(methodDeclaration.name, <WalkCallback> callback, methodDeclaration);
-        walkArrayParent(methodDeclaration.arguments, <WalkCallback> callback, methodDeclaration);
+        walkArrayParent(methodDeclaration.args, <WalkCallback> callback, methodDeclaration);
         walkParent(methodDeclaration.returnType, <WalkCallback> callback, methodDeclaration);
         walkParent(methodDeclaration.body, <WalkCallback> callback, methodDeclaration);
       }
@@ -257,7 +257,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       {
         const callExpression = <CallExpression> node;
         walkParent(callExpression.expression, <WalkCallback> callback, callExpression);
-        walkArrayParent(callExpression.arguments, <WalkCallback> callback, callExpression);
+        walkArrayParent(callExpression.args, <WalkCallback> callback, callExpression);
       }
       break;
     case SyntaxKind.ElementAccessExpression:
