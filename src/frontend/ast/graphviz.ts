@@ -57,14 +57,14 @@ function getEdgeLabel(node: SyntaxNode): string {
     const identifier = node as import("./syntaxTree.ts").Identifier;
     return `value="${escapeLabel(identifier.value)}"`;
   } else if (node.kind === 18) { // IntegerLiteral
-    const integerLiteral = node as import("./syntaxTree.ts").IntegerLiteral;
-    return `value="${escapeLabel(integerLiteral.value)}"`;
+    const intLiteral = node as import("./syntaxTree.ts").IntLiteral;
+    return `value="${escapeLabel(intLiteral.value)}"`;
   } else if (node.kind === 32) { // StringLiteral
     const stringLiteral = node as import("./syntaxTree.ts").StringLiteral;
     return `value="${escapeLabel(stringLiteral.value)}"`;
   } else if (node.kind === 4) { // BooleanLiteral
-    const booleanLiteral = node as import("./syntaxTree.ts").BooleanLiteral;
-    return `value="${booleanLiteral.value}"`;
+    const boolLiteral = node as import("./syntaxTree.ts").BoolLiteral;
+    return `value="${boolLiteral.value}"`;
   }
   return "";
 }

@@ -9,7 +9,7 @@ export enum SyntaxKind {
 
   AssignmentExpression,
 
-  BooleanLiteral,
+  BoolLiteral,
 
   CallExpression,
 
@@ -37,7 +37,7 @@ export enum SyntaxKind {
 
   ImportDeclaration,
 
-  IntegerLiteral,
+  IntLiteral,
 
   LogicalExpression,
 
@@ -533,14 +533,14 @@ export interface StructLiteralElement extends SyntaxNode {
   expression: Expression;
 }
 
-export interface BooleanLiteral extends Expression {
-  kind: SyntaxKind.BooleanLiteral;
+export interface BoolLiteral extends Expression {
+  kind: SyntaxKind.BoolLiteral;
 
   value: boolean;
 }
 
-export interface IntegerLiteral extends Expression {
-  kind: SyntaxKind.IntegerLiteral;
+export interface IntLiteral extends Expression {
+  kind: SyntaxKind.IntLiteral;
 
   value: string;
 }

@@ -4,7 +4,7 @@ import {
   ArrayLiteral,
   ArrayType,
   AssignmentExpression,
-  BooleanLiteral,
+  BoolLiteral,
   CallExpression,
   ComparisonExpression,
   Declaration,
@@ -19,7 +19,7 @@ import {
   Identifier,
   IfStatement,
   ImportDeclaration,
-  IntegerLiteral,
+  IntLiteral,
   LogicalExpression,
   MethodDeclaration,
   MethodReceiver,
@@ -65,8 +65,8 @@ export function isAssignmentExpression(node: SyntaxNode): node is AssignmentExpr
   return node.kind == SyntaxKind.AssignmentExpression;
 }
 
-export function isBooleanLiteral(node: SyntaxNode): node is BooleanLiteral {
-  return node.kind == SyntaxKind.BooleanLiteral;
+export function isBooleanLiteral(node: SyntaxNode): node is BoolLiteral {
+  return node.kind == SyntaxKind.BoolLiteral;
 }
 
 export function isCallExpression(node: SyntaxNode): node is CallExpression {
@@ -116,13 +116,13 @@ export function isExpression(node: SyntaxNode): node is Expression {
     node.kind == SyntaxKind.AdditiveExpression ||
     node.kind == SyntaxKind.ArrayLiteral ||
     node.kind == SyntaxKind.AssignmentExpression ||
-    node.kind == SyntaxKind.BooleanLiteral ||
+    node.kind == SyntaxKind.BoolLiteral ||
     node.kind == SyntaxKind.CallExpression ||
     node.kind == SyntaxKind.ComparisonExpression ||
     node.kind == SyntaxKind.ElementAccessExpression ||
     node.kind == SyntaxKind.EqualityExpression ||
     node.kind == SyntaxKind.Identifier ||
-    node.kind == SyntaxKind.IntegerLiteral ||
+    node.kind == SyntaxKind.IntLiteral ||
     node.kind == SyntaxKind.LogicalExpression ||
     node.kind == SyntaxKind.MultiplicativeExpression ||
     node.kind == SyntaxKind.ParenthesizedExpression ||
@@ -153,8 +153,8 @@ export function isImportDeclaration(node: SyntaxNode): node is ImportDeclaration
   return node.kind == SyntaxKind.ImportDeclaration;
 }
 
-export function isIntegerLiteral(node: SyntaxNode): node is IntegerLiteral {
-  return node.kind == SyntaxKind.IntegerLiteral;
+export function isIntegerLiteral(node: SyntaxNode): node is IntLiteral {
+  return node.kind == SyntaxKind.IntLiteral;
 }
 
 export function isLogicalExpression(node: SyntaxNode): node is LogicalExpression {
@@ -199,13 +199,13 @@ export function isReference(node: SyntaxNode): node is Reference {
     node.kind == SyntaxKind.ArrayLiteral ||
     node.kind == SyntaxKind.ArrayType ||
     node.kind == SyntaxKind.AssignmentExpression ||
-    node.kind == SyntaxKind.BooleanLiteral ||
+    node.kind == SyntaxKind.BoolLiteral ||
     node.kind == SyntaxKind.CallExpression ||
     node.kind == SyntaxKind.ComparisonExpression ||
     node.kind == SyntaxKind.ElementAccessExpression ||
     node.kind == SyntaxKind.EqualityExpression ||
     node.kind == SyntaxKind.Identifier ||
-    node.kind == SyntaxKind.IntegerLiteral ||
+    node.kind == SyntaxKind.IntLiteral ||
     node.kind == SyntaxKind.LogicalExpression ||
     node.kind == SyntaxKind.MultiplicativeExpression ||
     node.kind == SyntaxKind.ParenthesizedExpression ||

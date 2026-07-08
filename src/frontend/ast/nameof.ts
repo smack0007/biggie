@@ -11,7 +11,7 @@ export function nameofSyntaxKind(kind: SyntaxKind): string {
       return "ArrayType";
     case SyntaxKind.AssignmentExpression:
       return "AssignmentExpression";
-    case SyntaxKind.BooleanLiteral:
+    case SyntaxKind.BoolLiteral:
       return "BooleanLiteral";
     case SyntaxKind.CallExpression:
       return "CallExpression";
@@ -39,7 +39,7 @@ export function nameofSyntaxKind(kind: SyntaxKind): string {
       return "IfStatement";
     case SyntaxKind.ImportDeclaration:
       return "ImportDeclaration";
-    case SyntaxKind.IntegerLiteral:
+    case SyntaxKind.IntLiteral:
       return "IntegerLiteral";
     case SyntaxKind.LogicalExpression:
       return "LogicalExpression";

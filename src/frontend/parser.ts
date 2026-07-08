@@ -1577,7 +1577,7 @@ function parseArrayLiteral(context: ParserSourceFileContext): ast.ArrayLiteral {
   };
 }
 
-function parseBooleanLiteral(context: ParserSourceFileContext): ast.BooleanLiteral {
+function parseBooleanLiteral(context: ParserSourceFileContext): ast.BoolLiteral {
   context.logger.enter(nameof(parseBooleanLiteral));
   const startPos = getPos(context);
 
@@ -1587,7 +1587,7 @@ function parseBooleanLiteral(context: ParserSourceFileContext): ast.BooleanLiter
   const endPos = getPos(context);
 
   return {
-    kind: ast.SyntaxKind.BooleanLiteral,
+    kind: ast.SyntaxKind.BoolLiteral,
     startPos,
     endPos,
     value: token.type == scanner.TokenType.True,
@@ -1595,7 +1595,7 @@ function parseBooleanLiteral(context: ParserSourceFileContext): ast.BooleanLiter
   };
 }
 
-function parseIntegerLiteral(context: ParserSourceFileContext): ast.IntegerLiteral {
+function parseIntegerLiteral(context: ParserSourceFileContext): ast.IntLiteral {
   context.logger.enter(nameof(parseIntegerLiteral));
   const startPos = getPos(context);
 
@@ -1615,7 +1615,7 @@ function parseIntegerLiteral(context: ParserSourceFileContext): ast.IntegerLiter
   const endPos = getPos(context);
 
   return {
-    kind: ast.SyntaxKind.IntegerLiteral,
+    kind: ast.SyntaxKind.IntLiteral,
     startPos,
     endPos,
     value: token.text,

@@ -7,7 +7,7 @@ import {
   AssignmentExpression,
   BindFlags,
   BindState,
-  BooleanLiteral,
+  BoolLiteral,
   CallExpression,
   ComparisonExpression,
   DeferStatement,
@@ -22,7 +22,7 @@ import {
   Identifier,
   IfStatement,
   ImportDeclaration,
-  IntegerLiteral,
+  IntLiteral,
   LogicalExpression,
   MethodDeclaration,
   MethodReceiver,
@@ -835,9 +835,9 @@ export interface MakeBooleanLiteralOptionalProps {
 export function makeBooleanLiteral(
   value: boolean,
   optional: MakeBooleanLiteralOptionalProps = {},
-): BooleanLiteral {
+): BoolLiteral {
   return {
-    kind: SyntaxKind.BooleanLiteral,
+    kind: SyntaxKind.BoolLiteral,
     startPos: optional.startPos ?? makeTextPosition(0, 0),
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
@@ -853,9 +853,9 @@ export interface MakeIntegerLiteralOptionalProps {
 export function makeIntegerLiteral(
   value: string,
   optional: MakeIntegerLiteralOptionalProps = {},
-): IntegerLiteral {
+): IntLiteral {
   return {
-    kind: SyntaxKind.IntegerLiteral,
+    kind: SyntaxKind.IntLiteral,
     startPos: optional.startPos ?? makeTextPosition(0, 0),
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,

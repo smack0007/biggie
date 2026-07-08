@@ -677,8 +677,8 @@ function emitExpression(context: EmitContext, sourceFile: ast.SourceFile, expres
       emitAssignmentExpression(context, sourceFile, <ast.AssignmentExpression> expression);
       break;
 
-    case ast.SyntaxKind.BooleanLiteral:
-      emitBooleanLiteral(context, sourceFile, <ast.BooleanLiteral> expression);
+    case ast.SyntaxKind.BoolLiteral:
+      emitBooleanLiteral(context, sourceFile, <ast.BoolLiteral> expression);
       break;
 
     case ast.SyntaxKind.CallExpression:
@@ -701,8 +701,8 @@ function emitExpression(context: EmitContext, sourceFile: ast.SourceFile, expres
       emitIdentifier(context, sourceFile, <ast.Identifier> expression);
       break;
 
-    case ast.SyntaxKind.IntegerLiteral:
-      emitIntegerLiteral(context, sourceFile, <ast.IntegerLiteral> expression);
+    case ast.SyntaxKind.IntLiteral:
+      emitIntegerLiteral(context, sourceFile, <ast.IntLiteral> expression);
       break;
 
     case ast.SyntaxKind.LogicalExpression:
@@ -796,7 +796,7 @@ function emitArrayLiteral(context: EmitContext, sourceFile: ast.SourceFile, arra
   context.output.append("}");
 }
 
-function emitBooleanLiteral(context: EmitContext, sourceFile: ast.SourceFile, booleanLiteral: ast.BooleanLiteral) {
+function emitBooleanLiteral(context: EmitContext, sourceFile: ast.SourceFile, booleanLiteral: ast.BoolLiteral) {
   context.output.append(booleanLiteral.value ? "true" : "false");
 }
 
@@ -1015,7 +1015,7 @@ function emitBuiltin(context: EmitContext, sourceFile: ast.SourceFile, identifie
   context.output.append(name);
 }
 
-function emitIntegerLiteral(context: EmitContext, sourceFile: ast.SourceFile, integerLiteral: ast.IntegerLiteral) {
+function emitIntegerLiteral(context: EmitContext, sourceFile: ast.SourceFile, integerLiteral: ast.IntLiteral) {
   context.output.append(integerLiteral.value);
 }
 
