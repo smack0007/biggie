@@ -326,7 +326,7 @@ function emitFuncDeclaration(
       context.output.append(", ");
     }
 
-    emitType(context, sourceFile, arg.type);
+    emitType(context, sourceFile, arg.declaredType);
     context.output.append(` ${arg.name.value}`);
   }
 
@@ -345,8 +345,8 @@ function emitMethodDeclaration(
   emitType(context, sourceFile, methodDeclaration.returnType);
 
   let mappedFunctionName = "";
-  if (ast.isQualifiedName(methodDeclaration.receiver.type.typeName)) {
-    const module = getImportedModuleByAlias(context, methodDeclaration.receiver.type.typeName.left.value);
+  if (ast.isQualifiedName(methodDeclaration.receiver.declaredType.typeName)) {
+    const module = getImportedModuleByAlias(context, methodDeclaration.receiver.declaredType.typeName.left.value);
 
     let mappedReceiverName = "";
 
@@ -354,7 +354,7 @@ function emitMethodDeclaration(
       mappedReceiverName = getMappedModuleTypeName(
         context,
         module,
-        ast.getSymbol(methodDeclaration.receiver.type.typeName.right, ast.BindFlags.Type).name,
+        ast.getSymbol(methodDeclaration.receiver.declaredType.typeName.right, ast.SymbolFlags.Type).name,
       ) ?? "";
 
       mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
@@ -362,14 +362,14 @@ function emitMethodDeclaration(
     }
 
     if (!mappedReceiverName) {
-      mappedReceiverName = methodDeclaration.receiver.type.typeName.left.value + "." +
-        methodDeclaration.receiver.type.typeName.right.value;
+      mappedReceiverName = methodDeclaration.receiver.declaredType.typeName.left.value + "." +
+        methodDeclaration.receiver.declaredType.typeName.right.value;
     }
   } else {
     const mappedReceiverName = getMappedModuleTypeName(
       context,
       sourceFile,
-      ast.getSymbol(methodDeclaration.receiver.type, ast.BindFlags.Struct).name,
+      ast.getSymbol(methodDeclaration.receiver.declaredType, ast.SymbolFlags.Struct).name,
     )!;
     mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
     mapModuleTypeName(context, sourceFile, methodDeclaration.name.value, mappedFunctionName);
@@ -377,7 +377,7 @@ function emitMethodDeclaration(
 
   context.output.append(` ${mappedFunctionName}(`);
 
-  emitType(context, sourceFile, methodDeclaration.receiver.type);
+  emitType(context, sourceFile, methodDeclaration.receiver.declaredType);
   context.output.append(` ${methodDeclaration.receiver.name.value}`);
 
   for (let i = 0; i < methodDeclaration.args.length; i++) {
@@ -385,7 +385,7 @@ function emitMethodDeclaration(
 
     context.output.append(", ");
 
-    emitType(context, sourceFile, arg.type);
+    emitType(context, sourceFile, arg.declaredType);
     context.output.append(` ${arg.name.value}`);
   }
 
@@ -409,7 +409,7 @@ function emitStructDeclaration(
   context.output.indent();
   for (let i = 0; i < structDeclaration.members.length; i++) {
     const member = structDeclaration.members[i];
-    const memberType = member.type.value;
+    const memberType = member.declaredType.value;
     const memberName = member.name.value;
     context.output.appendLine(`${memberType} ${memberName};`);
   }
@@ -534,7 +534,7 @@ function emitVarDeclaration(
   sourceFile: ast.SourceFile,
   variableDeclaration: ast.VarDeclaration,
 ) {
-  const emitTypeResult = emitType(context, sourceFile, variableDeclaration.type);
+  const emitTypeResult = emitType(context, sourceFile, variableDeclaration.declaredType);
   context.output.append(" ");
   emitIdentifier(context, sourceFile, variableDeclaration.name);
 
@@ -841,10 +841,10 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
 
   if (
     callExpression.symbol &&
-    hasFlag(callExpression.symbol.flags, ast.BindFlags.Method) &&
+    hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Method) &&
     ast.isPropertyAccessExpression(callExpression.expression)
   ) {
-    const receiver = callExpression.expression.expression.symbol?.type;
+    const receiver = callExpression.expression.expression.type;
 
     if (!receiver) {
       throw new Error("Expected receiver not to be null.");
@@ -902,7 +902,7 @@ function emitPropertyAccessExpression(
   propertyAccessExpression: ast.PropertyAccessExpression,
 ) {
   if (propertyAccessExpression.expression.symbol) {
-    if (hasFlag(propertyAccessExpression.expression.symbol.flags, ast.BindFlags.Module)) {
+    if (hasFlag(propertyAccessExpression.expression.symbol.flags, ast.SymbolFlags.Module)) {
       const module = getImportedModuleByAlias(context, propertyAccessExpression.expression.symbol.name);
 
       if (module != null) {
@@ -913,7 +913,7 @@ function emitPropertyAccessExpression(
           return;
         }
       }
-    } else if (hasFlag(propertyAccessExpression.expression.symbol.flags, ast.BindFlags.Enum)) {
+    } else if (hasFlag(propertyAccessExpression.expression.symbol.flags, ast.SymbolFlags.Enum)) {
       const module = context.sourceFiles[propertyAccessExpression.expression.symbol.sourceFileName];
       const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.expression.symbol.name);
       if (mappedTypeName != null) {
@@ -975,7 +975,7 @@ function emitEqualityExpression(context: EmitContext, sourceFile: ast.SourceFile
 }
 
 function emitIdentifier(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier) {
-  if (identifier.symbol && hasFlag(identifier.symbol.flags, ast.BindFlags.Builtin)) {
+  if (identifier.symbol && hasFlag(identifier.symbol.flags, ast.SymbolFlags.Builtin)) {
     emitBuiltin(context, sourceFile, identifier);
     return;
   }
@@ -992,7 +992,7 @@ function emitIdentifier(context: EmitContext, sourceFile: ast.SourceFile, identi
 function emitBuiltin(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier): void {
   if (
     !identifier.symbol ||
-    !hasFlag(identifier.symbol.flags, ast.BindFlags.Builtin)
+    !hasFlag(identifier.symbol.flags, ast.SymbolFlags.Builtin)
   ) {
     context.output.append(`/* ${identifier.value} is not a builtin */ ${identifier.value}`);
     return;

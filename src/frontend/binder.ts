@@ -21,7 +21,7 @@ function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): 
   const sourceFile = ast.getSourceFileFromNode(node);
 
   // TODO: There should be some --debug flag that will pack this into the error.
-  //console.error((new Error()).stack);
+  console.error((new Error()).stack);
 
   return {
     kind,
@@ -222,7 +222,7 @@ function bindImportDeclaration(
     importDeclaration.symbol = {
       sourceFileName: sourceFile.fileName,
       name: importDeclaration.alias.value,
-      flags: ast.BindFlags.Module,
+      flags: ast.SymbolFlags.Module,
       members: exports,
     };
 
@@ -250,7 +250,7 @@ function bindEnumDeclaration(
   enumDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: enumDeclaration.name.value,
-    flags: ast.BindFlags.Enum,
+    flags: ast.SymbolFlags.Enum,
     members,
   };
 
@@ -270,7 +270,7 @@ function bindEnumMember(
   enumMember.symbol = {
     sourceFileName: sourceFile.fileName,
     name: enumMember.name.value,
-    flags: ast.BindFlags.EnumMember,
+    flags: ast.SymbolFlags.EnumMember,
   };
 
   enumMember.bindState = ast.BindState.Finished;
@@ -292,7 +292,7 @@ function bindFuncDeclaration(
   funcDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: funcDeclaration.name.value,
-    flags: ast.BindFlags.Func,
+    flags: ast.SymbolFlags.Func,
   };
 
   setLocal(funcDeclaration, sourceFile, funcDeclaration.symbol.name, funcDeclaration.symbol);
@@ -321,10 +321,10 @@ function bindMethodDeclaration(
   methodDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: methodDeclaration.name.value,
-    flags: ast.BindFlags.Method,
+    flags: ast.SymbolFlags.Method,
   };
 
-  const receiverType = ast.getSymbol(methodDeclaration.receiver.type, ast.BindFlags.Struct);
+  const receiverType = ast.getSymbol(methodDeclaration.receiver.declaredType, ast.SymbolFlags.Struct);
   setMember(methodDeclaration, receiverType, methodDeclaration.symbol.name, methodDeclaration.symbol);
 
   // TODO: How do we export methods?
@@ -340,13 +340,13 @@ function bindMethodReceiver(
   sourceFile: Required<ast.SourceFile>,
   methodReceiver: ast.MethodReceiver,
 ): void {
-  bindTypeReference(program, sourceFile, methodReceiver.type);
+  bindTypeReference(program, sourceFile, methodReceiver.declaredType);
 
   methodReceiver.symbol = {
     sourceFileName: sourceFile.fileName,
     name: methodReceiver.name.value,
-    flags: ast.BindFlags.Var,
-    members: methodReceiver.type.symbol?.members,
+    flags: ast.SymbolFlags.Var,
+    members: methodReceiver.declaredType.symbol?.members,
   };
 
   const scope = getScopeFromNode(methodReceiver);
@@ -369,7 +369,7 @@ function bindStructDeclaration(
   structDeclaration.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structDeclaration.name.value,
-    flags: ast.BindFlags.Type | ast.BindFlags.Struct,
+    flags: ast.SymbolFlags.Type | ast.SymbolFlags.Struct,
     members,
   };
 
@@ -389,7 +389,7 @@ function bindStructMember(
   structMember.symbol = {
     sourceFileName: sourceFile.fileName,
     name: structMember.name.value,
-    flags: ast.BindFlags.StructMember,
+    flags: ast.SymbolFlags.StructMember,
   };
 
   structMember.bindState = ast.BindState.Finished;
@@ -400,17 +400,17 @@ function bindVarDeclaration(
   sourceFile: Required<ast.SourceFile>,
   varDeclaration: ast.VarDeclaration,
 ): void {
-  bindTypeNode(program, sourceFile, varDeclaration.type);
+  bindTypeNode(program, sourceFile, varDeclaration.declaredType);
 
-  let type: ast.Symbol | undefined = varDeclaration.type.symbol;
+  let type: ast.Symbol | undefined = varDeclaration.declaredType.symbol;
   let members: ast.SymbolTable | undefined;
 
-  if (ast.isArrayType(varDeclaration.type)) {
+  if (ast.isArrayType(varDeclaration.declaredType)) {
     // TODO: Implement this correctly.
     type = builtins.globals["Array"];
     members = builtins.globals["Array"].members;
-  } else if (varDeclaration.type.kind == ast.SyntaxKind.TypeReference) {
-    const typeReference = <ast.TypeReference> varDeclaration.type;
+  } else if (varDeclaration.declaredType.kind == ast.SyntaxKind.TypeReference) {
+    const typeReference = <ast.TypeReference> varDeclaration.declaredType;
 
     if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
       const qualifiedName = <ast.QualifiedName> typeReference.typeName;
@@ -444,11 +444,12 @@ function bindVarDeclaration(
     }
   }
 
+  varDeclaration.type = type;
   varDeclaration.symbol = {
+    flags: ast.SymbolFlags.Var,
+    declaration: varDeclaration,
     sourceFileName: sourceFile.fileName,
     name: varDeclaration.name.value,
-    flags: ast.BindFlags.Var,
-    type,
     members,
   };
 
@@ -488,22 +489,24 @@ function bindExpression(
   program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   expression: ast.Expression,
-): bool {
+): void {
   switch (expression.kind) {
     case ast.SyntaxKind.CallExpression:
       bindCallExpression(program, sourceFile, <ast.CallExpression> expression);
-      return false;
+      break;
 
     case ast.SyntaxKind.PropertyAccessExpression:
       bindPropertyAccessExpression(program, sourceFile, <ast.PropertyAccessExpression> expression);
-      return false;
+      break;
 
     case ast.SyntaxKind.Identifier:
       bindIdentifier(program, sourceFile, <ast.Identifier> expression);
-      return false;
-  }
+      break;
 
-  return true;
+    case ast.SyntaxKind.StringLiteral:
+      bindStringLiteral(program, sourceFile, <ast.StringLiteral> expression);
+      break;
+  }
 }
 
 function bindCallExpression(
@@ -527,8 +530,14 @@ function bindPropertyAccessExpression(
   propertyAccessExpression: ast.PropertyAccessExpression,
 ): void {
   bindExpression(program, sourceFile, propertyAccessExpression.expression);
-  bindIdentifier(program, sourceFile, propertyAccessExpression.name, propertyAccessExpression.expression.symbol);
+  bindIdentifier(
+    program,
+    sourceFile,
+    propertyAccessExpression.name,
+    propertyAccessExpression.expression.symbol ?? propertyAccessExpression.expression.type,
+  );
 
+  propertyAccessExpression.type = propertyAccessExpression.name.type;
   propertyAccessExpression.symbol = propertyAccessExpression.name.symbol;
 
   propertyAccessExpression.bindState = ast.BindState.Finished;
@@ -550,6 +559,7 @@ function bindIdentifier(
     identifier.symbol = getSymbolMemberByIdentifier(parentSymbol, identifier);
   }
 
+  identifier.type = identifier.symbol.declaration?.type;
   identifier.bindState = ast.BindState.Finished;
 }
 
@@ -601,8 +611,19 @@ function bindTypeReference(
     typeReference.typeName.symbol = getSymbolFromScopeByName(typeReference, typeReference.typeName.value);
   }
 
+  typeReference.typeName.type = typeReference.typeName.symbol;
   typeReference.typeName.bindState = ast.BindState.Finished;
 
   typeReference.symbol = typeReference.typeName.symbol;
+  typeReference.type = typeReference.symbol;
   typeReference.bindState = ast.BindState.Finished;
+}
+
+function bindStringLiteral(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  stringLiteral: ast.StringLiteral,
+): void {
+  stringLiteral.type = builtins.globals["string"];
+  stringLiteral.bindState = ast.BindState.Finished;
 }

@@ -1,4 +1,4 @@
-import { BindFlags, Symbol, SymbolTable } from "../ast/syntaxTree.ts";
+import { Symbol, SymbolFlags, SymbolTable } from "../ast/syntaxTree.ts";
 
 const BUILTIN_SOURCE_FILE_NAME = "<builtin>";
 
@@ -6,11 +6,11 @@ type BuiltinSymbol = Symbol & {
   sourceFileName: typeof BUILTIN_SOURCE_FILE_NAME;
 };
 
-function builtinSymbol(name: string, flags: BindFlags, members?: SymbolTable): BuiltinSymbol {
+function builtinSymbol(name: string, flags: SymbolFlags, members?: SymbolTable): BuiltinSymbol {
   const symbol: BuiltinSymbol = {
     sourceFileName: BUILTIN_SOURCE_FILE_NAME,
     name,
-    flags: BindFlags.Builtin | flags,
+    flags: SymbolFlags.Builtin | flags,
     members,
   };
 
@@ -34,36 +34,36 @@ function builtinSymbolTable(...symbols: BuiltinSymbol[]): SymbolTable {
 export const globals = builtinSymbolTable(
   builtinSymbol(
     "Array",
-    BindFlags.Type,
+    SymbolFlags.Type,
     builtinSymbolTable(
-      builtinSymbol("length", BindFlags.Method),
+      builtinSymbol("length", SymbolFlags.Method),
     ),
   ),
   builtinSymbol(
     "bool",
-    BindFlags.Type,
+    SymbolFlags.Type,
   ),
   builtinSymbol(
     "int",
-    BindFlags.Type,
+    SymbolFlags.Type,
   ),
   builtinSymbol(
     "int32",
-    BindFlags.Type,
+    SymbolFlags.Type,
   ),
   builtinSymbol(
     "println",
-    BindFlags.Func,
+    SymbolFlags.Func,
   ),
   builtinSymbol(
     "string",
-    BindFlags.Type,
+    SymbolFlags.Type,
     builtinSymbolTable(
-      builtinSymbol("length", BindFlags.Method),
+      builtinSymbol("length", SymbolFlags.Method),
     ),
   ),
   builtinSymbol(
     "void",
-    BindFlags.Type,
+    SymbolFlags.Type,
   ),
 );

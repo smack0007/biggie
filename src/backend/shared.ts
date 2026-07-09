@@ -1,5 +1,4 @@
 import * as ast from "../ast/mod.ts";
-import { hasFlag } from "../shims.ts";
 
 export enum BackendErrorKind {
   Unexpected = 0,

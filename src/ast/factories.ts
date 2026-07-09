@@ -5,7 +5,6 @@ import {
   ArrayLiteral,
   ArrayType,
   AssignmentExpression,
-  BindFlags,
   BindState,
   BoolLiteral,
   CallExpression,
@@ -43,6 +42,7 @@ import {
   StructLiteralElement,
   StructMember,
   Symbol,
+  SymbolFlags,
   SymbolTable,
   SyntaxKind,
   TextPosition,
@@ -59,22 +59,20 @@ export function makeTextPosition(line: uint, column: uint): TextPosition {
 
 export interface MakeSymbolOptionalProps {
   parent?: Symbol;
-  type?: Symbol;
   members?: SymbolTable;
 }
 
 export function makeSymbol(
   sourceFileName: string,
+  flags: SymbolFlags,
   name: string,
-  flags: BindFlags,
   optional: MakeSymbolOptionalProps = {},
 ): Symbol {
   return {
     sourceFileName,
-    name,
     flags,
+    name,
     parent: optional.parent ?? undefined,
-    type: optional.type ?? undefined,
     members: optional.members ?? undefined,
   };
 }
@@ -155,7 +153,7 @@ export interface MakeVarDeclarationOptionalProps {
 
 export function makeVarDeclaration(
   name: Identifier,
-  type: TypeNode,
+  declaredType: TypeNode,
   optional: MakeVarDeclarationOptionalProps = {},
 ): VarDeclaration {
   return {
@@ -164,7 +162,7 @@ export function makeVarDeclaration(
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
     name,
-    type,
+    declaredType,
     initializer: optional.initializer ?? undefined,
   };
 }
@@ -274,7 +272,7 @@ export interface MakeMethodReceiverOptionalProps {
 
 export function makeMethodReceiver(
   name: Identifier,
-  type: TypeReference,
+  declaredType: TypeReference,
   optional: MakeMethodReceiverOptionalProps = {},
 ): MethodReceiver {
   return {
@@ -283,7 +281,7 @@ export function makeMethodReceiver(
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
     name,
-    type,
+    declaredType,
   };
 }
 
@@ -316,7 +314,7 @@ export interface MakeStructMemberOptionalProps {
 
 export function makeStructMember(
   name: Identifier,
-  type: Identifier,
+  declaredType: Identifier,
   optional: MakeStructMemberOptionalProps = {},
 ): StructMember {
   return {
@@ -325,7 +323,7 @@ export function makeStructMember(
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
     name,
-    type,
+    declaredType,
   };
 }
 

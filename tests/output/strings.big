@@ -2,6 +2,7 @@ func main(): int {
   var hello: string = "Hello";
   
   println("%s %d", hello, hello.length());
+  println("%s %d", "hello", "hello".length());
 
   return 0;
 }

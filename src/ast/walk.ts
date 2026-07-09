@@ -97,7 +97,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       {
         const varDeclaration = <VarDeclaration> node;
         walkParent(varDeclaration.name, <WalkCallback> callback, varDeclaration);
-        walkParent(varDeclaration.type, <WalkCallback> callback, varDeclaration);
+        walkParent(varDeclaration.declaredType, <WalkCallback> callback, varDeclaration);
         if (varDeclaration.initializer) {
           walkParent(varDeclaration.initializer, <WalkCallback> callback, varDeclaration);
         }
@@ -142,7 +142,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       {
         const methodReceiver = <MethodReceiver> node;
         walkParent(methodReceiver.name, <WalkCallback> callback, methodReceiver);
-        walkParent(methodReceiver.type, <WalkCallback> callback, methodReceiver);
+        walkParent(methodReceiver.declaredType, <WalkCallback> callback, methodReceiver);
       }
       break;
     case SyntaxKind.StructDeclaration:
@@ -156,7 +156,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       {
         const structMember = <StructMember> node;
         walkParent(structMember.name, <WalkCallback> callback, structMember);
-        walkParent(structMember.type, <WalkCallback> callback, structMember);
+        walkParent(structMember.declaredType, <WalkCallback> callback, structMember);
       }
       break;
     case SyntaxKind.ExpressionStatement:

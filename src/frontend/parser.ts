@@ -376,7 +376,7 @@ function parseVarDeclaration(
     startPos,
     endPos,
     name: identifier,
-    type: type,
+    declaredType: type,
     initializer: initializer,
     bindState: ast.BindState.Uninitialized,
   };
@@ -600,7 +600,7 @@ function parseMethodReciever(
     startPos,
     endPos,
     name: identifier,
-    type: type,
+    declaredType: type,
     bindState: ast.BindState.Uninitialized,
   };
 }
@@ -666,7 +666,7 @@ function parseStructMember(context: ParserSourceFileContext): ast.StructMember {
     startPos,
     endPos,
     name,
-    type,
+    declaredType: type,
     bindState: ast.BindState.Uninitialized,
   };
 }

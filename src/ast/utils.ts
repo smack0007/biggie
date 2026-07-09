@@ -1,17 +1,28 @@
 import * as path from "node:path";
 import * as assert from "../assert.ts";
 import {
-  BindFlags,
   Declaration,
+  Expression,
   ImportDeclaration,
+  PointerType,
   Program,
   Reference,
   SourceFile,
   Symbol,
+  SymbolFlags,
   SyntaxNode,
 } from "./syntaxTree.ts";
-import { isProgram, isSourceFile } from "./typeGuards.ts";
-import { nameofBindFlags, nameofSyntaxKind } from "./nameof.ts";
+import { isProgram, isSourceFile, isStatement } from "./typeGuards.ts";
+import { nameofSymbolFlags, nameofSyntaxKind } from "./nameof.ts";
+import {
+  makeExpressionStatement,
+  makeFuncDeclaration,
+  makeIdentifier,
+  makeProgram,
+  makeSourceFile,
+  makeStatementBlock,
+  makeTypeReference,
+} from "./factories.ts";
 
 export function getModulePrefixByFileName(importDeclaration: ImportDeclaration): string {
   return path.basename(
@@ -55,14 +66,32 @@ export function getSourceFileFromNode(node: SyntaxNode): SourceFile | undefined 
   return parent;
 }
 
-export function getSymbol(node: Declaration | Reference, expectedFlags: BindFlags): Symbol {
+export function getSymbol(node: Declaration | Reference, expectedFlags: SymbolFlags): Symbol {
   assert.notNull(node.symbol, `symbol is null in ${nameofSyntaxKind(node.kind)} node`);
 
   assert.hasFlag(
     node.symbol.flags,
     expectedFlags,
-    `symbol did not have expected flag ${nameofBindFlags(expectedFlags)} in ${nameofSyntaxKind(node.kind)} node`,
+    `symbol did not have expected flag ${nameofSymbolFlags(expectedFlags)} in ${nameofSyntaxKind(node.kind)} node`,
   );
 
   return node.symbol;
+}
+
+export function makeProgramFromExpression(expression: Expression): Program {
+  const FILE_NAME = "<source>";
+
+  return makeProgram(
+    FILE_NAME,
+    {
+      FILE_NAME: makeSourceFile(FILE_NAME, [makeFuncDeclaration(
+        makeIdentifier("main"),
+        [],
+        makeTypeReference(makeIdentifier("void")),
+        makeStatementBlock([
+          makeExpressionStatement(expression),
+        ]),
+      )], {}),
+    },
+  );
 }

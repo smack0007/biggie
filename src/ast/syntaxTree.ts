@@ -129,18 +129,6 @@ export interface TextPosition {
   column: uint;
 }
 
-export interface SyntaxNode {
-  kind: SyntaxKind;
-
-  startPos: TextPosition;
-
-  endPos: TextPosition;
-
-  parent?: SyntaxNode;
-
-  bindState: BindState;
-}
-
 export enum BindState {
   Uninitialized = 0,
 
@@ -149,7 +137,7 @@ export enum BindState {
   Finished = 2,
 }
 
-export enum BindFlags {
+export enum SymbolFlags {
   None = 0,
 
   Builtin = 1 << 0,
@@ -176,17 +164,33 @@ export enum BindFlags {
 export type SymbolTable = Record<string, Symbol>;
 
 export interface Symbol {
-  parent?: Symbol;
+  flags: SymbolFlags;
+
+  declaration?: SyntaxNode;
 
   sourceFileName: string;
 
+  parent?: Symbol;
+
   name: string;
 
-  flags: BindFlags;
+  members?: SymbolTable;
+}
+
+export interface SyntaxNode {
+  kind: SyntaxKind;
+
+  startPos: TextPosition;
+
+  endPos: TextPosition;
+
+  parent?: SyntaxNode;
+
+  bindState: BindState;
 
   type?: Symbol;
 
-  members?: SymbolTable;
+  symbol?: Symbol;
 }
 
 export interface Declaration extends SyntaxNode {
@@ -253,7 +257,7 @@ export interface VarDeclaration extends SyntaxNode, Declaration {
 
   name: Identifier;
 
-  type: TypeNode;
+  declaredType: TypeNode;
 
   initializer?: Expression;
 }
@@ -311,7 +315,7 @@ export interface MethodReceiver extends SyntaxNode, Declaration {
 
   name: Identifier;
 
-  type: TypeReference;
+  declaredType: TypeReference;
 }
 
 export interface StructDeclaration extends SyntaxNode, Declaration {
@@ -329,7 +333,7 @@ export interface StructMember extends SyntaxNode, Declaration {
 
   name: Identifier;
 
-  type: Identifier;
+  declaredType: Identifier;
 }
 
 export interface ExpressionStatement extends Statement {
