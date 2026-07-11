@@ -31,7 +31,16 @@ function builtinSymbolTable(...symbols: BuiltinSymbol[]): SymbolTable {
   return symbolTable;
 }
 
-export const globals = builtinSymbolTable(
+export interface Globals {
+  Array: Symbol;
+  bool: Symbol;
+  int: Symbol;
+  int32: Symbol;
+  println: Symbol;
+  string: Symbol;
+}
+
+export const globals: Globals = builtinSymbolTable(
   builtinSymbol(
     "Array",
     SymbolFlags.Type,
@@ -66,4 +75,4 @@ export const globals = builtinSymbolTable(
     "void",
     SymbolFlags.Type,
   ),
-);
+) as unknown as Globals;

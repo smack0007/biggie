@@ -220,11 +220,13 @@ function bindImportDeclaration(
 
   if (importDeclaration.alias?.value) {
     importDeclaration.symbol = {
+      declaration: importDeclaration,
       sourceFileName: sourceFile.fileName,
       name: importDeclaration.alias.value,
       flags: ast.SymbolFlags.Module,
       members: exports,
     };
+    importDeclaration.type = importDeclaration.symbol;
 
     sourceFile.locals[importDeclaration.alias.value] = importDeclaration.symbol!;
   } else {
@@ -248,11 +250,13 @@ function bindEnumDeclaration(
   }
 
   enumDeclaration.symbol = {
+    declaration: enumDeclaration,
     sourceFileName: sourceFile.fileName,
     name: enumDeclaration.name.value,
     flags: ast.SymbolFlags.Enum,
     members,
   };
+  enumDeclaration.type = enumDeclaration.symbol;
 
   setLocal(enumDeclaration, sourceFile, enumDeclaration.symbol.name, enumDeclaration.symbol);
   if (enumDeclaration.isExported) {
@@ -290,10 +294,12 @@ function bindFuncDeclaration(
   bindStatementBlock(program, sourceFile, funcDeclaration.body);
 
   funcDeclaration.symbol = {
+    declaration: funcDeclaration,
     sourceFileName: sourceFile.fileName,
     name: funcDeclaration.name.value,
     flags: ast.SymbolFlags.Func,
   };
+  funcDeclaration.type = funcDeclaration.symbol;
 
   setLocal(funcDeclaration, sourceFile, funcDeclaration.symbol.name, funcDeclaration.symbol);
   if (funcDeclaration.isExported) {
@@ -319,10 +325,12 @@ function bindMethodDeclaration(
   bindStatementBlock(program, sourceFile, methodDeclaration.body);
 
   methodDeclaration.symbol = {
+    declaration: methodDeclaration,
     sourceFileName: sourceFile.fileName,
     name: methodDeclaration.name.value,
     flags: ast.SymbolFlags.Method,
   };
+  methodDeclaration.type = methodDeclaration.symbol;
 
   const receiverType = ast.getSymbol(methodDeclaration.receiver.declaredType, ast.SymbolFlags.Struct);
   setMember(methodDeclaration, receiverType, methodDeclaration.symbol.name, methodDeclaration.symbol);
@@ -343,11 +351,13 @@ function bindMethodReceiver(
   bindTypeReference(program, sourceFile, methodReceiver.declaredType);
 
   methodReceiver.symbol = {
+    flags: ast.SymbolFlags.Var,
+    declaration: methodReceiver,
     sourceFileName: sourceFile.fileName,
     name: methodReceiver.name.value,
-    flags: ast.SymbolFlags.Var,
     members: methodReceiver.declaredType.symbol?.members,
   };
+  methodReceiver.type = methodReceiver.declaredType.type;
 
   const scope = getScopeFromNode(methodReceiver);
   setLocal(methodReceiver, scope, methodReceiver.symbol.name, methodReceiver.symbol);
@@ -367,11 +377,13 @@ function bindStructDeclaration(
   }
 
   structDeclaration.symbol = {
+    flags: ast.SymbolFlags.Type | ast.SymbolFlags.Struct,
+    declaration: structDeclaration,
     sourceFileName: sourceFile.fileName,
     name: structDeclaration.name.value,
-    flags: ast.SymbolFlags.Type | ast.SymbolFlags.Struct,
     members,
   };
+  structDeclaration.type = structDeclaration.symbol;
 
   setLocal(structDeclaration, sourceFile, structDeclaration.symbol.name, structDeclaration.symbol);
   if (structDeclaration.isExported) {
@@ -387,9 +399,9 @@ function bindStructMember(
   structMember: ast.StructMember,
 ): void {
   structMember.symbol = {
+    flags: ast.SymbolFlags.StructMember,
     sourceFileName: sourceFile.fileName,
     name: structMember.name.value,
-    flags: ast.SymbolFlags.StructMember,
   };
 
   structMember.bindState = ast.BindState.Finished;
@@ -402,14 +414,9 @@ function bindVarDeclaration(
 ): void {
   bindTypeNode(program, sourceFile, varDeclaration.declaredType);
 
-  let type: ast.Symbol | undefined = varDeclaration.declaredType.symbol;
   let members: ast.SymbolTable | undefined;
 
-  if (ast.isArrayType(varDeclaration.declaredType)) {
-    // TODO: Implement this correctly.
-    type = builtins.globals["Array"];
-    members = builtins.globals["Array"].members;
-  } else if (varDeclaration.declaredType.kind == ast.SyntaxKind.TypeReference) {
+  if (varDeclaration.declaredType.kind == ast.SyntaxKind.TypeReference) {
     const typeReference = <ast.TypeReference> varDeclaration.declaredType;
 
     if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
@@ -444,7 +451,7 @@ function bindVarDeclaration(
     }
   }
 
-  varDeclaration.type = type;
+  varDeclaration.type = varDeclaration.declaredType.symbol;
   varDeclaration.symbol = {
     flags: ast.SymbolFlags.Var,
     declaration: varDeclaration,
@@ -503,6 +510,14 @@ function bindExpression(
       bindIdentifier(program, sourceFile, <ast.Identifier> expression);
       break;
 
+    case ast.SyntaxKind.BoolLiteral:
+      bindBoolLiteral(program, sourceFile, <ast.BoolLiteral> expression);
+      break;
+
+    case ast.SyntaxKind.IntLiteral:
+      bindIntLiteral(program, sourceFile, <ast.IntLiteral> expression);
+      break;
+
     case ast.SyntaxKind.StringLiteral:
       bindStringLiteral(program, sourceFile, <ast.StringLiteral> expression);
       break;
@@ -530,11 +545,12 @@ function bindPropertyAccessExpression(
   propertyAccessExpression: ast.PropertyAccessExpression,
 ): void {
   bindExpression(program, sourceFile, propertyAccessExpression.expression);
+
   bindIdentifier(
     program,
     sourceFile,
     propertyAccessExpression.name,
-    propertyAccessExpression.expression.symbol ?? propertyAccessExpression.expression.type,
+    propertyAccessExpression.expression.type,
   );
 
   propertyAccessExpression.type = propertyAccessExpression.name.type;
@@ -549,10 +565,6 @@ function bindIdentifier(
   identifier: ast.Identifier,
   parentSymbol?: ast.Symbol,
 ): void {
-  if (identifier.symbol) {
-    return;
-  }
-
   if (!parentSymbol) {
     identifier.symbol = getSymbolFromScopeByName(identifier, identifier.value);
   } else {
@@ -582,6 +594,11 @@ function bindArrayType(
   sourceFile: Required<ast.SourceFile>,
   arrayType: ast.ArrayType,
 ): void {
+  bindTypeNode(program, sourceFile, arrayType.elementType);
+
+  arrayType.symbol = builtins.globals.Array;
+  arrayType.type = builtins.globals.Array;
+  arrayType.bindState = ast.BindState.Finished;
 }
 
 function bindPointerType(
@@ -619,11 +636,29 @@ function bindTypeReference(
   typeReference.bindState = ast.BindState.Finished;
 }
 
+function bindBoolLiteral(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  boolLiteral: ast.BoolLiteral,
+): void {
+  boolLiteral.type = builtins.globals.bool;
+  boolLiteral.bindState = ast.BindState.Finished;
+}
+
+function bindIntLiteral(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  intLiteral: ast.IntLiteral,
+): void {
+  intLiteral.type = builtins.globals.int;
+  intLiteral.bindState = ast.BindState.Finished;
+}
+
 function bindStringLiteral(
   program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   stringLiteral: ast.StringLiteral,
 ): void {
-  stringLiteral.type = builtins.globals["string"];
+  stringLiteral.type = builtins.globals.string;
   stringLiteral.bindState = ast.BindState.Finished;
 }
