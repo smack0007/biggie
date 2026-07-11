@@ -220,10 +220,10 @@ function bindImportDeclaration(
 
   if (importDeclaration.alias?.value) {
     importDeclaration.symbol = {
+      flags: ast.SymbolFlags.Module,
       declaration: importDeclaration,
       sourceFileName: sourceFile.fileName,
       name: importDeclaration.alias.value,
-      flags: ast.SymbolFlags.Module,
       members: exports,
     };
     importDeclaration.type = importDeclaration.symbol;
@@ -250,10 +250,10 @@ function bindEnumDeclaration(
   }
 
   enumDeclaration.symbol = {
+    flags: ast.SymbolFlags.Enum,
     declaration: enumDeclaration,
     sourceFileName: sourceFile.fileName,
     name: enumDeclaration.name.value,
-    flags: ast.SymbolFlags.Enum,
     members,
   };
   enumDeclaration.type = enumDeclaration.symbol;
@@ -272,9 +272,9 @@ function bindEnumMember(
   enumMember: ast.EnumMember,
 ): void {
   enumMember.symbol = {
+    flags: ast.SymbolFlags.EnumMember,
     sourceFileName: sourceFile.fileName,
     name: enumMember.name.value,
-    flags: ast.SymbolFlags.EnumMember,
   };
 
   enumMember.bindState = ast.BindState.Finished;
@@ -286,7 +286,6 @@ function bindFuncDeclaration(
   funcDeclaration: ast.FuncDeclaration,
 ): void {
   for (const arg of funcDeclaration.args) {
-    // TODO: Do we need to have bindFuncArgument here?
     bindVarDeclaration(program, sourceFile, arg);
   }
 
@@ -294,10 +293,10 @@ function bindFuncDeclaration(
   bindStatementBlock(program, sourceFile, funcDeclaration.body);
 
   funcDeclaration.symbol = {
+    flags: ast.SymbolFlags.Func,
     declaration: funcDeclaration,
     sourceFileName: sourceFile.fileName,
     name: funcDeclaration.name.value,
-    flags: ast.SymbolFlags.Func,
   };
   funcDeclaration.type = funcDeclaration.symbol;
 
@@ -317,7 +316,6 @@ function bindMethodDeclaration(
   bindMethodReceiver(program, sourceFile, methodDeclaration.receiver);
 
   for (const arg of methodDeclaration.args) {
-    // TODO: Do we need to have bindMethodArgument here?
     bindVarDeclaration(program, sourceFile, arg);
   }
 
@@ -325,10 +323,10 @@ function bindMethodDeclaration(
   bindStatementBlock(program, sourceFile, methodDeclaration.body);
 
   methodDeclaration.symbol = {
+    flags: ast.SymbolFlags.Method,
     declaration: methodDeclaration,
     sourceFileName: sourceFile.fileName,
     name: methodDeclaration.name.value,
-    flags: ast.SymbolFlags.Method,
   };
   methodDeclaration.type = methodDeclaration.symbol;
 
@@ -414,50 +412,12 @@ function bindVarDeclaration(
 ): void {
   bindTypeNode(program, sourceFile, varDeclaration.declaredType);
 
-  let members: ast.SymbolTable | undefined;
-
-  if (varDeclaration.declaredType.kind == ast.SyntaxKind.TypeReference) {
-    const typeReference = <ast.TypeReference> varDeclaration.declaredType;
-
-    if (typeReference.typeName.kind == ast.SyntaxKind.QualifiedName) {
-      const qualifiedName = <ast.QualifiedName> typeReference.typeName;
-
-      const module = getSymbolFromScopeByName(varDeclaration, qualifiedName.left.value);
-
-      if (!module.members) {
-        throw bindError(
-          BindErrorKind.Unexpected,
-          `module.members is null in ${nameof(bindVarDeclaration)}: ${varDeclaration.name.value}`,
-          varDeclaration,
-        );
-      }
-
-      const moduleExport = module.members[qualifiedName.right.value];
-
-      if (!moduleExport.members) {
-        throw bindError(
-          BindErrorKind.Unexpected,
-          `moduleExport.members is null in ${nameof(bindVarDeclaration)}: ${varDeclaration.name.value}`,
-          varDeclaration,
-        );
-      }
-
-      members = moduleExport.members;
-    } else {
-      const identifier = <ast.Identifier> typeReference.typeName;
-
-      const symbol = getSymbolFromScopeByName(varDeclaration, identifier.value);
-      members = symbol.members;
-    }
-  }
-
   varDeclaration.type = varDeclaration.declaredType.symbol;
   varDeclaration.symbol = {
     flags: ast.SymbolFlags.Var,
     declaration: varDeclaration,
     sourceFileName: sourceFile.fileName,
     name: varDeclaration.name.value,
-    members,
   };
 
   const scope = getScopeFromNode(varDeclaration);
