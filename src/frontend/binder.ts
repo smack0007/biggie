@@ -1,6 +1,7 @@
 import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
 import * as builtins from "./builtins.ts";
+import * as checker from "./checker.ts";
 import { bool } from "../shims.ts";
 import { dump } from "../utils.ts";
 
@@ -9,6 +10,7 @@ export enum BindErrorKind {
   MissingSymbol,
   DuplicateSymbol,
   DuplicateSymbolMember,
+  TypeMismatch,
 }
 
 export interface BindError extends ast.Diagnostic {
@@ -477,7 +479,22 @@ function bindVarDeclaration(
 ): void {
   bindTypeNode(program, sourceFile, varDeclaration.declaredType);
 
-  varDeclaration.type = varDeclaration.declaredType.symbol;
+  if (varDeclaration.initializer) {
+    bindExpression(program, sourceFile, varDeclaration.initializer, varDeclaration.declaredType.type);
+
+    if (
+      varDeclaration.declaredType.type != varDeclaration.initializer.type &&
+      !checker.isConvertible(varDeclaration.initializer.type ?? null, varDeclaration.declaredType.type ?? null)
+    ) {
+      throw bindError(
+        BindErrorKind.TypeMismatch,
+        `Type mistmatch ${varDeclaration.declaredType.type?.name} does not equal ${varDeclaration.initializer.type?.name} and conversion not possible.`,
+        varDeclaration,
+      );
+    }
+  }
+
+  varDeclaration.type = varDeclaration.declaredType.type;
   varDeclaration.symbol = {
     flags: ast.SymbolFlags.Var,
     declaration: varDeclaration,
@@ -494,32 +511,55 @@ function bindExpression(
   program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
   expression: ast.Expression,
+  typeContext?: ast.Symbol,
 ): void {
   switch (expression.kind) {
-    case ast.SyntaxKind.CallExpression:
-      bindCallExpression(program, sourceFile, <ast.CallExpression> expression);
-      break;
-
-    case ast.SyntaxKind.PropertyAccessExpression:
-      bindPropertyAccessExpression(program, sourceFile, <ast.PropertyAccessExpression> expression);
-      break;
-
-    case ast.SyntaxKind.Identifier:
-      bindIdentifier(program, sourceFile, <ast.Identifier> expression);
+    case ast.SyntaxKind.ArrayLiteral:
+      bindArrayLiteral(program, sourceFile, <ast.ArrayLiteral> expression);
       break;
 
     case ast.SyntaxKind.BoolLiteral:
       bindBoolLiteral(program, sourceFile, <ast.BoolLiteral> expression);
       break;
 
+    case ast.SyntaxKind.CallExpression:
+      bindCallExpression(program, sourceFile, <ast.CallExpression> expression);
+      break;
+
+    case ast.SyntaxKind.Identifier:
+      bindIdentifier(program, sourceFile, <ast.Identifier> expression);
+      break;
+
     case ast.SyntaxKind.IntLiteral:
       bindIntLiteral(program, sourceFile, <ast.IntLiteral> expression);
+      break;
+
+    case ast.SyntaxKind.PropertyAccessExpression:
+      bindPropertyAccessExpression(program, sourceFile, <ast.PropertyAccessExpression> expression);
       break;
 
     case ast.SyntaxKind.StringLiteral:
       bindStringLiteral(program, sourceFile, <ast.StringLiteral> expression);
       break;
+
+    case ast.SyntaxKind.StructLiteral:
+      bindStructLiteral(program, sourceFile, <ast.StructLiteral> expression, typeContext);
+      break;
   }
+}
+
+function bindArrayLiteral(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  arrayLiteral: ast.ArrayLiteral,
+): void {
+  for (const element of arrayLiteral.elements) {
+    bindExpression(program, sourceFile, element);
+  }
+
+  const globals = getGlobalsOrError(arrayLiteral);
+  arrayLiteral.type = getSymbolFromScopeByName(globals, builtins.GlobalName.Array);
+  arrayLiteral.bindState = ast.BindState.Finished;
 }
 
 function bindCallExpression(
@@ -587,6 +627,7 @@ function bindTypeNode(
   } else {
     bindTypeReference(program, sourceFile, <ast.TypeReference> typeNode);
   }
+  typeNode.bindState = ast.BindState.Finished;
 }
 
 function bindArrayType(
@@ -618,10 +659,11 @@ function bindTypeReference(
     bindQualifiedName(program, sourceFile, typeReference.typeName);
   } else {
     bindIdentifier(program, sourceFile, typeReference.typeName);
+    typeReference.typeName.type = typeReference.typeName.symbol;
   }
 
   typeReference.symbol = typeReference.typeName.symbol;
-  typeReference.type = typeReference.symbol;
+  typeReference.type = typeReference.typeName.type;
   typeReference.bindState = ast.BindState.Finished;
 }
 
@@ -631,8 +673,12 @@ function bindQualifiedName(
   qualifiedName: ast.QualifiedName,
 ): void {
   bindIdentifier(program, sourceFile, qualifiedName.left);
+  qualifiedName.left.type = qualifiedName.left.symbol;
   bindIdentifier(program, sourceFile, qualifiedName.right, qualifiedName.left.symbol);
+  qualifiedName.right.type = qualifiedName.right.symbol;
+
   qualifiedName.symbol = qualifiedName.right.symbol;
+  qualifiedName.type = qualifiedName.right.type;
   qualifiedName.bindState = ast.BindState.Finished;
 }
 
@@ -641,7 +687,8 @@ function bindBoolLiteral(
   sourceFile: Required<ast.SourceFile>,
   boolLiteral: ast.BoolLiteral,
 ): void {
-  boolLiteral.type = builtins.globals.bool;
+  const globals = getGlobalsOrError(boolLiteral);
+  boolLiteral.type = getSymbolFromScopeByName(globals, builtins.GlobalName.bool);
   boolLiteral.bindState = ast.BindState.Finished;
 }
 
@@ -650,7 +697,8 @@ function bindIntLiteral(
   sourceFile: Required<ast.SourceFile>,
   intLiteral: ast.IntLiteral,
 ): void {
-  intLiteral.type = builtins.globals.int;
+  const globals = getGlobalsOrError(intLiteral);
+  intLiteral.type = getSymbolFromScopeByName(globals, builtins.GlobalName.int);
   intLiteral.bindState = ast.BindState.Finished;
 }
 
@@ -659,6 +707,26 @@ function bindStringLiteral(
   sourceFile: Required<ast.SourceFile>,
   stringLiteral: ast.StringLiteral,
 ): void {
-  stringLiteral.type = builtins.globals.string;
+  const globals = getGlobalsOrError(stringLiteral);
+  stringLiteral.type = getSymbolFromScopeByName(globals, builtins.GlobalName.string);
   stringLiteral.bindState = ast.BindState.Finished;
+}
+
+function bindStructLiteral(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  structLiteral: ast.StructLiteral,
+  typeContext?: ast.Symbol,
+): void {
+  // TODO: Extend the grammer so that StructLiteral can explicitly specify what type it is.
+  if (!typeContext) {
+    throw bindError(
+      BindErrorKind.Unexpected,
+      "typeContext must currently be set for structLiterals",
+      structLiteral,
+    );
+  }
+
+  structLiteral.type = typeContext;
+  structLiteral.bindState = ast.BindState.Finished;
 }

@@ -1,0 +1,2 @@
+- Add a function that will convert a given piece of AST into a string.
+- Unit tests for checker.ts

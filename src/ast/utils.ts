@@ -8,6 +8,7 @@ import {
   Reference,
   Scope,
   SourceFile,
+  Statement,
   Symbol,
   SymbolFlags,
   SyntaxNode,
@@ -24,6 +25,8 @@ import {
   makeTypeReference,
 } from "./factories.ts";
 import { bool } from "../shims.ts";
+
+export const SOURCE_FILE_NAME = "<source>";
 
 export function getModulePrefixByFileName(importDeclaration: ImportDeclaration): string {
   return path.basename(
@@ -78,17 +81,31 @@ export function getSymbol(node: Declaration | Reference, expectedFlags: SymbolFl
 }
 
 export function makeProgramFromExpression(expression: Expression): Program {
-  const FILE_NAME = "<source>";
-
   return makeProgram(
-    FILE_NAME,
+    SOURCE_FILE_NAME,
     {
-      FILE_NAME: makeSourceFile(FILE_NAME, [makeFuncDeclaration(
+      FILE_NAME: makeSourceFile(SOURCE_FILE_NAME, [makeFuncDeclaration(
         makeIdentifier("main"),
         [],
         makeTypeReference(makeIdentifier("void")),
         makeStatementBlock([
           makeExpressionStatement(expression),
+        ]),
+      )], {}),
+    },
+  );
+}
+
+export function makeProgramFromStatement(statement: Statement): Program {
+  return makeProgram(
+    SOURCE_FILE_NAME,
+    {
+      FILE_NAME: makeSourceFile(SOURCE_FILE_NAME, [makeFuncDeclaration(
+        makeIdentifier("main"),
+        [],
+        makeTypeReference(makeIdentifier("void")),
+        makeStatementBlock([
+          statement,
         ]),
       )], {}),
     },
