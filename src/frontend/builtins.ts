@@ -31,48 +31,49 @@ function builtinSymbolTable(...symbols: BuiltinSymbol[]): SymbolTable {
   return symbolTable;
 }
 
-export interface Globals {
-  Array: Symbol;
-  bool: Symbol;
-  int: Symbol;
-  int32: Symbol;
-  println: Symbol;
-  string: Symbol;
+export enum GlobalName {
+  Array = "Array",
+  bool = "bool",
+  int = "int",
+  int32 = "int32",
+  println = "println",
+  string = "string",
+  void = "void",
 }
 
-export const globals: Globals = builtinSymbolTable(
+export const globals = builtinSymbolTable(
   builtinSymbol(
-    "Array",
+    GlobalName.Array,
     SymbolFlags.Type,
     builtinSymbolTable(
       builtinSymbol("length", SymbolFlags.Method),
     ),
   ),
   builtinSymbol(
-    "bool",
+    GlobalName.bool,
     SymbolFlags.Type,
   ),
   builtinSymbol(
-    "int",
+    GlobalName.int,
     SymbolFlags.Type,
   ),
   builtinSymbol(
-    "int32",
+    GlobalName.int32,
     SymbolFlags.Type,
   ),
   builtinSymbol(
-    "println",
+    GlobalName.println,
     SymbolFlags.Func,
   ),
   builtinSymbol(
-    "string",
+    GlobalName.string,
     SymbolFlags.Type,
     builtinSymbolTable(
       builtinSymbol("length", SymbolFlags.Method),
     ),
   ),
   builtinSymbol(
-    "void",
+    GlobalName.void,
     SymbolFlags.Type,
   ),
-) as unknown as Globals;
+);

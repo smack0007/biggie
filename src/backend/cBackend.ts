@@ -166,14 +166,19 @@ function getBlockLevelStatementPlaceholder(context: EmitContext): OutputWriter {
 }
 
 function getSourceFileFromSymbol(context: EmitContext, symbol: ast.Symbol): ast.SourceFile {
-  if (symbol.sourceFileName == "<builtin>") {
+  // TODO: It might make sense to have a <runtime> source file or something to that effect.
+  if (hasFlag(symbol.flags, ast.SymbolFlags.Builtin)) {
     return context.sourceFiles[context.entryFileName];
   }
 
-  const sourceFile = context.sourceFiles[symbol.sourceFileName];
+  if (!symbol.declaration) {
+    throw new Error(`Symbol has no declaration in ${nameof(getSourceFileFromSymbol)}`);
+  }
+
+  const sourceFile = ast.findSourceFileFromNode(symbol.declaration);
 
   if (!sourceFile) {
-    throw new Error(`Unknown source file "${symbol.sourceFileName}" in ${nameof(getSourceFileFromSymbol)}`);
+    throw new Error(`Unable to find source file in ${nameof(getSourceFileFromSymbol)}`);
   }
 
   return sourceFile;
@@ -914,7 +919,7 @@ function emitPropertyAccessExpression(
         }
       }
     } else if (hasFlag(propertyAccessExpression.expression.symbol.flags, ast.SymbolFlags.Enum)) {
-      const module = context.sourceFiles[propertyAccessExpression.expression.symbol.sourceFileName];
+      const module = getSourceFileFromSymbol(context, propertyAccessExpression.expression.symbol);
       const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.expression.symbol.name);
       if (mappedTypeName != null) {
         context.output.append(`${mappedTypeName}_`);

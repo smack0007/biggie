@@ -44,16 +44,6 @@ export function bind(program: ast.Program): void {
   program.bindState = ast.BindState.Finished;
 }
 
-function getScopeOrError(node: ast.SyntaxNode): ast.Scope {
-  const scope = ast.findScopeFromNode(node);
-
-  if (scope == null) {
-    throw bindError(BindErrorKind.MissingSymbol, `Failed to get scope from "${ast.nameofSyntaxKind(node.kind)}"`, node);
-  }
-
-  return scope;
-}
-
 function setLocal(node: ast.SyntaxNode, scope: ast.Scope, name: string, value: ast.Symbol): void {
   if (scope.locals[name] !== undefined) {
     throw bindError(BindErrorKind.DuplicateSymbol, `Symbol named "${name}" already exists in scope.`, node);
@@ -99,27 +89,52 @@ function bindInitialize(program: ast.Program): void {
     sourceFile.bindState = ast.BindState.Initialized;
   }
 
-  for (const [name, value] of Object.entries(builtins.globals)) {
-    setLocal(program, program, name, value);
+  for (const [name, symbol] of Object.entries(builtins.globals)) {
+    setLocal(program, program, name, {
+      ...symbol,
+      declaration: program,
+    });
   }
   program.bindState = ast.BindState.Initialized;
 }
 
-function getSymbolFromScopeByName(node: ast.SyntaxNode, name: string): ast.Symbol {
-  let scope = getScopeOrError(node);
+function getGlobalsOrError(node: ast.SyntaxNode): ast.Scope {
+  const globals = ast.findProgramFromNode(node);
 
+  if (globals == null) {
+    throw bindError(
+      BindErrorKind.MissingSymbol,
+      `Failed to get global scope from "${ast.nameofSyntaxKind(node.kind)}"`,
+      node,
+    );
+  }
+
+  return globals;
+}
+
+function getScopeOrError(node: ast.SyntaxNode): ast.Scope {
+  const scope = ast.findScopeFromNode(node);
+
+  if (scope == null) {
+    throw bindError(BindErrorKind.MissingSymbol, `Failed to get scope from "${ast.nameofSyntaxKind(node.kind)}"`, node);
+  }
+
+  return scope;
+}
+
+function getSymbolFromScopeByName(scope: ast.Scope, name: string): ast.Symbol {
   while (scope.nextSymbolScope) {
     if (scope.locals[name]) {
       return scope.locals[name];
     }
-    scope = <Required<ast.Scope>> scope.nextSymbolScope;
+    scope = scope.nextSymbolScope;
   }
 
   if (scope.locals[name]) {
     return scope.locals[name];
   }
 
-  throw bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${name}".`, node);
+  throw bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${name}".`, scope);
 }
 
 function getSymbolMemberByIdentifier(symbol: ast.Symbol, identifier: ast.Identifier): ast.Symbol {
@@ -201,7 +216,6 @@ function bindImportDeclaration(
     importDeclaration.symbol = {
       flags: ast.SymbolFlags.Module,
       declaration: importDeclaration,
-      sourceFileName: sourceFile.fileName,
       name: importDeclaration.alias.value,
       members: exports,
     };
@@ -231,7 +245,6 @@ function bindEnumDeclaration(
   enumDeclaration.symbol = {
     flags: ast.SymbolFlags.Enum,
     declaration: enumDeclaration,
-    sourceFileName: sourceFile.fileName,
     name: enumDeclaration.name.value,
     members,
   };
@@ -252,7 +265,6 @@ function bindEnumMember(
 ): void {
   enumMember.symbol = {
     flags: ast.SymbolFlags.EnumMember,
-    sourceFileName: sourceFile.fileName,
     name: enumMember.name.value,
   };
 
@@ -274,7 +286,6 @@ function bindFuncDeclaration(
   funcDeclaration.symbol = {
     flags: ast.SymbolFlags.Func,
     declaration: funcDeclaration,
-    sourceFileName: sourceFile.fileName,
     name: funcDeclaration.name.value,
   };
   funcDeclaration.type = funcDeclaration.symbol;
@@ -304,7 +315,6 @@ function bindMethodDeclaration(
   methodDeclaration.symbol = {
     flags: ast.SymbolFlags.Method,
     declaration: methodDeclaration,
-    sourceFileName: sourceFile.fileName,
     name: methodDeclaration.name.value,
   };
   methodDeclaration.type = methodDeclaration.symbol;
@@ -330,7 +340,6 @@ function bindMethodReceiver(
   methodReceiver.symbol = {
     flags: ast.SymbolFlags.Var,
     declaration: methodReceiver,
-    sourceFileName: sourceFile.fileName,
     name: methodReceiver.name.value,
     members: methodReceiver.declaredType.symbol?.members,
   };
@@ -356,7 +365,6 @@ function bindStructDeclaration(
   structDeclaration.symbol = {
     flags: ast.SymbolFlags.Type | ast.SymbolFlags.Struct,
     declaration: structDeclaration,
-    sourceFileName: sourceFile.fileName,
     name: structDeclaration.name.value,
     members,
   };
@@ -377,7 +385,6 @@ function bindStructMember(
 ): void {
   structMember.symbol = {
     flags: ast.SymbolFlags.StructMember,
-    sourceFileName: sourceFile.fileName,
     name: structMember.name.value,
   };
 
@@ -395,7 +402,6 @@ function bindVarDeclaration(
   varDeclaration.symbol = {
     flags: ast.SymbolFlags.Var,
     declaration: varDeclaration,
-    sourceFileName: sourceFile.fileName,
     name: varDeclaration.name.value,
   };
 
@@ -505,7 +511,8 @@ function bindIdentifier(
   parentSymbol?: ast.Symbol,
 ): void {
   if (!parentSymbol) {
-    identifier.symbol = getSymbolFromScopeByName(identifier, identifier.value);
+    const scope = getScopeOrError(identifier);
+    identifier.symbol = getSymbolFromScopeByName(scope, identifier.value);
   } else {
     identifier.symbol = getSymbolMemberByIdentifier(parentSymbol, identifier);
   }
@@ -535,8 +542,9 @@ function bindArrayType(
 ): void {
   bindTypeNode(program, sourceFile, arrayType.elementType);
 
-  arrayType.symbol = builtins.globals.Array;
-  arrayType.type = builtins.globals.Array;
+  const globals = getGlobalsOrError(arrayType);
+  arrayType.symbol = getSymbolFromScopeByName(globals, builtins.GlobalName.Array);
+  arrayType.type = arrayType.symbol;
   arrayType.bindState = ast.BindState.Finished;
 }
 
@@ -552,8 +560,10 @@ function bindTypeReference(
   sourceFile: Required<ast.SourceFile>,
   typeReference: ast.TypeReference,
 ): void {
+  // TODO: Factor out bindQualifiedName
   if (ast.isQualifiedName(typeReference.typeName)) {
-    typeReference.typeName.left.symbol = getSymbolFromScopeByName(typeReference, typeReference.typeName.left.value);
+    const scope = getScopeOrError(typeReference);
+    typeReference.typeName.left.symbol = getSymbolFromScopeByName(scope, typeReference.typeName.left.value);
     typeReference.typeName.left.bindState = ast.BindState.Finished;
 
     typeReference.typeName.right.symbol = getSymbolMemberByIdentifier(
@@ -564,7 +574,9 @@ function bindTypeReference(
 
     typeReference.typeName.symbol = typeReference.typeName.right.symbol;
   } else {
-    typeReference.typeName.symbol = getSymbolFromScopeByName(typeReference, typeReference.typeName.value);
+    // TODO: Use bindIdentifier here.
+    const scope = getScopeOrError(typeReference);
+    typeReference.typeName.symbol = getSymbolFromScopeByName(scope, typeReference.typeName.value);
   }
 
   typeReference.typeName.type = typeReference.typeName.symbol;

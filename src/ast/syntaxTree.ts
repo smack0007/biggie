@@ -168,8 +168,6 @@ export interface Symbol {
 
   declaration?: SyntaxNode;
 
-  sourceFileName: string;
-
   parent?: Symbol;
 
   name: string;

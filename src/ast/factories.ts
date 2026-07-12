@@ -66,13 +66,11 @@ export interface MakeSymbolOptionalProps {
 
 export function makeSymbol(
   flags: SymbolFlags,
-  sourceFileName: string,
   name: string,
   optional: MakeSymbolOptionalProps = {},
 ): Symbol {
   return {
     flags,
-    sourceFileName,
     name,
     declaration: optional.declaration ?? undefined,
     parent: optional.parent ?? undefined,
