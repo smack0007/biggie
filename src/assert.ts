@@ -1,4 +1,4 @@
-import { hasFlag as _hasFlag } from "./shims.ts";
+import { bool, hasFlag as _hasFlag } from "./shims.ts";
 
 export class AssertionError extends Error {
   constructor(message: string) {
@@ -8,6 +8,12 @@ export class AssertionError extends Error {
 
 export function hasFlag(flags: number, flag: number, message: string): void {
   if (!_hasFlag(flags, flag)) {
+    throw new AssertionError(message);
+  }
+}
+
+export function isTrue(expression: bool, message: string): void {
+  if (!expression) {
     throw new AssertionError(message);
   }
 }

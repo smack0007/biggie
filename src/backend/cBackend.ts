@@ -808,7 +808,7 @@ function emitBooleanLiteral(context: EmitContext, sourceFile: ast.SourceFile, bo
 function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, callExpression: ast.CallExpression) {
   assert.notNull(
     callExpression.symbol,
-    `Expected callExpression.symbol not to be null ${dump(callExpression.expression)}`,
+    `Expected callExpression.symbol not to be null`,
   );
 
   const isVaradicCall = hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Varadic);
@@ -846,20 +846,24 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     popOutput(context);
   }
 
-  // Copy the arguments into a new array, if we have a method we'll push into the
-  // front of the array.
+  // Copy the arguments into a new array, if we have a method we'll push the receiver
+  // into the front of the array.
   const args = [...callExpression.args];
 
-  if (
-    callExpression.symbol &&
-    hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Method) &&
-    ast.isPropertyAccessExpression(callExpression.expression)
-  ) {
-    const receiver = callExpression.expression.expression.type;
-
-    if (!receiver) {
-      throw new Error("Expected receiver not to be null.");
+  if (hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Method)) {
+    if (!ast.isPropertyAccessExpression(callExpression.expression)) {
+      throw new Error(
+        `Expected callExpression.expression to be kind ${
+          ast.nameofSyntaxKind(ast.SyntaxKind.PropertyAccessExpression)
+        } when ${ast.nameofSymbolFlags(ast.SymbolFlags.Method)} is set`,
+      );
     }
+
+    assert.notNull(
+      callExpression.expression.expression.type,
+      "Expected callExpression.expression.expression.type (receiver) not to be null",
+    );
+    const receiver = callExpression.expression.expression.type;
 
     const module = getSourceFileFromSymbol(context, receiver);
     const mappedFunctionName = getMappedModuleTypeName(context, module, callExpression.expression.name.value);
@@ -867,7 +871,7 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     if (mappedFunctionName) {
       context.output.append(mappedFunctionName);
     } else {
-      // FIX: This leads to only one method can be set per name.
+      // FIXME: This leads to only one method can be set per name.
       emitIdentifier(context, sourceFile, callExpression.expression.name);
     }
 
