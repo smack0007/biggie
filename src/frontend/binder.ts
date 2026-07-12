@@ -560,31 +560,26 @@ function bindTypeReference(
   sourceFile: Required<ast.SourceFile>,
   typeReference: ast.TypeReference,
 ): void {
-  // TODO: Factor out bindQualifiedName
   if (ast.isQualifiedName(typeReference.typeName)) {
-    const scope = getScopeOrError(typeReference);
-    typeReference.typeName.left.symbol = getSymbolFromScopeByName(scope, typeReference.typeName.left.value);
-    typeReference.typeName.left.bindState = ast.BindState.Finished;
-
-    typeReference.typeName.right.symbol = getSymbolMemberByIdentifier(
-      typeReference.typeName.left.symbol,
-      typeReference.typeName.right,
-    );
-    typeReference.typeName.right.bindState = ast.BindState.Finished;
-
-    typeReference.typeName.symbol = typeReference.typeName.right.symbol;
+    bindQualifiedName(program, sourceFile, typeReference.typeName);
   } else {
-    // TODO: Use bindIdentifier here.
-    const scope = getScopeOrError(typeReference);
-    typeReference.typeName.symbol = getSymbolFromScopeByName(scope, typeReference.typeName.value);
+    bindIdentifier(program, sourceFile, typeReference.typeName);
   }
-
-  typeReference.typeName.type = typeReference.typeName.symbol;
-  typeReference.typeName.bindState = ast.BindState.Finished;
 
   typeReference.symbol = typeReference.typeName.symbol;
   typeReference.type = typeReference.symbol;
   typeReference.bindState = ast.BindState.Finished;
+}
+
+function bindQualifiedName(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  qualifiedName: ast.QualifiedName,
+): void {
+  bindIdentifier(program, sourceFile, qualifiedName.left);
+  bindIdentifier(program, sourceFile, qualifiedName.right, qualifiedName.left.symbol);
+  qualifiedName.symbol = qualifiedName.right.symbol;
+  qualifiedName.bindState = ast.BindState.Finished;
 }
 
 function bindBoolLiteral(
