@@ -10,7 +10,7 @@ export interface DumpOptions {
 
 export function dump(value: unknown, options: DumpOptions = {}): string {
   return inspect(value, {
-    depth: options.depth,
+    depth: options.depth ?? 3,
   });
 }
 

@@ -1,3 +1,4 @@
+import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
 import * as builtins from "./builtins.ts";
 import { bool } from "../shims.ts";
@@ -391,6 +392,84 @@ function bindStructMember(
   structMember.bindState = ast.BindState.Finished;
 }
 
+function bindStatement(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  statement: ast.Statement,
+): void {
+  switch (statement.kind) {
+    case ast.SyntaxKind.ExpressionStatement:
+      bindExpressionStatement(program, sourceFile, <ast.ExpressionStatement> statement);
+      break;
+
+    case ast.SyntaxKind.IfStatement:
+      bindIfStatement(program, sourceFile, <ast.IfStatement> statement);
+      break;
+
+    case ast.SyntaxKind.StatementBlock:
+      bindStatementBlock(program, sourceFile, <ast.StatementBlock> statement);
+      break;
+
+    case ast.SyntaxKind.WhileStatement:
+      bindWhileStatement(program, sourceFile, <ast.WhileStatement> statement);
+      break;
+
+    case ast.SyntaxKind.VarDeclaration:
+      bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> statement);
+      break;
+  }
+}
+
+function bindExpressionStatement(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  expressionStatement: ast.ExpressionStatement,
+): void {
+  bindExpression(program, sourceFile, expressionStatement.expression);
+
+  expressionStatement.symbol = expressionStatement.expression.symbol;
+  expressionStatement.type = expressionStatement.expression.type;
+  expressionStatement.bindState = ast.BindState.Finished;
+}
+
+function bindIfStatement(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  ifStatement: ast.IfStatement,
+): void {
+  bindExpression(program, sourceFile, ifStatement.condition);
+  bindStatement(program, sourceFile, ifStatement.then);
+
+  if (ifStatement.else) {
+    bindStatement(program, sourceFile, ifStatement.else);
+  }
+
+  ifStatement.bindState = ast.BindState.Finished;
+}
+
+function bindStatementBlock(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  statementBlock: ast.StatementBlock,
+): void {
+  for (const statement of statementBlock.statements) {
+    bindStatement(program, sourceFile, statement);
+  }
+
+  statementBlock.bindState = ast.BindState.Finished;
+}
+
+function bindWhileStatement(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  whileStatement: ast.WhileStatement,
+): void {
+  bindExpression(program, sourceFile, whileStatement.condition);
+  bindStatement(program, sourceFile, whileStatement.body);
+
+  whileStatement.bindState = ast.BindState.Finished;
+}
+
 function bindVarDeclaration(
   program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
@@ -409,32 +488,6 @@ function bindVarDeclaration(
   setLocal(varDeclaration, scope, varDeclaration.symbol.name, varDeclaration.symbol);
 
   varDeclaration.bindState = ast.BindState.Finished;
-}
-
-function bindStatementBlock(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  statementBlock: ast.StatementBlock,
-): void {
-  for (const statement of statementBlock.statements) {
-    switch (statement.kind) {
-      case ast.SyntaxKind.ExpressionStatement:
-        bindExpressionStatement(program, sourceFile, <ast.ExpressionStatement> statement);
-        break;
-
-      case ast.SyntaxKind.VarDeclaration:
-        bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> statement);
-        break;
-    }
-  }
-}
-
-function bindExpressionStatement(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  expressionStatement: ast.ExpressionStatement,
-): void {
-  bindExpression(program, sourceFile, expressionStatement.expression);
 }
 
 function bindExpression(
@@ -480,6 +533,7 @@ function bindCallExpression(
   }
 
   callExpression.symbol = callExpression.expression.symbol;
+  callExpression.type = callExpression.expression.type;
 
   callExpression.bindState = ast.BindState.Finished;
 }

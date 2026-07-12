@@ -1,17 +1,21 @@
 import { Symbol, SymbolFlags, SymbolTable } from "../ast/syntaxTree.ts";
+import { uint } from "../shims.ts";
 
-const BUILTIN_SOURCE_FILE_NAME = "<builtin>";
+interface BuiltinSymbolOptionalArgs {
+  beginVaradicArgsIndex?: uint;
+}
 
-type BuiltinSymbol = Symbol & {
-  sourceFileName: typeof BUILTIN_SOURCE_FILE_NAME;
-};
-
-function builtinSymbol(name: string, flags: SymbolFlags, members?: SymbolTable): BuiltinSymbol {
-  const symbol: BuiltinSymbol = {
-    sourceFileName: BUILTIN_SOURCE_FILE_NAME,
-    name,
+function builtinSymbol(
+  name: string,
+  flags: SymbolFlags,
+  members: SymbolTable | null = null,
+  optional: BuiltinSymbolOptionalArgs = {},
+): Symbol {
+  const symbol: Symbol = {
     flags: SymbolFlags.Builtin | flags,
-    members,
+    name,
+    members: members ?? undefined,
+    beginVaradicArgsIndex: optional.beginVaradicArgsIndex,
   };
 
   if (members) {
@@ -23,7 +27,7 @@ function builtinSymbol(name: string, flags: SymbolFlags, members?: SymbolTable):
   return symbol;
 }
 
-function builtinSymbolTable(...symbols: BuiltinSymbol[]): SymbolTable {
+function builtinSymbolTable(...symbols: Symbol[]): SymbolTable {
   const symbolTable: SymbolTable = {};
   for (const symbol of symbols) {
     symbolTable[symbol.name] = symbol;
@@ -63,7 +67,11 @@ export const globals = builtinSymbolTable(
   ),
   builtinSymbol(
     GlobalName.println,
-    SymbolFlags.Func,
+    SymbolFlags.Func | SymbolFlags.Varadic,
+    null,
+    {
+      beginVaradicArgsIndex: 1,
+    },
   ),
   builtinSymbol(
     GlobalName.string,

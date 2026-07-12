@@ -154,11 +154,13 @@ export enum SymbolFlags {
 
   Func = 1 << 6,
 
-  Struct = 1 << 7,
+  Varadic = 1 << 7,
 
-  StructMember = 1 << 8,
+  Struct = 1 << 8,
 
-  Method = 1 << 9,
+  StructMember = 1 << 9,
+
+  Method = 1 << 10,
 }
 
 export type SymbolTable = Record<string, Symbol>;
@@ -173,6 +175,8 @@ export interface Symbol {
   name: string;
 
   members?: SymbolTable;
+
+  beginVaradicArgsIndex?: uint;
 }
 
 export interface SyntaxNode {
@@ -370,7 +374,7 @@ export interface ReturnStatement extends Statement {
   expression: Expression;
 }
 
-export interface StatementBlock extends SyntaxNode, Scope {
+export interface StatementBlock extends Statement, Scope {
   kind: SyntaxKind.StatementBlock;
 
   statements: Statement[];

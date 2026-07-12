@@ -62,6 +62,7 @@ export interface MakeSymbolOptionalProps {
   declaration?: SyntaxNode;
   parent?: Symbol;
   members?: SymbolTable;
+  beginVaradicArgsIndex?: uint;
 }
 
 export function makeSymbol(
@@ -75,6 +76,7 @@ export function makeSymbol(
     declaration: optional.declaration ?? undefined,
     parent: optional.parent ?? undefined,
     members: optional.members ?? undefined,
+    beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? undefined,
   };
 }
 

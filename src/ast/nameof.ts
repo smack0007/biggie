@@ -160,6 +160,8 @@ export function nameofSymbolFlags(kind: SymbolFlags): string {
       return "EnumMember";
     case SymbolFlags.Func:
       return "Func";
+    case SymbolFlags.Varadic:
+      return "Varadic";
     case SymbolFlags.Struct:
       return "Struct";
     case SymbolFlags.StructMember:

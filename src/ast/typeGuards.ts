@@ -243,6 +243,7 @@ export function isStatement(node: SyntaxNode): node is Statement {
     node.kind == SyntaxKind.ExpressionStatement ||
     node.kind == SyntaxKind.IfStatement ||
     node.kind == SyntaxKind.ReturnStatement ||
+    node.kind == SyntaxKind.StatementBlock ||
     node.kind == SyntaxKind.WhileStatement
   );
 }

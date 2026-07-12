@@ -1,3 +1,4 @@
+import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { OutputWriter } from "../outputWriter.ts";
@@ -805,25 +806,30 @@ function emitBooleanLiteral(context: EmitContext, sourceFile: ast.SourceFile, bo
 }
 
 function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, callExpression: ast.CallExpression) {
-  // HACK: For now just check for the "println" function to treat it as a varadic function.
-  let isVaradicCall = false;
-  let beginVaradicArgs = callExpression.args.length;
+  assert.notNull(
+    callExpression.symbol,
+    `Expected callExpression.symbol not to be null ${dump(callExpression.expression)}`,
+  );
+
+  const isVaradicCall = hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Varadic);
   let varadicArgsArrayName = "";
-  if (callExpression.expression.kind == ast.SyntaxKind.Identifier) {
-    const functionName = (<ast.Identifier> callExpression.expression).value;
 
-    if (functionName == "println") {
-      isVaradicCall = true;
-      beginVaradicArgs = 1;
-    }
-  }
-
+  let beginVaradicArgsIndex = callExpression.args.length;
   if (isVaradicCall) {
+    assert.notNull(
+      callExpression.symbol.beginVaradicArgsIndex,
+      `Expected callExpression.symbol.beginVaradicArgsIndex not be null when ${
+        ast.nameofSymbolFlags(ast.SymbolFlags.Varadic)
+      } is set`,
+    );
+
+    beginVaradicArgsIndex = callExpression.symbol.beginVaradicArgsIndex;
+
     const placeholder = getBlockLevelStatementPlaceholder(context);
     pushOutput(context, placeholder);
 
     const varadicVariableNames: string[] = [];
-    for (let i = beginVaradicArgs; i < callExpression.args.length; i += 1) {
+    for (let i = beginVaradicArgsIndex; i < callExpression.args.length; i += 1) {
       const varadicVariableName = `__v${context.tmpVariableIndex++}`;
       varadicVariableNames.push(varadicVariableName);
       // TODO: Would be nice if we didn't have to use 'auto' here.
@@ -866,13 +872,13 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     }
 
     args.unshift(callExpression.expression.expression);
-    beginVaradicArgs += 1;
+    beginVaradicArgsIndex += 1;
   } else {
     emitExpression(context, sourceFile, callExpression.expression);
   }
   context.output.append("(");
 
-  for (let i = 0; i < beginVaradicArgs; i += 1) {
+  for (let i = 0; i < beginVaradicArgsIndex; i += 1) {
     if (i != 0) {
       context.output.append(", ");
     }
@@ -881,7 +887,7 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
   }
 
   if (isVaradicCall) {
-    if (beginVaradicArgs != 0) {
+    if (beginVaradicArgsIndex != 0) {
       context.output.append(", ");
     }
     context.output.append(varadicArgsArrayName);

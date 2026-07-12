@@ -333,7 +333,10 @@ async function writeAstNameof(syntaxTreeContents: string[]): Promise<void> {
 async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   const DO_NOT_IMPORT = [
     "boolean",
+    "int",
+    "int32",
     "string",
+    "uint",
   ];
   const EXCLUDE_INTERFACES = [
     "Declaration",
