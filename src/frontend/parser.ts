@@ -175,6 +175,7 @@ export async function parse(
     diagnostics: context.diagnostics,
     bindState: ast.BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
   };
 }
 
@@ -224,6 +225,7 @@ export async function parseSourceFile(
     bindState: ast.BindState.Uninitialized,
     exports: {},
     locals: {},
+    nextSymbolScope: null,
   };
 }
 
@@ -517,6 +519,7 @@ function parseFuncDeclaration(
     body,
     bindState: ast.BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
   };
 }
 
@@ -577,6 +580,7 @@ function parseMethodDeclaration(
     body,
     bindState: ast.BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
   };
 }
 
@@ -705,6 +709,7 @@ function parseStatementBlock(context: ParserSourceFileContext): ast.StatementBlo
     statements,
     bindState: ast.BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
   };
 }
 

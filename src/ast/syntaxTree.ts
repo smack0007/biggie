@@ -204,7 +204,7 @@ export interface Reference extends SyntaxNode {
 export interface Scope extends SyntaxNode {
   locals: SymbolTable;
 
-  nextSymbolScope?: Scope;
+  nextSymbolScope: Scope | null;
 }
 
 export interface Diagnostic {

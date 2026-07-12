@@ -45,6 +45,7 @@ import {
   SymbolFlags,
   SymbolTable,
   SyntaxKind,
+  SyntaxNode,
   TextPosition,
   TypeNode,
   TypeReference,
@@ -58,20 +59,22 @@ export function makeTextPosition(line: uint, column: uint): TextPosition {
 }
 
 export interface MakeSymbolOptionalProps {
+  declaration?: SyntaxNode;
   parent?: Symbol;
   members?: SymbolTable;
 }
 
 export function makeSymbol(
-  sourceFileName: string,
   flags: SymbolFlags,
+  sourceFileName: string,
   name: string,
   optional: MakeSymbolOptionalProps = {},
 ): Symbol {
   return {
-    sourceFileName,
     flags,
+    sourceFileName,
     name,
+    declaration: optional.declaration ?? undefined,
     parent: optional.parent ?? undefined,
     members: optional.members ?? undefined,
   };
@@ -94,6 +97,7 @@ export function makeProgram(
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
     entryFileName,
     sourceFiles,
     diagnostics: optional.diagnostics ?? [],
@@ -117,6 +121,7 @@ export function makeSourceFile(
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
     fileName,
     statements,
     exports,
@@ -228,6 +233,7 @@ export function makeFuncDeclaration(
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
     name,
     args,
     returnType,
@@ -256,6 +262,7 @@ export function makeMethodDeclaration(
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
     receiver,
     name,
     args,
@@ -438,6 +445,7 @@ export function makeStatementBlock(
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
     locals: {},
+    nextSymbolScope: null,
     statements,
   };
 }

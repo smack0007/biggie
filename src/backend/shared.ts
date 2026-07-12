@@ -12,10 +12,12 @@ export interface BackendError extends ast.Diagnostic {
 }
 
 export function backendError(kind: BackendErrorKind, message: string, node: ast.SyntaxNode): BackendError {
-  const sourceFile = ast.getSourceFileFromNode(node);
+  const sourceFile = ast.findSourceFileFromNode(node);
 
   if (!sourceFile) {
-    throw new Error();
+    throw new Error(
+      `Failed to get ${ast.nameofSyntaxKind(ast.SyntaxKind.SourceFile)} from ${ast.nameofSyntaxKind(node.kind)}`,
+    );
   }
 
   return {

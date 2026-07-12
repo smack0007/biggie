@@ -496,6 +496,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
 
     if (props.extends.includes("Scope")) {
       output.appendLine(`locals: {},`);
+      output.appendLine(`nextSymbolScope: null,`);
     }
 
     for (const propName of Object.keys(props.required)) {

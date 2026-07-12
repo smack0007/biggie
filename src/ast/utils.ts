@@ -4,15 +4,15 @@ import {
   Declaration,
   Expression,
   ImportDeclaration,
-  PointerType,
   Program,
   Reference,
+  Scope,
   SourceFile,
   Symbol,
   SymbolFlags,
   SyntaxNode,
 } from "./syntaxTree.ts";
-import { isProgram, isSourceFile, isStatement } from "./typeGuards.ts";
+import { isProgram, isScope, isSourceFile } from "./typeGuards.ts";
 import { nameofSymbolFlags, nameofSyntaxKind } from "./nameof.ts";
 import {
   makeExpressionStatement,
@@ -23,6 +23,7 @@ import {
   makeStatementBlock,
   makeTypeReference,
 } from "./factories.ts";
+import { bool } from "../shims.ts";
 
 export function getModulePrefixByFileName(importDeclaration: ImportDeclaration): string {
   return path.basename(
@@ -31,17 +32,28 @@ export function getModulePrefixByFileName(importDeclaration: ImportDeclaration):
   );
 }
 
-export function getProgramFromNode(node: SyntaxNode): Program | undefined {
-  if (isProgram(node)) {
-    return node;
+function findNodeByTypeGuard<T>(node: SyntaxNode, typeGuard: (node: SyntaxNode) => bool): T | null {
+  while (!typeGuard(node) && node.parent != null) {
+    node = node.parent;
   }
 
-  let parent = node.parent;
-  while (parent && !isProgram(parent)) {
-    parent = parent.parent;
+  if (!typeGuard(node)) {
+    return null;
   }
 
-  return parent;
+  return <T> node;
+}
+
+export function findProgramFromNode(node: SyntaxNode): Program | null {
+  return findNodeByTypeGuard(node, isProgram);
+}
+
+export function findScopeFromNode(node: SyntaxNode): Scope | null {
+  return findNodeByTypeGuard(node, isScope);
+}
+
+export function findSourceFileFromNode(node: SyntaxNode): SourceFile | null {
+  return findNodeByTypeGuard(node, isSourceFile);
 }
 
 export function getQualifiedNameForSymbol(symbol: Symbol): string {
@@ -51,19 +63,6 @@ export function getQualifiedNameForSymbol(symbol: Symbol): string {
     name = symbol.name + "." + name;
   }
   return name;
-}
-
-export function getSourceFileFromNode(node: SyntaxNode): SourceFile | undefined {
-  if (isSourceFile(node)) {
-    return node;
-  }
-
-  let parent = node.parent;
-  while (parent && !isSourceFile(parent)) {
-    parent = parent.parent;
-  }
-
-  return parent;
 }
 
 export function getSymbol(node: Declaration | Reference, expectedFlags: SymbolFlags): Symbol {

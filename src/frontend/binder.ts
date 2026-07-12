@@ -1,6 +1,6 @@
 import * as ast from "../ast/mod.ts";
 import * as builtins from "./builtins.ts";
-import { bool, hasFlag, nameof } from "../shims.ts";
+import { bool } from "../shims.ts";
 import { dump } from "../utils.ts";
 
 export enum BindErrorKind {
@@ -18,7 +18,7 @@ export interface BindError extends ast.Diagnostic {
 }
 
 function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): BindError {
-  const sourceFile = ast.getSourceFileFromNode(node);
+  const sourceFile = ast.findSourceFileFromNode(node);
 
   // TODO: There should be some --debug flag that will pack this into the error.
   console.error((new Error()).stack);
@@ -42,6 +42,16 @@ export function bind(program: ast.Program): void {
   }
 
   program.bindState = ast.BindState.Finished;
+}
+
+function getScopeOrError(node: ast.SyntaxNode): ast.Scope {
+  const scope = ast.findScopeFromNode(node);
+
+  if (scope == null) {
+    throw bindError(BindErrorKind.MissingSymbol, `Failed to get scope from "${ast.nameofSyntaxKind(node.kind)}"`, node);
+  }
+
+  return scope;
 }
 
 function setLocal(node: ast.SyntaxNode, scope: ast.Scope, name: string, value: ast.Symbol): void {
@@ -77,7 +87,7 @@ function bindInitialize(program: ast.Program): void {
         node.parent = parent;
 
         if (ast.isScope(node)) {
-          node.nextSymbolScope = getParentNode<ast.Scope>(node, ast.isScope);
+          node.nextSymbolScope = ast.findScopeFromNode(node.parent);
         }
 
         node.bindState = ast.BindState.Initialized;
@@ -95,39 +105,8 @@ function bindInitialize(program: ast.Program): void {
   program.bindState = ast.BindState.Initialized;
 }
 
-function getParentNode<T>(node: ast.SyntaxNode, typeGuard: (node: ast.SyntaxNode) => bool): T {
-  if (node.parent == null) {
-    // Cannot use bindError here as that will try and find the parent SourceFile. This error
-    // indicates an error in the binder anyways.
-    throw <BindError> {
-      kind: BindErrorKind.Unexpected,
-      message: `${ast.SyntaxKind[node.kind]} node has no parent.`,
-    };
-  }
-
-  node = node.parent;
-  while (!typeGuard(node) && node.parent != null) {
-    node = node.parent;
-  }
-
-  if (!typeGuard(node)) {
-    throw bindError(
-      BindErrorKind.Unexpected,
-      `Failed to get parent node matching type guard "${typeGuard.name}".`,
-      node,
-    );
-  }
-
-  return <T> node;
-}
-
-// TODO: Can we get away with fewer Required<>s?
-function getScopeFromNode(node: ast.SyntaxNode): Required<ast.Scope> {
-  return getParentNode<Required<ast.Scope>>(node, ast.isScope);
-}
-
 function getSymbolFromScopeByName(node: ast.SyntaxNode, name: string): ast.Symbol {
-  let scope = getScopeFromNode(node);
+  let scope = getScopeOrError(node);
 
   while (scope.nextSymbolScope) {
     if (scope.locals[name]) {
@@ -357,7 +336,7 @@ function bindMethodReceiver(
   };
   methodReceiver.type = methodReceiver.declaredType.type;
 
-  const scope = getScopeFromNode(methodReceiver);
+  const scope = getScopeOrError(methodReceiver);
   setLocal(methodReceiver, scope, methodReceiver.symbol.name, methodReceiver.symbol);
 
   methodReceiver.bindState = ast.BindState.Finished;
@@ -420,7 +399,7 @@ function bindVarDeclaration(
     name: varDeclaration.name.value,
   };
 
-  const scope = getScopeFromNode(varDeclaration);
+  const scope = getScopeOrError(varDeclaration);
   setLocal(varDeclaration, scope, varDeclaration.symbol.name, varDeclaration.symbol);
 
   varDeclaration.bindState = ast.BindState.Finished;
