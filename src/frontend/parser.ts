@@ -533,13 +533,7 @@ function parseMethodDeclaration(
   expect(context, scanner.TokenType.Func, nameof(parseMethodDeclaration));
   advance(context);
 
-  expect(context, scanner.TokenType.OpenParen, nameof(parseMethodDeclaration));
-  advance(context);
-
   const receiver = parseMethodReciever(context);
-
-  expect(context, scanner.TokenType.CloseParen, nameof(parseMethodDeclaration));
-  advance(context);
 
   const name = parseIdentifier(context);
 
@@ -590,12 +584,18 @@ function parseMethodReciever(
   context.logger.enter(nameof(parseMethodReciever));
   const startPos = getPos(context);
 
+  expect(context, scanner.TokenType.OpenParen, nameof(parseMethodReciever));
+  advance(context);
+
   const identifier = parseIdentifier(context);
 
-  expect(context, scanner.TokenType.Colon, nameof(parseVarDeclaration));
+  expect(context, scanner.TokenType.Colon, nameof(parseMethodReciever));
   advance(context);
 
   const type = parseTypeReference(context);
+
+  expect(context, scanner.TokenType.CloseParen, nameof(parseMethodReciever));
+  advance(context);
 
   const endPos = getPos(context);
 

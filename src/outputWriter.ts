@@ -1,39 +1,61 @@
-import { EOL } from "node:os";
-import { bool } from "./shims.ts";
+import { bool, EOL, uint } from "./shims.ts";
 
-export class OutputWriter {
-  _data: (string | OutputWriter)[] = [""];
-  _indentLevel = 0;
-  _skipIndentForLine = false;
+export interface OutputWriter {
+  hasContents(): bool;
+  lineIsBeingWritten(): bool;
+  indentLevel(): uint;
+  createPlaceholder(): OutputWriter;
+  indent(): void;
+  unindent(): void;
+  append(value: string): void;
+  appendLine(value?: string): void;
+  toString(): string;
+}
 
-  private get currentLine(): string {
+class OutputWriterInternal implements OutputWriter {
+  _data: (string | OutputWriterInternal)[] = [""];
+  _indentLevel: uint = 0;
+  _newLine: string;
+
+  constructor(
+    indentLevel: uint,
+    newLine: string,
+  ) {
+    this._indentLevel = indentLevel;
+    this._newLine = newLine;
+  }
+
+  private getCurrentLine(): string {
     return this._data[this._data.length - 1] as string;
   }
 
-  private set currentLine(value: string) {
+  private setCurrentLine(value: string) {
     this._data[this._data.length - 1] = value;
   }
 
-  public get hasContents(): boolean {
+  public hasContents(): bool {
     return this._data.length > 1 || (
-      typeof this._data[0] == "string" ? this._data[0].length >= 1 : this._data[0].hasContents
+      typeof this._data[0] == "string" ? this._data[0].length >= 1 : this._data[0].hasContents()
     );
   }
 
-  public get lineIsBeingWritten(): boolean {
-    return this.currentLine.length > 0;
+  public lineIsBeingWritten(): boolean {
+    return this.getCurrentLine().length > 0;
   }
 
-  public get indentLevel(): number {
+  public indentLevel(): uint {
     return this._indentLevel;
   }
 
   public createPlaceholder(): OutputWriter {
-    if (this.lineIsBeingWritten) {
+    if (this.lineIsBeingWritten()) {
       throw new Error("createPlaceholder can only be called when a line is not currently being written.");
     }
 
-    const placeholder = new OutputWriter();
+    const placeholder = new OutputWriterInternal(
+      this._indentLevel,
+      this._newLine,
+    );
     this._data[this._data.length - 1] = placeholder;
     this._data.push("");
 
@@ -48,23 +70,15 @@ export class OutputWriter {
     this._indentLevel -= 1;
   }
 
-  public setIndentLevel(level: number): void {
-    this._indentLevel = level;
-  }
-
-  public clear(): void {
-    this._data = [""];
-  }
-
   public append(value: string): void {
     if (!value) {
       return;
     }
 
     if (!this.lineIsBeingWritten) {
-      this.currentLine += "\t".repeat(this._indentLevel);
+      this.setCurrentLine(this.getCurrentLine() + "\t".repeat(this._indentLevel));
     }
-    this.currentLine += value;
+    this.setCurrentLine(this.getCurrentLine() + value);
   }
 
   public appendLine(value: string = ""): void {
@@ -72,16 +86,6 @@ export class OutputWriter {
       this.append(value);
     }
     this._data.push("");
-  }
-
-  public includes(searchString: string): bool {
-    for (const line of this._data) {
-      if (line.includes(searchString)) {
-        return true;
-      }
-    }
-
-    return false;
   }
 
   public toString(): string {
@@ -102,6 +106,18 @@ export class OutputWriter {
 
         return line;
       })
-      .join(EOL);
+      .join(this._newLine);
   }
+}
+
+export interface OutputWriterOptions {
+  indentLevel?: uint;
+  newLine?: string;
+}
+
+export function makeOutputWriter(options: OutputWriterOptions = {}): OutputWriter {
+  return new OutputWriterInternal(
+    options.indentLevel ?? 0,
+    options.newLine ?? EOL,
+  );
 }

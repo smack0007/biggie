@@ -1,7 +1,7 @@
 import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
-import { OutputWriter } from "../outputWriter.ts";
+import { makeOutputWriter, OutputWriter } from "../outputWriter.ts";
 import { dump } from "../utils.ts";
 
 interface EmitContext {
@@ -37,7 +37,7 @@ interface EmitResult {
 export function emit(program: ast.Program): EmitResult {
   const context: EmitContext = {
     entryFileName: program.entryFileName,
-    output: new OutputWriter(),
+    output: makeOutputWriter(),
     outputStack: [],
     sourceFiles: program.sourceFiles,
     emittedSourceFiles: new Set<string>(),
@@ -64,8 +64,7 @@ export function emit(program: ast.Program): EmitResult {
 
 function pushOutput(context: EmitContext, newOutput?: OutputWriter): OutputWriter {
   if (newOutput == undefined) {
-    newOutput = new OutputWriter();
-    newOutput.setIndentLevel(context.output.indentLevel);
+    newOutput = makeOutputWriter({ indentLevel: context.output.indentLevel() });
   }
 
   context.outputStack.push(context.output);
@@ -142,8 +141,7 @@ function getMappedModuleTypeName(context: EmitContext, sourceFile: ast.SourceFil
 }
 
 function pushBlockLevelStatementPlaceholder(context: EmitContext): OutputWriter {
-  const newPlaceholder = new OutputWriter();
-  newPlaceholder.setIndentLevel(context.output.indentLevel);
+  const newPlaceholder = makeOutputWriter({ indentLevel: context.output.indentLevel() });
 
   context.blockLevelStatementPlaceholderStack.push(newPlaceholder);
 
@@ -478,7 +476,7 @@ function emitBlockLevelStatement(context: EmitContext, sourceFile: ast.SourceFil
   popOutput(context);
   popBlockLevelStatementPlaceholder(context);
 
-  if (placeholder.hasContents) {
+  if (placeholder.hasContents()) {
     context.output.appendLine(placeholder.toString().trim());
   }
 

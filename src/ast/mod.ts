@@ -1,5 +1,5 @@
 export * from "./factories.ts";
-export * from "./graphviz.ts";
+export * from "./toGraphviz.ts";
 export * from "./nameof.ts";
 export * from "./syntaxTree.ts";
 export * from "./typeGuards.ts";
