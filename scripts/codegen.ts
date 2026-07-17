@@ -53,7 +53,6 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
 
   const typeGuardsToEmit: string[] = [];
   const typeMap: Record<string, string[]> = {};
-  const bindNodeInterfaces: string[] = [];
   const baseNodeInterfaces: Record<string, string[]> = Object.fromEntries(BASE_NODES.map((x) => [x, []]));
 
   for (const line of syntaxTreeContents) {

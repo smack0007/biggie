@@ -1,0 +1,16 @@
+{
+  "name": "biggie",
+  "build":{
+    "dockerfile": "Dockerfile"
+  },
+  "forwardPorts": [],
+  "postCreateCommand": "",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "denoland.vscode-deno"
+      ]
+    }
+  }
+}
