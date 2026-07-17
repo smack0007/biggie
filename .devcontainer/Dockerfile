@@ -15,6 +15,7 @@ RUN apt-get update \
       git \
       gnupg \
       lsb-release \
+      ssh \
       unzip \
       wget \
     && bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)" \
