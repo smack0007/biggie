@@ -2,7 +2,7 @@ import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
 import * as builtins from "./builtins.ts";
 import * as checker from "./checker.ts";
-import { bool } from "../shims.ts";
+import { bool, nameof } from "../shims.ts";
 import { dump } from "../utils.ts";
 
 export enum BindErrorKind {
@@ -198,6 +198,13 @@ function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFil
       case ast.SyntaxKind.VarDeclaration:
         bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> node);
         break;
+
+      default:
+        throw bindError(
+          BindErrorKind.Unexpected,
+          `Unexpected top level node ${ast.nameofSyntaxKind(node.kind)} in ${nameof(bindSourceFile)}`,
+          node,
+        );
     }
   }
 
@@ -400,12 +407,20 @@ function bindStatement(
   statement: ast.Statement,
 ): void {
   switch (statement.kind) {
+    case ast.SyntaxKind.DeferStatement:
+      bindDeferStatement(program, sourceFile, <ast.DeferStatement> statement);
+      break;
+
     case ast.SyntaxKind.ExpressionStatement:
       bindExpressionStatement(program, sourceFile, <ast.ExpressionStatement> statement);
       break;
 
     case ast.SyntaxKind.IfStatement:
       bindIfStatement(program, sourceFile, <ast.IfStatement> statement);
+      break;
+
+    case ast.SyntaxKind.ReturnStatement:
+      bindReturnStatement(program, sourceFile, <ast.ReturnStatement> statement);
       break;
 
     case ast.SyntaxKind.StatementBlock:
@@ -419,7 +434,26 @@ function bindStatement(
     case ast.SyntaxKind.VarDeclaration:
       bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> statement);
       break;
+
+    default:
+      throw bindError(
+        BindErrorKind.Unexpected,
+        `Unexpected statement node ${ast.nameofSyntaxKind(statement.kind)} in ${nameof(bindStatement)}`,
+        statement,
+      );
   }
+}
+
+function bindDeferStatement(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  deferStatement: ast.DeferStatement,
+): void {
+  bindStatement(program, sourceFile, deferStatement.body);
+
+  deferStatement.symbol = deferStatement.body.symbol;
+  deferStatement.type = deferStatement.body.type;
+  deferStatement.bindState = ast.BindState.Finished;
 }
 
 function bindExpressionStatement(
@@ -447,6 +481,18 @@ function bindIfStatement(
   }
 
   ifStatement.bindState = ast.BindState.Finished;
+}
+
+function bindReturnStatement(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  returnStatement: ast.ReturnStatement,
+): void {
+  bindExpression(program, sourceFile, returnStatement.expression);
+
+  returnStatement.symbol = returnStatement.expression.symbol;
+  returnStatement.type = returnStatement.expression.type;
+  returnStatement.bindState = ast.BindState.Finished;
 }
 
 function bindStatementBlock(

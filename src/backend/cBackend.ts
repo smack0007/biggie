@@ -809,7 +809,7 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     `Expected callExpression.symbol not to be null`,
   );
 
-  const isVaradicCall = hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Varadic);
+  let isVaradicCall = hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Varadic);
   let varadicArgsArrayName = "";
 
   let beginVaradicArgsIndex = callExpression.args.length;
@@ -823,25 +823,27 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
 
     beginVaradicArgsIndex = callExpression.symbol.beginVaradicArgsIndex;
 
-    const placeholder = getBlockLevelStatementPlaceholder(context);
-    pushOutput(context, placeholder);
+    if (callExpression.args.length > beginVaradicArgsIndex) {
+      const placeholder = getBlockLevelStatementPlaceholder(context);
+      pushOutput(context, placeholder);
 
-    const varadicVariableNames: string[] = [];
-    for (let i = beginVaradicArgsIndex; i < callExpression.args.length; i += 1) {
-      const varadicVariableName = `__v${context.tmpVariableIndex++}`;
-      varadicVariableNames.push(varadicVariableName);
-      // TODO: Would be nice if we didn't have to use 'auto' here.
-      context.output.append(`auto ${varadicVariableName} = `);
-      emitExpression(context, sourceFile, callExpression.args[i]);
-      context.output.appendLine(";");
+      const varadicVariableNames: string[] = [];
+      for (let i = beginVaradicArgsIndex; i < callExpression.args.length; i += 1) {
+        const varadicVariableName = `__v${context.tmpVariableIndex++}`;
+        varadicVariableNames.push(varadicVariableName);
+        // TODO: Would be nice if we didn't have to use 'auto' here.
+        context.output.append(`auto ${varadicVariableName} = `);
+        emitExpression(context, sourceFile, callExpression.args[i]);
+        context.output.appendLine(";");
+      }
+
+      varadicArgsArrayName = `__vargs${context.tmpVariableIndex++}`;
+      context.output.append(`void* ${varadicArgsArrayName}[] = {`);
+      context.output.append(varadicVariableNames.map((x) => `&${x}`).join(", "));
+      context.output.appendLine("};");
+
+      popOutput(context);
     }
-
-    varadicArgsArrayName = `__vargs${context.tmpVariableIndex++}`;
-    context.output.append(`void* ${varadicArgsArrayName}[] = {`);
-    context.output.append(varadicVariableNames.map((x) => `&${x}`).join(", "));
-    context.output.appendLine("};");
-
-    popOutput(context);
   }
 
   // Copy the arguments into a new array, if we have a method we'll push the receiver
@@ -892,7 +894,12 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     if (beginVaradicArgsIndex != 0) {
       context.output.append(", ");
     }
-    context.output.append(varadicArgsArrayName);
+
+    if (varadicArgsArrayName != "") {
+      context.output.append(varadicArgsArrayName);
+    } else {
+      context.output.append("null");
+    }
   }
 
   context.output.append(")");

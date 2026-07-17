@@ -1,0 +1,7 @@
+func main(): int {
+  println("One");
+  defer println("Three");
+  println("Two");
+
+  return 0;
+}

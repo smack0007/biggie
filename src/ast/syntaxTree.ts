@@ -347,6 +347,7 @@ export interface ExpressionStatement extends Statement {
 export interface DeferStatement extends Statement {
   kind: SyntaxKind.DeferStatement;
 
+  // TODO: This should be a Statement or a StatementBlock.
   body: Statement;
 }
 

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define null NULL
 typedef float_t float32;
 typedef double_t float64;
 typedef int8_t int8;
@@ -32,6 +33,15 @@ typedef struct String {
 typedef String string;
 #define STRING(str) ((String){str, sizeof(str) - 1})
 #define STRING_LENGTH(x) (x.length)
+
+#define defer __DEFER(__COUNTER__)
+#define __DEFER(N) __DEFER_(N)
+#define __DEFER_(N) __DEFER__(__DEFER_FUNCTION_##N, __DEFER_VARIABLE_##N)
+
+#define __DEFER__(F, V)                                                        \
+  auto void F(int*);                                                           \
+  [[gnu::cleanup(F)]] int V;                                                   \
+  auto void F(int*)
 
 void println(string format, void* args[]) {
   int argIndex = 0;
