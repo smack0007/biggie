@@ -24,4 +24,5 @@ RUN apt-get update \
     && curl -fsSL https://deno.land/install.sh | sh \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s /usr/bin/clang-$LLVM_VERSION /usr/local/bin/clang \
-    && ln -s /usr/bin/clang-format-$LLVM_VERSION /usr/local/bin/clang-format
+    && ln -s /usr/bin/clang-format-$LLVM_VERSION /usr/local/bin/clang-format \
+    && echo 'PS1="\n\[\033[37;44m\] \w \[\033[0m\]\n# "' >> ~/.bashrc
