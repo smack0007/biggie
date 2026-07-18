@@ -85,7 +85,7 @@ describe("toString", () => {
       makeEnumMember(makeIdentifier("blue")),
       makeEnumMember(makeIdentifier("green")),
     ]);
-    assert.strictEqual(toString(enumDecl), `enum Color {${EOL}red = 0,${EOL}blue,${EOL}green,${EOL}}${EOL}`);
+    assert.strictEqual(toString(enumDecl), `enum Color {${EOL}\tred = 0,${EOL}\tblue,${EOL}\tgreen,${EOL}}${EOL}`);
   });
 
   it("ExpressionStatement", () => {

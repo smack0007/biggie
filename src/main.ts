@@ -2,7 +2,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as process from "node:process";
 import * as args from "./args.ts";
-import * as cBackend from "./backend/cBackend.ts";
+import * as cpp from "./backend/cppBackend.ts";
 import * as ast from "./ast/mod.ts";
 import * as binder from "./frontend/binder.ts";
 import * as parser from "./frontend/parser.ts";
@@ -81,7 +81,7 @@ async function main(argv: string[]): Promise<int> {
     return 1;
   }
 
-  const emitResult = cBackend.emit(program);
+  const emitResult = cpp.emit(program);
 
   const outputFileName = path.resolve(parsedArgs.output);
   const outputDirectory = path.dirname(outputFileName);

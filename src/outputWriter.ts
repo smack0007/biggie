@@ -75,7 +75,7 @@ class OutputWriterInternal implements OutputWriter {
       return;
     }
 
-    if (!this.lineIsBeingWritten) {
+    if (!this.lineIsBeingWritten()) {
       this.setCurrentLine(this.getCurrentLine() + "\t".repeat(this._indentLevel));
     }
     this.setCurrentLine(this.getCurrentLine() + value);

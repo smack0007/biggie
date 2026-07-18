@@ -184,7 +184,7 @@ function getSourceFileFromSymbol(context: EmitContext, symbol: ast.Symbol): ast.
 }
 
 function emitPreamble(context: EmitContext): void {
-  context.output.appendLine("#include <biggie.c>");
+  context.output.appendLine("#include <biggie.cpp>");
   context.output.appendLine();
 }
 
@@ -809,7 +809,7 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     `Expected callExpression.symbol not to be null`,
   );
 
-  let isVaradicCall = hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Varadic);
+  const isVaradicCall = hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Varadic);
   let varadicArgsArrayName = "";
 
   let beginVaradicArgsIndex = callExpression.args.length;
