@@ -1,5 +1,6 @@
 import { makeOutputWriter, OutputWriter } from "../outputWriter.ts";
-import { EOL } from "../shims.ts";
+import { EOL, nameof } from "../shims.ts";
+import { nameofOperator, nameofSyntaxKind } from "./nameof.ts";
 import {
   AdditiveExpression,
   ArrayLiteral,
@@ -478,7 +479,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
     }
 
     default:
-      throw new Error(`Not implemented.`);
+      throw new Error(`${nameof(toStringInternal)}: ${nameofSyntaxKind(node.kind)} not implemented.`);
   }
 }
 
@@ -522,7 +523,8 @@ export function operatorToString(op: Operator): string {
       return "/";
     case Operator.SlashEquals:
       return "/=";
+
     default:
-      return Operator[op];
+      throw new Error(`${nameof(operatorToString)}: ${nameofOperator(op)} not implemented.`);
   }
 }
