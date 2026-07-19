@@ -778,6 +778,19 @@ function emitAdditiveExpression(
   sourceFile: ast.SourceFile,
   expression: ast.AdditiveExpression,
 ): void {
+  if (
+    expression.operator == ast.Operator.Plus &&
+    expression.lhs?.type?.name == "string" &&
+    expression.rhs?.type?.name == "string"
+  ) {
+    context.output.append("STRING_CONCAT(");
+    emitExpression(context, sourceFile, expression.lhs);
+    context.output.append(", ");
+    emitExpression(context, sourceFile, expression.rhs);
+    context.output.append(")");
+    return;
+  }
+
   emitExpression(context, sourceFile, expression.lhs);
 
   context.output.append(` ${expression.operator == ast.Operator.Plus ? "+" : "-"} `);
@@ -890,16 +903,12 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
     emitExpression(context, sourceFile, args[i]);
   }
 
-  if (isVaradicCall) {
+  if (isVaradicCall && varadicArgsArrayName) {
     if (beginVaradicArgsIndex != 0) {
       context.output.append(", ");
     }
 
-    if (varadicArgsArrayName != "") {
-      context.output.append(varadicArgsArrayName);
-    } else {
-      context.output.append("null");
-    }
+    context.output.append(varadicArgsArrayName);
   }
 
   context.output.append(")");

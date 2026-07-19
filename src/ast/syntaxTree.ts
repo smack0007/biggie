@@ -1,4 +1,4 @@
-import { uint } from "../shims.ts";
+import { uint, uint32 } from "../shims.ts";
 
 export enum SyntaxKind {
   AdditiveExpression,
@@ -166,6 +166,8 @@ export enum SymbolFlags {
 export type SymbolTable = Record<string, Symbol>;
 
 export interface Symbol {
+  id: uint32;
+
   flags: SymbolFlags;
 
   declaration?: SyntaxNode;

@@ -1067,55 +1067,58 @@ function parseAdditiveExpression(context: ParserSourceFileContext): ast.Expressi
   context.logger.enter(nameof(parseAdditiveExpression));
   const startPos = getPos(context);
 
-  const lhs = parseMultiplicativeExpression(context);
+  let result = parseMultiplicativeExpression(context);
 
-  // TODO: Use match here.
-  const operatorToken = peek(context);
-  if (operatorToken.type == scanner.TokenType.Plus || operatorToken.type == scanner.TokenType.Minus) {
+  let operatorToken = peek(context);
+  while (operatorToken.type == scanner.TokenType.Plus || operatorToken.type == scanner.TokenType.Minus) {
     advance(context);
 
     const rhs = parseMultiplicativeExpression(context);
 
     const endPos = getPos(context);
 
-    return <ast.AdditiveExpression> {
+    result = <ast.AdditiveExpression> {
       kind: ast.SyntaxKind.AdditiveExpression,
       startPos,
       endPos,
-      lhs,
+      lhs: result,
       operator: operatorToken.type == scanner.TokenType.Plus ? ast.Operator.Plus : ast.Operator.Minus,
       rhs,
     };
-  } else {
-    return lhs;
+
+    operatorToken = peek(context);
   }
+
+  return result;
 }
 
 function parseMultiplicativeExpression(context: ParserSourceFileContext): ast.Expression {
   context.logger.enter(nameof(parseMultiplicativeExpression));
   const startPos = getPos(context);
 
-  const lhs = parseUnaryExpression(context);
+  let result = parseUnaryExpression(context);
 
-  const operatorToken = peek(context);
-  if (operatorToken.type == scanner.TokenType.Asterisk || operatorToken.type == scanner.TokenType.Slash) {
+  let operatorToken = peek(context);
+  while (operatorToken.type == scanner.TokenType.Asterisk || operatorToken.type == scanner.TokenType.Slash) {
     advance(context);
 
     const rhs = parseUnaryExpression(context);
 
     const endPos = getPos(context);
 
-    return <ast.MultiplicativeExpression> {
+    result = <ast.MultiplicativeExpression> {
       kind: ast.SyntaxKind.MultiplicativeExpression,
       startPos,
       endPos,
-      lhs,
+      lhs: result,
       operator: operatorToken.type == scanner.TokenType.Asterisk ? ast.Operator.Asterisk : ast.Operator.Slash,
       rhs,
     };
-  } else {
-    return lhs;
+
+    operatorToken = peek(context);
   }
+
+  return result;
 }
 
 // TODO: Implement this similar to parseAssignmentExpression.
@@ -1179,7 +1182,7 @@ function parsePrimaryExpression(context: ParserSourceFileContext): ast.Expressio
       break;
 
     case scanner.TokenType.Integer:
-      result = parseIntegerLiteral(context);
+      result = parseIntLiteral(context);
       break;
 
     case scanner.TokenType.OpenBrace:
@@ -1196,7 +1199,7 @@ function parsePrimaryExpression(context: ParserSourceFileContext): ast.Expressio
 
     case scanner.TokenType.True:
     case scanner.TokenType.False:
-      result = parseBooleanLiteral(context);
+      result = parseBoolLiteral(context);
       break;
 
     case scanner.TokenType.String:
@@ -1582,11 +1585,11 @@ function parseArrayLiteral(context: ParserSourceFileContext): ast.ArrayLiteral {
   };
 }
 
-function parseBooleanLiteral(context: ParserSourceFileContext): ast.BoolLiteral {
-  context.logger.enter(nameof(parseBooleanLiteral));
+function parseBoolLiteral(context: ParserSourceFileContext): ast.BoolLiteral {
+  context.logger.enter(nameof(parseBoolLiteral));
   const startPos = getPos(context);
 
-  const token = expect(context, [scanner.TokenType.True, scanner.TokenType.False], nameof(parseBooleanLiteral));
+  const token = expect(context, [scanner.TokenType.True, scanner.TokenType.False], nameof(parseBoolLiteral));
   advance(context);
 
   const endPos = getPos(context);
@@ -1600,18 +1603,18 @@ function parseBooleanLiteral(context: ParserSourceFileContext): ast.BoolLiteral 
   };
 }
 
-function parseIntegerLiteral(context: ParserSourceFileContext): ast.IntLiteral {
-  context.logger.enter(nameof(parseIntegerLiteral));
+function parseIntLiteral(context: ParserSourceFileContext): ast.IntLiteral {
+  context.logger.enter(nameof(parseIntLiteral));
   const startPos = getPos(context);
 
-  const token = expect(context, scanner.TokenType.Integer, nameof(parseIntegerLiteral));
+  const token = expect(context, scanner.TokenType.Integer, nameof(parseIntLiteral));
 
   if (token.text == null) {
     throw parserError(
       context.fileName,
       token,
       ParserErrorKind.TokenTextIsNull,
-      `Expected token to have text value in ${nameof(parseIntegerLiteral)}.`,
+      `Expected token to have text value in ${nameof(parseIntLiteral)}.`,
     );
   }
 

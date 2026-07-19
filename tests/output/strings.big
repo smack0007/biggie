@@ -4,5 +4,11 @@ func main(): int {
   println("%s %d", hello, hello.length());
   println("%s %d", "hello", "hello".length());
 
+  var world: string = " World";
+  println("%s", hello + world);
+
+  var exclamation: string = "!";
+  println("%s", hello + world + exclamation);
+
   return 0;
 }

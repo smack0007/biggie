@@ -2,8 +2,11 @@ import * as ast from "../ast/mod.ts";
 import * as builtins from "./builtins.ts";
 import { bool, hasFlag } from "../shims.ts";
 
+const int = builtins.globals[builtins.GlobalName.int];
+const int32 = builtins.globals[builtins.GlobalName.int32];
+
 export function isConvertible(from: ast.Symbol | null, to: ast.Symbol | null): bool {
-  if (from == null && to == null) {
+  if (to == from) {
     return true;
   }
 
@@ -15,12 +18,28 @@ export function isConvertible(from: ast.Symbol | null, to: ast.Symbol | null): b
     return false;
   }
 
-  if (
-    hasFlag(from.flags, ast.SymbolFlags.Builtin) && from.name == builtins.GlobalName.int &&
-    hasFlag(to.flags, ast.SymbolFlags.Builtin) && to.name == builtins.GlobalName.int32
-  ) {
-    return true;
+  if (hasFlag(from.flags, ast.SymbolFlags.Builtin) && hasFlag(to.flags, ast.SymbolFlags.Builtin)) {
+    switch (from.id) {
+      case int.id:
+        switch (to.id) {
+          case int32.id:
+            return true;
+        }
+        break;
+    }
   }
 
   return false;
+}
+
+export function operationResult(
+  operator: ast.Operator,
+  lhs: ast.Symbol | null,
+  rhs: ast.Symbol | null,
+): ast.Symbol | null {
+  if (lhs == rhs) {
+    return lhs;
+  }
+
+  return null;
 }

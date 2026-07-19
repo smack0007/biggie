@@ -180,6 +180,10 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
   let interfaceName: string | null = null;
   let caseBlockIsOutput = false;
   for (const line of syntaxTreeContents) {
+    if (line.trim().startsWith("//")) {
+      continue;
+    }
+
     if (interfaceName == null && line.startsWith("export interface ") && !line.endsWith("{}")) {
       const parts = line.split(" ");
       interfaceName = parts[2];
@@ -336,6 +340,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
     "int32",
     "string",
     "uint",
+    "uint32",
   ];
   const EXCLUDE_INTERFACES = [
     "Declaration",
@@ -448,7 +453,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   }
 
   const output = createAstOutputWriter();
-  output.appendLine(`import { uint } from "../shims.ts";`);
+  output.appendLine(`import { uint, uint32 } from "../shims.ts";`);
   output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
   output.appendLine(`export function makeTextPosition(line: uint, column: uint): TextPosition {

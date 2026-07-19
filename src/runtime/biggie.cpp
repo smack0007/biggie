@@ -52,30 +52,33 @@ struct __CaptureDeferFunc {
 // #define ARRAY(arr, type) ((Array){arr, sizeof(arr) / sizeof(type)})
 #define ARRAY_LENGTH(x) (sizeof(x) / sizeof((x)[0]))
 
-typedef struct String {
-  char* data;
-  usize length;
-} String;
-typedef String string;
-#define STRING(str) ((String){(char*)str, sizeof(str) - 1})
-#define STRING_LENGTH(x) (x.length)
+typedef std::string string;
+#define STRING(str) std::string(str)
+#define STRING_CONCAT(s1, s2) __string_concat(s1, s2)
+#define STRING_LENGTH(str) (str.length())
+
+string __string_concat(string s1, string s2) { return s1 + s2; }
+
+void println(string format) {
+  printf("%.*s\n", (int)format.length(), format.data());
+}
 
 void println(string format, void* args[]) {
   int argIndex = 0;
-  for (int i = 0; i < format.length; i += 1) {
-    if (format.data[i] == '%') {
+  for (int i = 0; i < format.length(); i += 1) {
+    if (format[i] == '%') {
       i += 1;
-      if (format.data[i] == 's') {
-        char* data = (*(string*)args[argIndex]).data;
-        printf("%s", data);
+      if (format[i] == 's') {
+        string data = (*(string*)args[argIndex]);
+        printf("%.*s", (int)data.length(), data.data());
         argIndex += 1;
-      } else if (format.data[i] == 'd') {
+      } else if (format[i] == 'd') {
         int32 data = *(int32*)args[argIndex];
         printf("%d", data);
         argIndex += 1;
       }
     } else {
-      putchar(format.data[i]);
+      putchar(format[i]);
     }
   }
   putchar('\n');

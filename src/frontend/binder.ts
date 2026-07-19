@@ -1,9 +1,9 @@
-import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
-import * as builtins from "./builtins.ts";
-import * as checker from "./checker.ts";
 import { bool, nameof } from "../shims.ts";
 import { dump } from "../utils.ts";
+import * as builtins from "./builtins.ts";
+import * as checker from "./checker.ts";
+import { generateId, IDType } from "./ids.ts";
 
 export enum BindErrorKind {
   Unexpected,
@@ -224,6 +224,7 @@ function bindImportDeclaration(
 
   if (importDeclaration.alias?.value) {
     importDeclaration.symbol = {
+      id: generateId(IDType.symbol),
       flags: ast.SymbolFlags.Module,
       declaration: importDeclaration,
       name: importDeclaration.alias.value,
@@ -253,6 +254,7 @@ function bindEnumDeclaration(
   }
 
   enumDeclaration.symbol = {
+    id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Enum,
     declaration: enumDeclaration,
     name: enumDeclaration.name.value,
@@ -274,6 +276,7 @@ function bindEnumMember(
   enumMember: ast.EnumMember,
 ): void {
   enumMember.symbol = {
+    id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.EnumMember,
     name: enumMember.name.value,
   };
@@ -294,6 +297,7 @@ function bindFuncDeclaration(
   bindStatementBlock(program, sourceFile, funcDeclaration.body);
 
   funcDeclaration.symbol = {
+    id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Func,
     declaration: funcDeclaration,
     name: funcDeclaration.name.value,
@@ -323,6 +327,7 @@ function bindMethodDeclaration(
   bindStatementBlock(program, sourceFile, methodDeclaration.body);
 
   methodDeclaration.symbol = {
+    id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Method,
     declaration: methodDeclaration,
     name: methodDeclaration.name.value,
@@ -348,6 +353,7 @@ function bindMethodReceiver(
   bindTypeReference(program, sourceFile, methodReceiver.declaredType);
 
   methodReceiver.symbol = {
+    id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Var,
     declaration: methodReceiver,
     name: methodReceiver.name.value,
@@ -373,6 +379,7 @@ function bindStructDeclaration(
   }
 
   structDeclaration.symbol = {
+    id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Type | ast.SymbolFlags.Struct,
     declaration: structDeclaration,
     name: structDeclaration.name.value,
@@ -394,6 +401,7 @@ function bindStructMember(
   structMember: ast.StructMember,
 ): void {
   structMember.symbol = {
+    id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.StructMember,
     name: structMember.name.value,
   };
@@ -542,6 +550,7 @@ function bindVarDeclaration(
 
   varDeclaration.type = varDeclaration.declaredType.type;
   varDeclaration.symbol = {
+    id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Var,
     declaration: varDeclaration,
     name: varDeclaration.name.value,
@@ -560,6 +569,10 @@ function bindExpression(
   typeContext?: ast.Symbol,
 ): void {
   switch (expression.kind) {
+    case ast.SyntaxKind.AdditiveExpression:
+      bindAdditiveExpression(program, sourceFile, <ast.AdditiveExpression> expression);
+      break;
+
     case ast.SyntaxKind.ArrayLiteral:
       bindArrayLiteral(program, sourceFile, <ast.ArrayLiteral> expression);
       break;
@@ -592,6 +605,22 @@ function bindExpression(
       bindStructLiteral(program, sourceFile, <ast.StructLiteral> expression, typeContext);
       break;
   }
+}
+
+function bindAdditiveExpression(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  additiveExpression: ast.AdditiveExpression,
+): void {
+  bindExpression(program, sourceFile, additiveExpression.lhs);
+  bindExpression(program, sourceFile, additiveExpression.rhs);
+
+  additiveExpression.type = checker.operationResult(
+    additiveExpression.operator,
+    additiveExpression.lhs.type ?? null,
+    additiveExpression.rhs.type ?? null,
+  ) ?? undefined;
+  additiveExpression.bindState = ast.BindState.Finished;
 }
 
 function bindArrayLiteral(

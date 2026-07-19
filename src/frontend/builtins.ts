@@ -1,4 +1,5 @@
 import { Symbol, SymbolFlags, SymbolTable } from "../ast/syntaxTree.ts";
+import { generateId, IDType } from "./ids.ts";
 import { uint } from "../shims.ts";
 
 interface BuiltinSymbolOptionalArgs {
@@ -12,6 +13,7 @@ function builtinSymbol(
   optional: BuiltinSymbolOptionalArgs = {},
 ): Symbol {
   const symbol: Symbol = {
+    id: generateId(IDType.symbol),
     flags: SymbolFlags.Builtin | flags,
     name,
     members: members ?? undefined,

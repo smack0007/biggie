@@ -65,7 +65,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
       const additiveExpression = <AdditiveExpression> node;
       toStringInternal(output, additiveExpression.lhs);
       output.append(" ");
-      output.append(getOperatorSymbol(additiveExpression.operator));
+      output.append(operatorToString(additiveExpression.operator));
       output.append(" ");
       toStringInternal(output, additiveExpression.rhs);
       break;
@@ -101,7 +101,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
       const assignmentExpression = <AssignmentExpression> node;
       toStringInternal(output, assignmentExpression.name);
       output.append(" ");
-      output.append(getOperatorSymbol(assignmentExpression.operator));
+      output.append(operatorToString(assignmentExpression.operator));
       output.append(" ");
       toStringInternal(output, assignmentExpression.value);
       break;
@@ -130,7 +130,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
       const comparisonExpression = <ComparisonExpression> node;
       toStringInternal(output, comparisonExpression.lhs);
       output.append(" ");
-      output.append(getOperatorSymbol(comparisonExpression.operator));
+      output.append(operatorToString(comparisonExpression.operator));
       output.append(" ");
       toStringInternal(output, comparisonExpression.rhs);
       break;
@@ -181,7 +181,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
       const equalityExpression = <EqualityExpression> node;
       toStringInternal(output, equalityExpression.lhs);
       output.append(" ");
-      output.append(getOperatorSymbol(equalityExpression.operator));
+      output.append(operatorToString(equalityExpression.operator));
       output.append(" ");
       toStringInternal(output, equalityExpression.rhs);
       break;
@@ -258,7 +258,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
       const logicalExpression = <LogicalExpression> node;
       toStringInternal(output, logicalExpression.lhs);
       output.append(" ");
-      output.append(getOperatorSymbol(logicalExpression.operator));
+      output.append(operatorToString(logicalExpression.operator));
       output.append(" ");
       toStringInternal(output, logicalExpression.rhs);
       break;
@@ -305,7 +305,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
       const multiplicativeExpression = <MultiplicativeExpression> node;
       toStringInternal(output, multiplicativeExpression.lhs);
       output.append(" ");
-      output.append(getOperatorSymbol(multiplicativeExpression.operator));
+      output.append(operatorToString(multiplicativeExpression.operator));
       output.append(" ");
       toStringInternal(output, multiplicativeExpression.rhs);
       break;
@@ -449,7 +449,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
 
     case SyntaxKind.UnaryExpression: {
       const unaryExpression = <UnaryExpression> node;
-      output.append(getOperatorSymbol(unaryExpression.operator));
+      output.append(operatorToString(unaryExpression.operator));
       toStringInternal(output, unaryExpression.expression);
       break;
     }
@@ -482,7 +482,7 @@ function toStringInternal(output: OutputWriter, node: SyntaxNode): void {
   }
 }
 
-function getOperatorSymbol(op: Operator): string {
+export function operatorToString(op: Operator): string {
   switch (op) {
     case Operator.Ampersand:
       return "&";
