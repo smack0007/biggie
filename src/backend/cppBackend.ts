@@ -25,7 +25,7 @@ interface EmitContext {
   // [SourceFile.fileName][typeName] = mappedTypeName
   moduleTypeNameMap: Record<string, Record<string, string>>;
   // Counter used for generating temporary variable names.
-  tmpVariableIndex: int;
+  tempVariableIndex: int;
   // Placeholder for current block level statement
   blockLevelStatementPlaceholderStack: OutputWriter[];
 }
@@ -45,7 +45,7 @@ export function emit(program: ast.Program): EmitResult {
     namePrefixStack: [],
     importMap: [{}],
     moduleTypeNameMap: {},
-    tmpVariableIndex: 0,
+    tempVariableIndex: 0,
     blockLevelStatementPlaceholderStack: [],
   };
 
@@ -162,6 +162,12 @@ function getBlockLevelStatementPlaceholder(context: EmitContext): OutputWriter {
   }
 
   return context.blockLevelStatementPlaceholderStack[context.blockLevelStatementPlaceholderStack.length - 1];
+}
+
+function generateTempVariableName(context: EmitContext, prefix: string): string {
+  const index = context.tempVariableIndex;
+  context.tempVariableIndex += 1;
+  return `__${prefix}${index}`;
 }
 
 function getSourceFileFromSymbol(context: EmitContext, symbol: ast.Symbol): ast.SourceFile {
@@ -842,15 +848,15 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
 
       const varadicVariableNames: string[] = [];
       for (let i = beginVaradicArgsIndex; i < callExpression.args.length; i += 1) {
-        const varadicVariableName = `__v${context.tmpVariableIndex++}`;
+        const varadicVariableName = generateTempVariableName(context, "v");
         varadicVariableNames.push(varadicVariableName);
-        // TODO: Would be nice if we didn't have to use 'auto' here.
+
         context.output.append(`auto ${varadicVariableName} = `);
         emitExpression(context, sourceFile, callExpression.args[i]);
         context.output.appendLine(";");
       }
 
-      varadicArgsArrayName = `__vargs${context.tmpVariableIndex++}`;
+      varadicArgsArrayName = generateTempVariableName(context, "vargs");
       context.output.append(`void* ${varadicArgsArrayName}[] = {`);
       context.output.append(varadicVariableNames.map((x) => `&${x}`).join(", "));
       context.output.appendLine("};");
@@ -1085,14 +1091,46 @@ function emitStructLiteral(context: EmitContext, sourceFile: ast.SourceFile, str
   context.output.appendLine("{");
   context.output.indent();
 
+  // Parser ensures that all elements are either named or unnanmed.
+  const elementsAreNamed = structLiteral.elements.some((element) => element.name);
+  const elementTempVariableMap: Record<string, string> = {};
+
   for (const element of structLiteral.elements) {
-    if (element.name) {
-      context.output.append(`.${element.name.value} = `);
+    // If the elements are named we need to order the elements correctly in order to
+    // prevent a warning in the compiler so build a map now and output it later.
+    if (elementsAreNamed) {
+      const placeholder = getBlockLevelStatementPlaceholder(context);
+      pushOutput(context, placeholder);
+
+      const elementTempVariable = generateTempVariableName(context, "e");
+
+      context.output.append(`auto ${elementTempVariable} = `);
+      emitExpression(context, sourceFile, element.expression);
+      context.output.appendLine(";");
+
+      popOutput(context);
+
+      assert.notNull(element.name, "Expected element.name not to be null.");
+      elementTempVariableMap[element.name.value] = elementTempVariable;
+    } else {
+      emitExpression(context, sourceFile, element.expression);
+      context.output.appendLine(",");
+    }
+  }
+
+  if (elementsAreNamed) {
+    assert.notNull(structLiteral.type, "Expected structLiteral.type not to be null.");
+    assert.notNull(structLiteral.type.declaration, "Expected structLiteral.type.declaration not to be null.");
+
+    if (!ast.isStructDeclaration(structLiteral.type.declaration)) {
+      assert.fail(
+        `Expected structLiteral.type.declaration not to be ${ast.nameofSyntaxKind(ast.SyntaxKind.StructDeclaration)}.`,
+      );
     }
 
-    emitExpression(context, sourceFile, element.expression);
-
-    context.output.appendLine(",");
+    for (const member of structLiteral.type.declaration.members) {
+      context.output.appendLine(`.${member.name.value} = ${elementTempVariableMap[member.name.value]},`);
+    }
   }
 
   context.output.unindent();

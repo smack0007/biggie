@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import * as ast from "../ast/mod.ts";
 import * as scanner from "./scanner.ts";
 import { bool, int, nameof } from "../shims.ts";
+import { nameofSyntaxKind } from "../ast/nameof.ts";
 
 export interface ParserLogger {
   enter(name: string, fileName: string, token?: scanner.Token): void;
@@ -29,6 +30,7 @@ export enum ParserErrorKind {
   ExportImport,
 
   InvalidAssignmentTarget,
+  InvalidStructLiteral,
 
   TokenTextIsNull,
 
@@ -1483,13 +1485,15 @@ function parseIdentifier(context: ParserSourceFileContext): ast.Identifier {
 }
 
 function parseStructLiteral(context: ParserSourceFileContext): ast.StructLiteral {
-  context.logger.enter(nameof(parseArrayLiteral));
+  context.logger.enter(nameof(parseStructLiteral));
   const startPos = getPos(context);
 
+  const startToken = peek(context);
   expect(context, scanner.TokenType.OpenBrace, nameof(parseStructLiteral));
   advance(context);
 
   const elements: ast.StructLiteralElement[] = [];
+
   let token = peek(context);
   while (token.type != scanner.TokenType.CloseBrace) {
     const elementStartPos = getPos(context);
@@ -1535,6 +1539,15 @@ function parseStructLiteral(context: ParserSourceFileContext): ast.StructLiteral
   advance(context);
 
   const endPos = getPos(context);
+
+  if (elements.some((element) => element.name) && !elements.every((element) => element.name)) {
+    throw parserError(
+      context.fileName,
+      startToken,
+      ParserErrorKind.InvalidStructLiteral,
+      `All ${nameofSyntaxKind(ast.SyntaxKind.StructLiteral)} elements must be named or unnnamed and cannot be mixed.`,
+    );
+  }
 
   return {
     kind: ast.SyntaxKind.StructLiteral,

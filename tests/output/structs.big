@@ -7,8 +7,7 @@ func main(): int {
   var person1: Person = { "Buddy", 42 };
   println("Name: %s, Age: %d", person1.name, person1.age);
 
-  // TODO: Cpp backend is broken when the fields are initialized in the wrong order.
-  var person2: Person = { name: "Tommy", age: 12 };
+  var person2: Person = { age: 12, name: "Tommy" };
   println("Name: %s, Age: %d", person2.name, person2.age);
 
   return 0;
