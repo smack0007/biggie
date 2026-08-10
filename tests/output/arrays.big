@@ -1,7 +1,7 @@
 func main(): int {
   var data: []int = [ 1, 2, 3, 4 ];
   
-  println("[%d][ %d, %d, %d, %d ]", data.length(), data[0], data[1], data[2], data[3]);
+  println("[{}][ {}, {}, {}, {} ]", data.length(), data[0], data[1], data[2], data[3]);
 
   return 0;
 }

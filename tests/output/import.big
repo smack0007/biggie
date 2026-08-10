@@ -7,6 +7,6 @@ func main(): int {
   var person: Person = { "Buddy", 42 };
   greetEn.greet(person, 10);
   greetDe.greet(person, 10);
-  println("%d", greetType.GreetType.Informal);
+  println("{}", greetType.GreetType.Informal);
   return 0;
 }

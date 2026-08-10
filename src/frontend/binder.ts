@@ -593,6 +593,10 @@ function bindExpression(
       bindIntLiteral(program, sourceFile, <ast.IntLiteral> expression);
       break;
 
+    case ast.SyntaxKind.ParenthesizedExpression:
+      bindParenthesizedExpression(program, sourceFile, <ast.ParenthesizedExpression> expression);
+      break;
+
     case ast.SyntaxKind.PropertyAccessExpression:
       bindPropertyAccessExpression(program, sourceFile, <ast.PropertyAccessExpression> expression);
       break;
@@ -653,6 +657,18 @@ function bindCallExpression(
   callExpression.bindState = ast.BindState.Finished;
 }
 
+function bindParenthesizedExpression(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  parenthesizedExpression: ast.ParenthesizedExpression,
+): void {
+  bindExpression(program, sourceFile, parenthesizedExpression.expression);
+
+  parenthesizedExpression.type = parenthesizedExpression.expression.type;
+  parenthesizedExpression.symbol = parenthesizedExpression.expression.symbol;
+  parenthesizedExpression.bindState = ast.BindState.Finished;
+}
+
 function bindPropertyAccessExpression(
   program: ast.Program,
   sourceFile: Required<ast.SourceFile>,
@@ -669,7 +685,6 @@ function bindPropertyAccessExpression(
 
   propertyAccessExpression.type = propertyAccessExpression.name.type;
   propertyAccessExpression.symbol = propertyAccessExpression.name.symbol;
-
   propertyAccessExpression.bindState = ast.BindState.Finished;
 }
 

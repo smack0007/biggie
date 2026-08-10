@@ -1,14 +1,14 @@
 func main(): int {
   var hello: string = "Hello";
   
-  println("%s %d", hello, hello.length());
-  println("%s %d", "hello", "hello".length());
+  println("{} {}", hello, hello.length());
+  println("{} {}", "hello", "hello".length());
 
   var world: string = " World";
-  println("%s", hello + world);
+  println("{} {}", hello + world, (hello + world).length());
 
   var exclamation: string = "!";
-  println("%s", hello + world + exclamation);
+  println(hello + world + exclamation);
 
   return 0;
 }

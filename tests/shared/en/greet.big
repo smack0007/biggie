@@ -3,7 +3,7 @@ import "../person.big"
 export func greet(person: Person, count: int32): void {
   var i: int32 = 0;
   while (i < count) {
-    println("Hello %s, you are %d years old!", person.name, person.age);
+    println("Hello {}, you are {} years old!", person.name, person.age);
     i += 1;
   }
 }

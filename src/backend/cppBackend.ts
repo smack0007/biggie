@@ -297,7 +297,7 @@ function emitEnumDeclaration(
   const mappedEnumName = getNamePrefix(context) + enumDeclaration.name.value;
   mapModuleTypeName(context, sourceFile, enumDeclaration.name.value, mappedEnumName);
 
-  context.output.appendLine("typedef enum {");
+  context.output.appendLine(`enum ${mappedEnumName} {`);
 
   context.output.indent();
   for (const member of enumDeclaration.members) {
@@ -312,8 +312,7 @@ function emitEnumDeclaration(
   }
   context.output.unindent();
 
-  context.output.append(`} ${mappedEnumName};`);
-  context.output.appendLine();
+  context.output.appendLine("};");
   context.output.appendLine();
 }
 
@@ -1084,7 +1083,7 @@ function emitParenthesizedExpression(
 }
 
 function emitStringLiteral(context: EmitContext, sourceFile: ast.SourceFile, stringLiteral: ast.StringLiteral) {
-  context.output.append(`STRING("${stringLiteral.value}")`);
+  context.output.append(`"${stringLiteral.value}"`);
 }
 
 function emitStructLiteral(context: EmitContext, sourceFile: ast.SourceFile, structLiteral: ast.StructLiteral) {

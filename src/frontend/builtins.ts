@@ -69,11 +69,8 @@ export const globals = builtinSymbolTable(
   ),
   builtinSymbol(
     GlobalName.println,
-    SymbolFlags.Func | SymbolFlags.Varadic,
+    SymbolFlags.Func,
     null,
-    {
-      beginVaradicArgsIndex: 1,
-    },
   ),
   builtinSymbol(
     GlobalName.string,

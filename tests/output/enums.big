@@ -6,6 +6,6 @@ enum Numbers {
 }
 
 func main(): int {
-  println("%d %d %d %d", Numbers.one, Numbers.two, Numbers.three, Numbers.four);
+  println("{} {} {} {}", Numbers.one, Numbers.two, Numbers.three, Numbers.four);
   return 0;
 }
