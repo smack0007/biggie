@@ -1,11 +1,30 @@
+enum GreetType {
+  Formal,
+  Informal,
+  Crazy
+}
+
 enum Numbers {
-  one = 1,
-  two,
-  three,
-  four
+  One = 1,
+  Two,
+  Three,
+  Four
+}
+
+func sayHello(name: string, type: GreetType): void {
+  if (type == GreetType.Formal) {
+    println("Hello {}!", name);
+  } else if (type == GreetType.Informal) {
+    println("Howdy {}!", name);
+  } else {
+    println("Strap in {}!", name);
+  }
 }
 
 func main(): int {
-  println("{} {} {} {}", Numbers.one, Numbers.two, Numbers.three, Numbers.four);
+  println("{} {} {} {}", Numbers.One, Numbers.Two, Numbers.Three, Numbers.Four);
+  sayHello("Bob", GreetType.Formal);
+  sayHello("Joe", GreetType.Informal);
+  sayHello("Steve", GreetType.Crazy);
   return 0;
 }

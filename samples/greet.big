@@ -8,10 +8,10 @@ export enum GreetType {
 
 export func sayHello(person: personLib.Person, type: GreetType): void {
   if (type == GreetType.Formal) {
-    println("Hello %s, you are %d years old!", person.name, person.age);
+    println("Hello {}, you are {} years old!", person.name, person.age);
   } else if (type == GreetType.Informal) {
-    println("Howdy %s, you are %d years old!", person.name, person.age);
+    println("Howdy {}, you are {} years old!", person.name, person.age);
   } else {
-    println("Strap in %s, you are %d years old!", person.name, person.age);
+    println("Strap in {}, you are {} years old!", person.name, person.age);
   }
 }

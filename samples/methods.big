@@ -4,7 +4,7 @@ struct Person {
 }
 
 func (person: Person) sayHello(): void {
-  println("Hello %s, you are %d years old!", person.name, person.age);
+  println("Hello {}, you are {} years old!", person.name, person.age);
 }
 
 func main(): int {  

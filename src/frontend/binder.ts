@@ -585,6 +585,14 @@ function bindExpression(
       bindCallExpression(program, sourceFile, <ast.CallExpression> expression);
       break;
 
+    case ast.SyntaxKind.ComparisonExpression:
+      bindComparisonExpression(program, sourceFile, <ast.ComparisonExpression> expression);
+      break;
+
+    case ast.SyntaxKind.EqualityExpression:
+      bindEqualityExpression(program, sourceFile, <ast.EqualityExpression> expression);
+      break;
+
     case ast.SyntaxKind.Identifier:
       bindIdentifier(program, sourceFile, <ast.Identifier> expression);
       break;
@@ -653,8 +661,31 @@ function bindCallExpression(
 
   callExpression.symbol = callExpression.expression.symbol;
   callExpression.type = callExpression.expression.type;
-
   callExpression.bindState = ast.BindState.Finished;
+}
+
+function bindComparisonExpression(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  comparisonExpression: ast.ComparisonExpression,
+): void {
+  bindExpression(program, sourceFile, comparisonExpression.lhs);
+  bindExpression(program, sourceFile, comparisonExpression.rhs);
+
+  comparisonExpression.type = builtins.globals[builtins.GlobalName.bool];
+  comparisonExpression.bindState = ast.BindState.Finished;
+}
+
+function bindEqualityExpression(
+  program: ast.Program,
+  sourceFile: Required<ast.SourceFile>,
+  equalityExpression: ast.EqualityExpression,
+): void {
+  bindExpression(program, sourceFile, equalityExpression.lhs);
+  bindExpression(program, sourceFile, equalityExpression.rhs);
+
+  equalityExpression.type = builtins.globals[builtins.GlobalName.bool];
+  equalityExpression.bindState = ast.BindState.Finished;
 }
 
 function bindParenthesizedExpression(

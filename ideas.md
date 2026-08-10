@@ -1,2 +1,2 @@
-- Add a function that will convert a given piece of AST into a string.
-- Unit tests for checker.ts
+- Do we really need both ComparisonExpression and EqualityExpression? Could EqualityExpression be integrated into
+  ComparisonExpression?
