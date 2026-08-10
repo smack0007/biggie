@@ -40,7 +40,7 @@ export function bind(program: ast.Program): void {
   for (const sourceFile of Object.values(program.sourceFiles)) {
     // Import declarations lead to source files being finished before we get here.
     if (sourceFile.bindState != ast.BindState.Finished) {
-      bindSourceFile(program, <Required<ast.SourceFile>> sourceFile);
+      bindSourceFile(<ast.SourceFile> sourceFile);
     }
   }
 
@@ -99,6 +99,34 @@ function bindInitialize(program: ast.Program): void {
     });
   }
   program.bindState = ast.BindState.Initialized;
+}
+
+function getProgramOrError(node: ast.SyntaxNode): ast.Program {
+  const program = ast.findProgramFromNode(node);
+
+  if (program == null) {
+    throw bindError(
+      BindErrorKind.Unexpected,
+      `Failed to get ${ast.nameofSyntaxKind(ast.SyntaxKind.Program)} from "${ast.nameofSyntaxKind(node.kind)}"`,
+      node,
+    );
+  }
+
+  return program;
+}
+
+function getSourceFileOrError(node: ast.SyntaxNode): ast.SourceFile {
+  const sourceFile = ast.findSourceFileFromNode(node);
+
+  if (sourceFile == null) {
+    throw bindError(
+      BindErrorKind.Unexpected,
+      `Failed to get ${ast.nameofSyntaxKind(ast.SyntaxKind.SourceFile)} from "${ast.nameofSyntaxKind(node.kind)}"`,
+      node,
+    );
+  }
+
+  return sourceFile;
 }
 
 function getGlobalsOrError(node: ast.SyntaxNode): ast.Scope {
@@ -172,31 +200,31 @@ function setExport(node: ast.SyntaxNode, sourceFile: ast.SourceFile, name: strin
   sourceFile.exports[name] = value;
 }
 
-function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFile>): void {
+function bindSourceFile(sourceFile: ast.SourceFile): void {
   for (const node of sourceFile.statements) {
     switch (node.kind) {
       case ast.SyntaxKind.ImportDeclaration:
-        bindImportDeclaration(program, sourceFile, <ast.ImportDeclaration> node);
+        bindImportDeclaration(<ast.ImportDeclaration> node);
         break;
 
       case ast.SyntaxKind.EnumDeclaration:
-        bindEnumDeclaration(program, sourceFile, <ast.EnumDeclaration> node);
+        bindEnumDeclaration(<ast.EnumDeclaration> node);
         break;
 
       case ast.SyntaxKind.FuncDeclaration:
-        bindFuncDeclaration(program, sourceFile, <ast.FuncDeclaration> node);
+        bindFuncDeclaration(<ast.FuncDeclaration> node);
         break;
 
       case ast.SyntaxKind.MethodDeclaration:
-        bindMethodDeclaration(program, sourceFile, <ast.MethodDeclaration> node);
+        bindMethodDeclaration(<ast.MethodDeclaration> node);
         break;
 
       case ast.SyntaxKind.StructDeclaration:
-        bindStructDeclaration(program, sourceFile, <ast.StructDeclaration> node);
+        bindStructDeclaration(<ast.StructDeclaration> node);
         break;
 
       case ast.SyntaxKind.VarDeclaration:
-        bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> node);
+        bindVarDeclaration(<ast.VarDeclaration> node);
         break;
 
       default:
@@ -211,13 +239,12 @@ function bindSourceFile(program: ast.Program, sourceFile: Required<ast.SourceFil
   sourceFile.bindState = ast.BindState.Finished;
 }
 
-function bindImportDeclaration(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  importDeclaration: ast.ImportDeclaration,
-): void {
+function bindImportDeclaration(importDeclaration: ast.ImportDeclaration): void {
+  const program = getProgramOrError(importDeclaration);
+  const sourceFile = getSourceFileOrError(importDeclaration);
+
   if (program.sourceFiles[importDeclaration.resolvedFileName].bindState != ast.BindState.Finished) {
-    bindSourceFile(program, sourceFile);
+    bindSourceFile(program.sourceFiles[importDeclaration.resolvedFileName]);
   }
 
   const exports = program.sourceFiles[importDeclaration.resolvedFileName].exports;
@@ -243,13 +270,11 @@ function bindImportDeclaration(
 }
 
 function bindEnumDeclaration(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
   enumDeclaration: ast.EnumDeclaration,
 ): void {
   const members: ast.SymbolTable = {};
   for (const enumMember of enumDeclaration.members) {
-    bindEnumMember(program, sourceFile, enumMember);
+    bindEnumMember(enumMember);
     members[enumMember.symbol!.name] = enumMember.symbol!;
   }
 
@@ -262,6 +287,7 @@ function bindEnumDeclaration(
   };
   enumDeclaration.type = enumDeclaration.symbol;
 
+  const sourceFile = getSourceFileOrError(enumDeclaration);
   setLocal(enumDeclaration, sourceFile, enumDeclaration.symbol.name, enumDeclaration.symbol);
   if (enumDeclaration.isExported) {
     setExport(enumDeclaration, sourceFile, enumDeclaration.symbol.name, enumDeclaration.symbol);
@@ -270,11 +296,7 @@ function bindEnumDeclaration(
   enumDeclaration.bindState = ast.BindState.Finished;
 }
 
-function bindEnumMember(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  enumMember: ast.EnumMember,
-): void {
+function bindEnumMember(enumMember: ast.EnumMember): void {
   enumMember.symbol = {
     id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.EnumMember,
@@ -284,17 +306,13 @@ function bindEnumMember(
   enumMember.bindState = ast.BindState.Finished;
 }
 
-function bindFuncDeclaration(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  funcDeclaration: ast.FuncDeclaration,
-): void {
+function bindFuncDeclaration(funcDeclaration: ast.FuncDeclaration): void {
   for (const arg of funcDeclaration.args) {
-    bindVarDeclaration(program, sourceFile, arg);
+    bindVarDeclaration(arg);
   }
 
-  bindTypeNode(program, sourceFile, funcDeclaration.returnType);
-  bindStatementBlock(program, sourceFile, funcDeclaration.body);
+  bindTypeNode(funcDeclaration.returnType);
+  bindStatementBlock(funcDeclaration.body);
 
   funcDeclaration.symbol = {
     id: generateId(IDType.symbol),
@@ -304,6 +322,7 @@ function bindFuncDeclaration(
   };
   funcDeclaration.type = funcDeclaration.symbol;
 
+  const sourceFile = getSourceFileOrError(funcDeclaration);
   setLocal(funcDeclaration, sourceFile, funcDeclaration.symbol.name, funcDeclaration.symbol);
   if (funcDeclaration.isExported) {
     setExport(funcDeclaration, sourceFile, funcDeclaration.symbol.name, funcDeclaration.symbol);
@@ -312,19 +331,15 @@ function bindFuncDeclaration(
   funcDeclaration.bindState = ast.BindState.Finished;
 }
 
-function bindMethodDeclaration(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  methodDeclaration: ast.MethodDeclaration,
-): void {
-  bindMethodReceiver(program, sourceFile, methodDeclaration.receiver);
+function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
+  bindMethodReceiver(methodDeclaration.receiver);
 
   for (const arg of methodDeclaration.args) {
-    bindVarDeclaration(program, sourceFile, arg);
+    bindVarDeclaration(arg);
   }
 
-  bindTypeNode(program, sourceFile, methodDeclaration.returnType);
-  bindStatementBlock(program, sourceFile, methodDeclaration.body);
+  bindTypeNode(methodDeclaration.returnType);
+  bindStatementBlock(methodDeclaration.body);
 
   methodDeclaration.symbol = {
     id: generateId(IDType.symbol),
@@ -345,12 +360,8 @@ function bindMethodDeclaration(
   methodDeclaration.bindState = ast.BindState.Finished;
 }
 
-function bindMethodReceiver(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  methodReceiver: ast.MethodReceiver,
-): void {
-  bindTypeReference(program, sourceFile, methodReceiver.declaredType);
+function bindMethodReceiver(methodReceiver: ast.MethodReceiver): void {
+  bindTypeReference(methodReceiver.declaredType);
 
   methodReceiver.symbol = {
     id: generateId(IDType.symbol),
@@ -367,14 +378,10 @@ function bindMethodReceiver(
   methodReceiver.bindState = ast.BindState.Finished;
 }
 
-function bindStructDeclaration(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  structDeclaration: ast.StructDeclaration,
-): void {
+function bindStructDeclaration(structDeclaration: ast.StructDeclaration): void {
   const members: ast.SymbolTable = {};
   for (const structMember of structDeclaration.members) {
-    bindStructMember(program, sourceFile, structMember);
+    bindStructMember(structMember);
     members[structMember.symbol!.name] = structMember.symbol!;
   }
 
@@ -387,6 +394,7 @@ function bindStructDeclaration(
   };
   structDeclaration.type = structDeclaration.symbol;
 
+  const sourceFile = getSourceFileOrError(structDeclaration);
   setLocal(structDeclaration, sourceFile, structDeclaration.symbol.name, structDeclaration.symbol);
   if (structDeclaration.isExported) {
     setExport(structDeclaration, sourceFile, structDeclaration.symbol.name, structDeclaration.symbol);
@@ -395,11 +403,7 @@ function bindStructDeclaration(
   structDeclaration.bindState = ast.BindState.Finished;
 }
 
-function bindStructMember(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  structMember: ast.StructMember,
-): void {
+function bindStructMember(structMember: ast.StructMember): void {
   structMember.symbol = {
     id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.StructMember,
@@ -409,38 +413,34 @@ function bindStructMember(
   structMember.bindState = ast.BindState.Finished;
 }
 
-function bindStatement(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  statement: ast.Statement,
-): void {
+function bindStatement(statement: ast.Statement): void {
   switch (statement.kind) {
     case ast.SyntaxKind.DeferStatement:
-      bindDeferStatement(program, sourceFile, <ast.DeferStatement> statement);
+      bindDeferStatement(<ast.DeferStatement> statement);
       break;
 
     case ast.SyntaxKind.ExpressionStatement:
-      bindExpressionStatement(program, sourceFile, <ast.ExpressionStatement> statement);
+      bindExpressionStatement(<ast.ExpressionStatement> statement);
       break;
 
     case ast.SyntaxKind.IfStatement:
-      bindIfStatement(program, sourceFile, <ast.IfStatement> statement);
+      bindIfStatement(<ast.IfStatement> statement);
       break;
 
     case ast.SyntaxKind.ReturnStatement:
-      bindReturnStatement(program, sourceFile, <ast.ReturnStatement> statement);
+      bindReturnStatement(<ast.ReturnStatement> statement);
       break;
 
     case ast.SyntaxKind.StatementBlock:
-      bindStatementBlock(program, sourceFile, <ast.StatementBlock> statement);
+      bindStatementBlock(<ast.StatementBlock> statement);
       break;
 
     case ast.SyntaxKind.WhileStatement:
-      bindWhileStatement(program, sourceFile, <ast.WhileStatement> statement);
+      bindWhileStatement(<ast.WhileStatement> statement);
       break;
 
     case ast.SyntaxKind.VarDeclaration:
-      bindVarDeclaration(program, sourceFile, <ast.VarDeclaration> statement);
+      bindVarDeclaration(<ast.VarDeclaration> statement);
       break;
 
     default:
@@ -452,89 +452,61 @@ function bindStatement(
   }
 }
 
-function bindDeferStatement(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  deferStatement: ast.DeferStatement,
-): void {
-  bindStatement(program, sourceFile, deferStatement.body);
+function bindDeferStatement(deferStatement: ast.DeferStatement): void {
+  bindStatement(deferStatement.body);
 
   deferStatement.symbol = deferStatement.body.symbol;
   deferStatement.type = deferStatement.body.type;
   deferStatement.bindState = ast.BindState.Finished;
 }
 
-function bindExpressionStatement(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  expressionStatement: ast.ExpressionStatement,
-): void {
-  bindExpression(program, sourceFile, expressionStatement.expression);
+function bindExpressionStatement(expressionStatement: ast.ExpressionStatement): void {
+  bindExpression(expressionStatement.expression);
 
   expressionStatement.symbol = expressionStatement.expression.symbol;
   expressionStatement.type = expressionStatement.expression.type;
   expressionStatement.bindState = ast.BindState.Finished;
 }
 
-function bindIfStatement(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  ifStatement: ast.IfStatement,
-): void {
-  bindExpression(program, sourceFile, ifStatement.condition);
-  bindStatement(program, sourceFile, ifStatement.then);
+function bindIfStatement(ifStatement: ast.IfStatement): void {
+  bindExpression(ifStatement.condition);
+  bindStatement(ifStatement.then);
 
   if (ifStatement.else) {
-    bindStatement(program, sourceFile, ifStatement.else);
+    bindStatement(ifStatement.else);
   }
 
   ifStatement.bindState = ast.BindState.Finished;
 }
 
-function bindReturnStatement(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  returnStatement: ast.ReturnStatement,
-): void {
-  bindExpression(program, sourceFile, returnStatement.expression);
+function bindReturnStatement(returnStatement: ast.ReturnStatement): void {
+  bindExpression(returnStatement.expression);
 
   returnStatement.symbol = returnStatement.expression.symbol;
   returnStatement.type = returnStatement.expression.type;
   returnStatement.bindState = ast.BindState.Finished;
 }
 
-function bindStatementBlock(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  statementBlock: ast.StatementBlock,
-): void {
+function bindStatementBlock(statementBlock: ast.StatementBlock): void {
   for (const statement of statementBlock.statements) {
-    bindStatement(program, sourceFile, statement);
+    bindStatement(statement);
   }
 
   statementBlock.bindState = ast.BindState.Finished;
 }
 
-function bindWhileStatement(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  whileStatement: ast.WhileStatement,
-): void {
-  bindExpression(program, sourceFile, whileStatement.condition);
-  bindStatement(program, sourceFile, whileStatement.body);
+function bindWhileStatement(whileStatement: ast.WhileStatement): void {
+  bindExpression(whileStatement.condition);
+  bindStatement(whileStatement.body);
 
   whileStatement.bindState = ast.BindState.Finished;
 }
 
-function bindVarDeclaration(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  varDeclaration: ast.VarDeclaration,
-): void {
-  bindTypeNode(program, sourceFile, varDeclaration.declaredType);
+function bindVarDeclaration(varDeclaration: ast.VarDeclaration): void {
+  bindTypeNode(varDeclaration.declaredType);
 
   if (varDeclaration.initializer) {
-    bindExpression(program, sourceFile, varDeclaration.initializer, varDeclaration.declaredType.type);
+    bindExpression(varDeclaration.initializer, varDeclaration.declaredType.type);
 
     if (
       varDeclaration.declaredType.type != varDeclaration.initializer.type &&
@@ -562,70 +534,61 @@ function bindVarDeclaration(
   varDeclaration.bindState = ast.BindState.Finished;
 }
 
-function bindExpression(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  expression: ast.Expression,
-  typeContext?: ast.Symbol,
-): void {
+function bindExpression(expression: ast.Expression, typeContext?: ast.Symbol): void {
   switch (expression.kind) {
     case ast.SyntaxKind.AdditiveExpression:
-      bindAdditiveExpression(program, sourceFile, <ast.AdditiveExpression> expression);
+      bindAdditiveExpression(<ast.AdditiveExpression> expression);
       break;
 
     case ast.SyntaxKind.ArrayLiteral:
-      bindArrayLiteral(program, sourceFile, <ast.ArrayLiteral> expression);
+      bindArrayLiteral(<ast.ArrayLiteral> expression);
       break;
 
     case ast.SyntaxKind.BoolLiteral:
-      bindBoolLiteral(program, sourceFile, <ast.BoolLiteral> expression);
+      bindBoolLiteral(<ast.BoolLiteral> expression);
       break;
 
     case ast.SyntaxKind.CallExpression:
-      bindCallExpression(program, sourceFile, <ast.CallExpression> expression);
+      bindCallExpression(<ast.CallExpression> expression);
       break;
 
     case ast.SyntaxKind.ComparisonExpression:
-      bindComparisonExpression(program, sourceFile, <ast.ComparisonExpression> expression);
+      bindComparisonExpression(<ast.ComparisonExpression> expression);
       break;
 
     case ast.SyntaxKind.EqualityExpression:
-      bindEqualityExpression(program, sourceFile, <ast.EqualityExpression> expression);
+      bindEqualityExpression(<ast.EqualityExpression> expression);
       break;
 
     case ast.SyntaxKind.Identifier:
-      bindIdentifier(program, sourceFile, <ast.Identifier> expression);
+      bindIdentifier(<ast.Identifier> expression);
       break;
 
     case ast.SyntaxKind.IntLiteral:
-      bindIntLiteral(program, sourceFile, <ast.IntLiteral> expression);
+      bindIntLiteral(<ast.IntLiteral> expression);
       break;
 
     case ast.SyntaxKind.ParenthesizedExpression:
-      bindParenthesizedExpression(program, sourceFile, <ast.ParenthesizedExpression> expression);
+      bindParenthesizedExpression(<ast.ParenthesizedExpression> expression);
       break;
 
     case ast.SyntaxKind.PropertyAccessExpression:
-      bindPropertyAccessExpression(program, sourceFile, <ast.PropertyAccessExpression> expression);
+      bindPropertyAccessExpression(<ast.PropertyAccessExpression> expression);
       break;
 
     case ast.SyntaxKind.StringLiteral:
-      bindStringLiteral(program, sourceFile, <ast.StringLiteral> expression);
+      bindStringLiteral(<ast.StringLiteral> expression);
       break;
 
     case ast.SyntaxKind.StructLiteral:
-      bindStructLiteral(program, sourceFile, <ast.StructLiteral> expression, typeContext);
+      bindStructLiteral(<ast.StructLiteral> expression, typeContext);
       break;
   }
 }
 
-function bindAdditiveExpression(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  additiveExpression: ast.AdditiveExpression,
-): void {
-  bindExpression(program, sourceFile, additiveExpression.lhs);
-  bindExpression(program, sourceFile, additiveExpression.rhs);
+function bindAdditiveExpression(additiveExpression: ast.AdditiveExpression): void {
+  bindExpression(additiveExpression.lhs);
+  bindExpression(additiveExpression.rhs);
 
   additiveExpression.type = checker.operationResult(
     additiveExpression.operator,
@@ -635,13 +598,9 @@ function bindAdditiveExpression(
   additiveExpression.bindState = ast.BindState.Finished;
 }
 
-function bindArrayLiteral(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  arrayLiteral: ast.ArrayLiteral,
-): void {
+function bindArrayLiteral(arrayLiteral: ast.ArrayLiteral): void {
   for (const element of arrayLiteral.elements) {
-    bindExpression(program, sourceFile, element);
+    bindExpression(element);
   }
 
   const globals = getGlobalsOrError(arrayLiteral);
@@ -649,14 +608,10 @@ function bindArrayLiteral(
   arrayLiteral.bindState = ast.BindState.Finished;
 }
 
-function bindCallExpression(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  callExpression: ast.CallExpression,
-): void {
-  bindExpression(program, sourceFile, callExpression.expression);
+function bindCallExpression(callExpression: ast.CallExpression): void {
+  bindExpression(callExpression.expression);
   for (const arg of callExpression.args) {
-    bindExpression(program, sourceFile, arg);
+    bindExpression(arg);
   }
 
   callExpression.symbol = callExpression.expression.symbol;
@@ -664,67 +619,41 @@ function bindCallExpression(
   callExpression.bindState = ast.BindState.Finished;
 }
 
-function bindComparisonExpression(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  comparisonExpression: ast.ComparisonExpression,
-): void {
-  bindExpression(program, sourceFile, comparisonExpression.lhs);
-  bindExpression(program, sourceFile, comparisonExpression.rhs);
+function bindComparisonExpression(comparisonExpression: ast.ComparisonExpression): void {
+  bindExpression(comparisonExpression.lhs);
+  bindExpression(comparisonExpression.rhs);
 
   comparisonExpression.type = builtins.globals[builtins.GlobalName.bool];
   comparisonExpression.bindState = ast.BindState.Finished;
 }
 
-function bindEqualityExpression(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  equalityExpression: ast.EqualityExpression,
-): void {
-  bindExpression(program, sourceFile, equalityExpression.lhs);
-  bindExpression(program, sourceFile, equalityExpression.rhs);
+function bindEqualityExpression(equalityExpression: ast.EqualityExpression): void {
+  bindExpression(equalityExpression.lhs);
+  bindExpression(equalityExpression.rhs);
 
   equalityExpression.type = builtins.globals[builtins.GlobalName.bool];
   equalityExpression.bindState = ast.BindState.Finished;
 }
 
-function bindParenthesizedExpression(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  parenthesizedExpression: ast.ParenthesizedExpression,
-): void {
-  bindExpression(program, sourceFile, parenthesizedExpression.expression);
+function bindParenthesizedExpression(parenthesizedExpression: ast.ParenthesizedExpression): void {
+  bindExpression(parenthesizedExpression.expression);
 
   parenthesizedExpression.type = parenthesizedExpression.expression.type;
   parenthesizedExpression.symbol = parenthesizedExpression.expression.symbol;
   parenthesizedExpression.bindState = ast.BindState.Finished;
 }
 
-function bindPropertyAccessExpression(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  propertyAccessExpression: ast.PropertyAccessExpression,
-): void {
-  bindExpression(program, sourceFile, propertyAccessExpression.expression);
+function bindPropertyAccessExpression(propertyAccessExpression: ast.PropertyAccessExpression): void {
+  bindExpression(propertyAccessExpression.expression);
 
-  bindIdentifier(
-    program,
-    sourceFile,
-    propertyAccessExpression.name,
-    propertyAccessExpression.expression.type,
-  );
+  bindIdentifier(propertyAccessExpression.name, propertyAccessExpression.expression.type);
 
   propertyAccessExpression.type = propertyAccessExpression.name.type;
   propertyAccessExpression.symbol = propertyAccessExpression.name.symbol;
   propertyAccessExpression.bindState = ast.BindState.Finished;
 }
 
-function bindIdentifier(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  identifier: ast.Identifier,
-  parentSymbol?: ast.Symbol,
-): void {
+function bindIdentifier(identifier: ast.Identifier, parentSymbol?: ast.Symbol): void {
   if (!parentSymbol) {
     const scope = getScopeOrError(identifier);
     identifier.symbol = getSymbolFromScopeByName(scope, identifier.value);
@@ -736,27 +665,19 @@ function bindIdentifier(
   identifier.bindState = ast.BindState.Finished;
 }
 
-function bindTypeNode(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  typeNode: ast.TypeNode,
-): void {
+function bindTypeNode(typeNode: ast.TypeNode): void {
   if (ast.isArrayType(typeNode)) {
-    bindArrayType(program, sourceFile, typeNode);
+    bindArrayType(typeNode);
   } else if (ast.isPointerType(typeNode)) {
-    bindPointerType(program, sourceFile, typeNode);
+    bindPointerType(typeNode);
   } else {
-    bindTypeReference(program, sourceFile, <ast.TypeReference> typeNode);
+    bindTypeReference(<ast.TypeReference> typeNode);
   }
   typeNode.bindState = ast.BindState.Finished;
 }
 
-function bindArrayType(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  arrayType: ast.ArrayType,
-): void {
-  bindTypeNode(program, sourceFile, arrayType.elementType);
+function bindArrayType(arrayType: ast.ArrayType): void {
+  bindTypeNode(arrayType.elementType);
 
   const globals = getGlobalsOrError(arrayType);
   arrayType.symbol = getSymbolFromScopeByName(globals, builtins.GlobalName.Array);
@@ -764,22 +685,14 @@ function bindArrayType(
   arrayType.bindState = ast.BindState.Finished;
 }
 
-function bindPointerType(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  pointerType: ast.PointerType,
-): void {
+function bindPointerType(pointerType: ast.PointerType): void {
 }
 
-function bindTypeReference(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  typeReference: ast.TypeReference,
-): void {
+function bindTypeReference(typeReference: ast.TypeReference): void {
   if (ast.isQualifiedName(typeReference.typeName)) {
-    bindQualifiedName(program, sourceFile, typeReference.typeName);
+    bindQualifiedName(typeReference.typeName);
   } else {
-    bindIdentifier(program, sourceFile, typeReference.typeName);
+    bindIdentifier(typeReference.typeName);
     typeReference.typeName.type = typeReference.typeName.symbol;
   }
 
@@ -788,14 +701,10 @@ function bindTypeReference(
   typeReference.bindState = ast.BindState.Finished;
 }
 
-function bindQualifiedName(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  qualifiedName: ast.QualifiedName,
-): void {
-  bindIdentifier(program, sourceFile, qualifiedName.left);
+function bindQualifiedName(qualifiedName: ast.QualifiedName): void {
+  bindIdentifier(qualifiedName.left);
   qualifiedName.left.type = qualifiedName.left.symbol;
-  bindIdentifier(program, sourceFile, qualifiedName.right, qualifiedName.left.symbol);
+  bindIdentifier(qualifiedName.right, qualifiedName.left.symbol);
   qualifiedName.right.type = qualifiedName.right.symbol;
 
   qualifiedName.symbol = qualifiedName.right.symbol;
@@ -803,42 +712,25 @@ function bindQualifiedName(
   qualifiedName.bindState = ast.BindState.Finished;
 }
 
-function bindBoolLiteral(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  boolLiteral: ast.BoolLiteral,
-): void {
+function bindBoolLiteral(boolLiteral: ast.BoolLiteral): void {
   const globals = getGlobalsOrError(boolLiteral);
   boolLiteral.type = getSymbolFromScopeByName(globals, builtins.GlobalName.bool);
   boolLiteral.bindState = ast.BindState.Finished;
 }
 
-function bindIntLiteral(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  intLiteral: ast.IntLiteral,
-): void {
+function bindIntLiteral(intLiteral: ast.IntLiteral): void {
   const globals = getGlobalsOrError(intLiteral);
   intLiteral.type = getSymbolFromScopeByName(globals, builtins.GlobalName.int);
   intLiteral.bindState = ast.BindState.Finished;
 }
 
-function bindStringLiteral(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  stringLiteral: ast.StringLiteral,
-): void {
+function bindStringLiteral(stringLiteral: ast.StringLiteral): void {
   const globals = getGlobalsOrError(stringLiteral);
   stringLiteral.type = getSymbolFromScopeByName(globals, builtins.GlobalName.string);
   stringLiteral.bindState = ast.BindState.Finished;
 }
 
-function bindStructLiteral(
-  program: ast.Program,
-  sourceFile: Required<ast.SourceFile>,
-  structLiteral: ast.StructLiteral,
-  typeContext?: ast.Symbol,
-): void {
+function bindStructLiteral(structLiteral: ast.StructLiteral, typeContext?: ast.Symbol): void {
   // TODO: Extend the grammer so that StructLiteral can explicitly specify what type it is.
   if (!typeContext) {
     throw bindError(
