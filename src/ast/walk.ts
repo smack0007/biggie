@@ -211,6 +211,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       {
         const assignmentExpression = <AssignmentExpression> node;
         walkParent(assignmentExpression.name, <WalkCallback> callback, assignmentExpression);
+        walkParent(assignmentExpression.value, <WalkCallback> callback, assignmentExpression);
       }
       break;
     case SyntaxKind.EqualityExpression:

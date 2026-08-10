@@ -170,6 +170,20 @@ function generateTempVariableName(context: EmitContext, prefix: string): string 
   return `__${prefix}${index}`;
 }
 
+function getSourceFileOrError(node: ast.SyntaxNode): ast.SourceFile {
+  const sourceFile = ast.findSourceFileFromNode(node);
+
+  if (sourceFile == null) {
+    throw new Error(
+      `Failed to get ${ast.nameofSyntaxKind(ast.SyntaxKind.SourceFile)} from "${
+        ast.nameofSyntaxKind(node.kind)
+      }" at (${node.startPos.line}, ${node.startPos.column})`,
+    );
+  }
+
+  return sourceFile;
+}
+
 function getSourceFileFromSymbol(context: EmitContext, symbol: ast.Symbol): ast.SourceFile {
   // TODO: It might make sense to have a <runtime> source file or something to that effect.
   if (hasFlag(symbol.flags, ast.SymbolFlags.Builtin)) {
@@ -197,12 +211,11 @@ function emitPreamble(context: EmitContext): void {
 function emitUnexpectedNode(
   context: EmitContext,
   functionName: string,
-  sourceFile: ast.SourceFile,
   node: ast.SyntaxNode,
 ): void {
   context.output.appendLine("/*");
   context.output.appendLine(`Unexpected node in ${functionName}:`);
-  context.output.append(`${sourceFile.fileName} ${ast.SyntaxKind[node.kind]}`);
+  context.output.append(ast.nameofSyntaxKind(node.kind));
   context.output.appendLine("*/");
 }
 
@@ -211,53 +224,49 @@ function emitSourceFile(context: EmitContext, sourceFile: ast.SourceFile): void 
 
   // Emit import statements first.
   for (const statement of sourceFile.statements.filter((s) => s.kind == ast.SyntaxKind.ImportDeclaration)) {
-    emitTopLevelStatement(context, sourceFile, statement);
+    emitTopLevelStatement(context, statement);
   }
 
   context.output.appendLine(`/* SourceFile: ${sourceFile.fileName} */`);
   context.output.appendLine();
 
   for (const statement of sourceFile.statements.filter((s) => s.kind != ast.SyntaxKind.ImportDeclaration)) {
-    emitTopLevelStatement(context, sourceFile, statement);
+    emitTopLevelStatement(context, statement);
   }
 
   popImportMap(context);
   context.emittedSourceFiles.add(sourceFile.fileName);
 }
 
-function emitTopLevelStatement(context: EmitContext, sourceFile: ast.SourceFile, node: ast.SyntaxNode): void {
+function emitTopLevelStatement(context: EmitContext, node: ast.SyntaxNode): void {
   switch (node.kind) {
     case ast.SyntaxKind.ImportDeclaration:
-      emitImportDeclaration(context, sourceFile, <ast.ImportDeclaration> node);
+      emitImportDeclaration(context, <ast.ImportDeclaration> node);
       break;
 
     case ast.SyntaxKind.EnumDeclaration:
-      emitEnumDeclaration(context, sourceFile, <ast.EnumDeclaration> node);
+      emitEnumDeclaration(context, <ast.EnumDeclaration> node);
       break;
 
     case ast.SyntaxKind.FuncDeclaration:
-      emitFuncDeclaration(context, sourceFile, <ast.FuncDeclaration> node);
+      emitFuncDeclaration(context, <ast.FuncDeclaration> node);
       break;
 
     case ast.SyntaxKind.MethodDeclaration:
-      emitMethodDeclaration(context, sourceFile, <ast.MethodDeclaration> node);
+      emitMethodDeclaration(context, <ast.MethodDeclaration> node);
       break;
 
     case ast.SyntaxKind.StructDeclaration:
-      emitStructDeclaration(context, sourceFile, <ast.StructDeclaration> node);
+      emitStructDeclaration(context, <ast.StructDeclaration> node);
       break;
 
     default:
-      emitUnexpectedNode(context, nameof(emitTopLevelStatement), sourceFile, node);
+      emitUnexpectedNode(context, nameof(emitTopLevelStatement), node);
       break;
   }
 }
 
-function emitImportDeclaration(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  importDeclaration: ast.ImportDeclaration,
-): void {
+function emitImportDeclaration(context: EmitContext, importDeclaration: ast.ImportDeclaration): void {
   const resolvedSourceFile = context.sourceFiles[importDeclaration.resolvedFileName];
 
   if (!resolvedSourceFile) {
@@ -282,6 +291,7 @@ function emitImportDeclaration(
   if (importDeclaration.alias) {
     setImportedModule(context, importDeclaration.alias.value, resolvedSourceFile);
   } else {
+    const sourceFile = getSourceFileOrError(importDeclaration);
     for (const key of Object.keys(resolvedSourceFile.exports)) {
       // TODO: Inserting the "_"(s) here feels wrong, have some function that we can use.
       mapModuleTypeName(context, sourceFile, key, "_" + sourceFilePrefix + "_" + key);
@@ -289,11 +299,8 @@ function emitImportDeclaration(
   }
 }
 
-function emitEnumDeclaration(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  enumDeclaration: ast.EnumDeclaration,
-): void {
+function emitEnumDeclaration(context: EmitContext, enumDeclaration: ast.EnumDeclaration): void {
+  const sourceFile = getSourceFileOrError(enumDeclaration);
   const mappedEnumName = getNamePrefix(context) + enumDeclaration.name.value;
   mapModuleTypeName(context, sourceFile, enumDeclaration.name.value, mappedEnumName);
 
@@ -305,7 +312,7 @@ function emitEnumDeclaration(
 
     if (member.initializer) {
       context.output.append(" = ");
-      emitExpression(context, sourceFile, member.initializer);
+      emitExpression(context, member.initializer);
     }
 
     context.output.appendLine(",");
@@ -316,13 +323,10 @@ function emitEnumDeclaration(
   context.output.appendLine();
 }
 
-function emitFuncDeclaration(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  funcDeclaration: ast.FuncDeclaration,
-): void {
-  emitType(context, sourceFile, funcDeclaration.returnType);
+function emitFuncDeclaration(context: EmitContext, funcDeclaration: ast.FuncDeclaration): void {
+  emitType(context, funcDeclaration.returnType);
 
+  const sourceFile = getSourceFileOrError(funcDeclaration);
   const mappedFunctionName = getNamePrefix(context) + funcDeclaration.name.value;
   mapModuleTypeName(context, sourceFile, funcDeclaration.name.value, mappedFunctionName);
 
@@ -335,23 +339,19 @@ function emitFuncDeclaration(
       context.output.append(", ");
     }
 
-    emitType(context, sourceFile, arg.declaredType);
+    emitType(context, arg.declaredType);
     context.output.append(` ${arg.name.value}`);
   }
 
   context.output.append(") ");
 
-  emitStatementBlock(context, sourceFile, funcDeclaration.body);
+  emitStatementBlock(context, funcDeclaration.body);
 
   context.output.appendLine();
 }
 
-function emitMethodDeclaration(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  methodDeclaration: ast.MethodDeclaration,
-): void {
-  emitType(context, sourceFile, methodDeclaration.returnType);
+function emitMethodDeclaration(context: EmitContext, methodDeclaration: ast.MethodDeclaration): void {
+  emitType(context, methodDeclaration.returnType);
 
   let mappedFunctionName = "";
   if (ast.isQualifiedName(methodDeclaration.receiver.declaredType.typeName)) {
@@ -375,6 +375,7 @@ function emitMethodDeclaration(
         methodDeclaration.receiver.declaredType.typeName.right.value;
     }
   } else {
+    const sourceFile = getSourceFileOrError(methodDeclaration);
     const mappedReceiverName = getMappedModuleTypeName(
       context,
       sourceFile,
@@ -386,7 +387,7 @@ function emitMethodDeclaration(
 
   context.output.append(` ${mappedFunctionName}(`);
 
-  emitType(context, sourceFile, methodDeclaration.receiver.declaredType);
+  emitType(context, methodDeclaration.receiver.declaredType);
   context.output.append(` ${methodDeclaration.receiver.name.value}`);
 
   for (let i = 0; i < methodDeclaration.args.length; i++) {
@@ -394,22 +395,19 @@ function emitMethodDeclaration(
 
     context.output.append(", ");
 
-    emitType(context, sourceFile, arg.declaredType);
+    emitType(context, arg.declaredType);
     context.output.append(` ${arg.name.value}`);
   }
 
   context.output.append(") ");
 
-  emitStatementBlock(context, sourceFile, methodDeclaration.body);
+  emitStatementBlock(context, methodDeclaration.body);
 
   context.output.appendLine();
 }
 
-function emitStructDeclaration(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  structDeclaration: ast.StructDeclaration,
-): void {
+function emitStructDeclaration(context: EmitContext, structDeclaration: ast.StructDeclaration): void {
+  const sourceFile = getSourceFileOrError(structDeclaration);
   const mappedStructName = getNamePrefix(context) + structDeclaration.name.value;
   mapModuleTypeName(context, sourceFile, structDeclaration.name.value, mappedStructName);
 
@@ -428,53 +426,53 @@ function emitStructDeclaration(
   context.output.appendLine();
 }
 
-function emitStatementBlock(context: EmitContext, sourceFile: ast.SourceFile, statementBlock: ast.StatementBlock) {
+function emitStatementBlock(context: EmitContext, statementBlock: ast.StatementBlock): void {
   context.output.appendLine("{");
   context.output.indent();
 
   for (const statement of statementBlock.statements) {
-    emitBlockLevelStatement(context, sourceFile, statement);
+    emitBlockLevelStatement(context, statement);
   }
 
   context.output.unindent();
   context.output.appendLine("}");
 }
 
-function emitBlockLevelStatement(context: EmitContext, sourceFile: ast.SourceFile, node: ast.SyntaxNode) {
+function emitBlockLevelStatement(context: EmitContext, node: ast.SyntaxNode): void {
   const placeholder = pushBlockLevelStatementPlaceholder(context);
   const statementOutput = pushOutput(context);
 
   switch (node.kind) {
     case ast.SyntaxKind.DeferStatement:
-      emitDeferStatement(context, sourceFile, <ast.DeferStatement> node);
+      emitDeferStatement(context, <ast.DeferStatement> node);
       break;
 
     case ast.SyntaxKind.ExpressionStatement:
-      emitExpressionStatement(context, sourceFile, <ast.ExpressionStatement> node);
+      emitExpressionStatement(context, <ast.ExpressionStatement> node);
       break;
 
     case ast.SyntaxKind.IfStatement:
-      emitIfStatement(context, sourceFile, <ast.IfStatement> node);
+      emitIfStatement(context, <ast.IfStatement> node);
       break;
 
     case ast.SyntaxKind.ReturnStatement:
-      emitReturnStatement(context, sourceFile, <ast.ReturnStatement> node);
+      emitReturnStatement(context, <ast.ReturnStatement> node);
       break;
 
     case ast.SyntaxKind.StatementBlock:
-      emitStatementBlock(context, sourceFile, <ast.StatementBlock> node);
+      emitStatementBlock(context, <ast.StatementBlock> node);
       break;
 
     case ast.SyntaxKind.VarDeclaration:
-      emitVarDeclaration(context, sourceFile, <ast.VarDeclaration> node);
+      emitVarDeclaration(context, <ast.VarDeclaration> node);
       break;
 
     case ast.SyntaxKind.WhileStatement:
-      emitWhileStatement(context, sourceFile, <ast.WhileStatement> node);
+      emitWhileStatement(context, <ast.WhileStatement> node);
       break;
 
     default:
-      emitUnexpectedNode(context, nameof(emitBlockLevelStatement), sourceFile, node);
+      emitUnexpectedNode(context, nameof(emitBlockLevelStatement), node);
       break;
   }
 
@@ -488,14 +486,14 @@ function emitBlockLevelStatement(context: EmitContext, sourceFile: ast.SourceFil
   context.output.appendLine(statementOutput.toString().trim());
 }
 
-function emitDeferStatement(context: EmitContext, sourceFile: ast.SourceFile, deferStatement: ast.DeferStatement) {
+function emitDeferStatement(context: EmitContext, deferStatement: ast.DeferStatement): void {
   context.output.append("defer ");
 
   if (deferStatement.body.kind !== ast.SyntaxKind.StatementBlock) {
     context.output.append("{ ");
   }
 
-  emitBlockLevelStatement(context, sourceFile, deferStatement.body);
+  emitBlockLevelStatement(context, deferStatement.body);
 
   if (deferStatement.body.kind !== ast.SyntaxKind.StatementBlock) {
     //context.remove(1);
@@ -505,65 +503,57 @@ function emitDeferStatement(context: EmitContext, sourceFile: ast.SourceFile, de
   context.output.appendLine(";");
 }
 
-function emitExpressionStatement(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  expressionStatement: ast.ExpressionStatement,
-) {
-  emitExpression(context, sourceFile, expressionStatement.expression);
+function emitExpressionStatement(context: EmitContext, expressionStatement: ast.ExpressionStatement): void {
+  emitExpression(context, expressionStatement.expression);
   context.output.appendLine(";");
 }
 
-function emitIfStatement(context: EmitContext, sourceFile: ast.SourceFile, ifStatement: ast.IfStatement) {
+function emitIfStatement(context: EmitContext, ifStatement: ast.IfStatement): void {
   context.output.append("if (");
-  emitExpression(context, sourceFile, ifStatement.condition);
+  emitExpression(context, ifStatement.condition);
   context.output.append(") ");
-  emitBlockLevelStatement(context, sourceFile, ifStatement.then);
+  emitBlockLevelStatement(context, ifStatement.then);
 
   if (ifStatement.else != null) {
     context.output.append(" else ");
-    emitBlockLevelStatement(context, sourceFile, ifStatement.else);
+    emitBlockLevelStatement(context, ifStatement.else);
   }
 
   context.output.appendLine();
 }
 
-function emitReturnStatement(context: EmitContext, sourceFile: ast.SourceFile, returnStatement: ast.ReturnStatement) {
+function emitReturnStatement(context: EmitContext, returnStatement: ast.ReturnStatement): void {
   context.output.append("return ");
 
   if (returnStatement.expression != null) {
-    emitExpression(context, sourceFile, returnStatement.expression);
+    emitExpression(context, returnStatement.expression);
   }
 
   context.output.appendLine(";");
 }
 
-function emitVarDeclaration(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  variableDeclaration: ast.VarDeclaration,
-) {
-  const emitTypeResult = emitType(context, sourceFile, variableDeclaration.declaredType);
+function emitVarDeclaration(context: EmitContext, varDeclaration: ast.VarDeclaration): void {
+  const emitTypeResult = emitType(context, varDeclaration.declaredType);
   context.output.append(" ");
-  emitIdentifier(context, sourceFile, variableDeclaration.name);
+  emitIdentifier(context, varDeclaration.name);
 
   for (let i = 0; i < emitTypeResult.arrayDepth; i++) {
     context.output.append("[]");
   }
 
-  if (variableDeclaration.initializer != null) {
+  if (varDeclaration.initializer != null) {
     context.output.append(" = ");
-    emitExpression(context, sourceFile, variableDeclaration.initializer);
+    emitExpression(context, varDeclaration.initializer);
   }
 
   context.output.appendLine(";");
 }
 
-function emitWhileStatement(context: EmitContext, sourceFile: ast.SourceFile, whileStatement: ast.WhileStatement) {
+function emitWhileStatement(context: EmitContext, whileStatement: ast.WhileStatement): void {
   context.output.append("while (");
-  emitExpression(context, sourceFile, whileStatement.condition);
+  emitExpression(context, whileStatement.condition);
   context.output.append(") ");
-  emitBlockLevelStatement(context, sourceFile, whileStatement.body);
+  emitBlockLevelStatement(context, whileStatement.body);
 }
 
 interface EmitTypeResult {
@@ -578,7 +568,6 @@ function makeEmitTypeResult(): EmitTypeResult {
 
 function emitType(
   context: EmitContext,
-  sourceFile: ast.SourceFile,
   type: ast.TypeNode,
   result: EmitTypeResult | undefined = undefined,
 ): EmitTypeResult {
@@ -588,15 +577,15 @@ function emitType(
 
   switch (type.kind) {
     case ast.SyntaxKind.ArrayType:
-      emitArrayType(context, sourceFile, type as ast.ArrayType, result);
+      emitArrayType(context, type as ast.ArrayType, result);
       break;
 
     case ast.SyntaxKind.PointerType:
-      emitPointerType(context, sourceFile, type as ast.PointerType, result);
+      emitPointerType(context, type as ast.PointerType, result);
       break;
 
     case ast.SyntaxKind.TypeReference:
-      emitTypeReference(context, sourceFile, type as ast.TypeReference, result);
+      emitTypeReference(context, type as ast.TypeReference, result);
       break;
   }
 
@@ -605,7 +594,6 @@ function emitType(
 
 function emitArrayType(
   context: EmitContext,
-  sourceFile: ast.SourceFile,
   arrayType: ast.ArrayType,
   result: EmitTypeResult | undefined = undefined,
 ): EmitTypeResult {
@@ -614,14 +602,13 @@ function emitArrayType(
   }
 
   result.arrayDepth += 1;
-  emitType(context, sourceFile, arrayType.elementType, result);
+  emitType(context, arrayType.elementType, result);
 
   return result;
 }
 
 function emitPointerType(
   context: EmitContext,
-  sourceFile: ast.SourceFile,
   pointerType: ast.PointerType,
   result: EmitTypeResult | undefined = undefined,
 ): EmitTypeResult {
@@ -629,7 +616,7 @@ function emitPointerType(
     result = makeEmitTypeResult();
   }
 
-  emitType(context, sourceFile, pointerType.elementType, result);
+  emitType(context, pointerType.elementType, result);
   context.output.append("*");
 
   return result;
@@ -637,7 +624,6 @@ function emitPointerType(
 
 function emitTypeReference(
   context: EmitContext,
-  sourceFile: ast.SourceFile,
   typeReference: ast.TypeReference,
   result: EmitTypeResult | undefined = undefined,
 ): EmitTypeResult {
@@ -660,99 +646,95 @@ function emitTypeReference(
     }
 
     if (!typeIsMapped) {
-      emitIdentifier(context, sourceFile, typeReference.typeName.left);
+      emitIdentifier(context, typeReference.typeName.left);
       context.output.append(".");
-      emitIdentifier(context, sourceFile, typeReference.typeName.right);
+      emitIdentifier(context, typeReference.typeName.right);
     }
   } else {
-    emitIdentifier(context, sourceFile, typeReference.typeName);
+    emitIdentifier(context, typeReference.typeName);
   }
 
   return result;
 }
 
-function emitExpression(context: EmitContext, sourceFile: ast.SourceFile, expression: ast.Expression) {
+function emitExpression(context: EmitContext, expression: ast.Expression): void {
   switch (expression.kind) {
     case ast.SyntaxKind.AdditiveExpression:
-      emitAdditiveExpression(context, sourceFile, <ast.AdditiveExpression> expression);
+      emitAdditiveExpression(context, <ast.AdditiveExpression> expression);
       break;
 
     case ast.SyntaxKind.ArrayLiteral:
-      emitArrayLiteral(context, sourceFile, <ast.ArrayLiteral> expression);
+      emitArrayLiteral(context, <ast.ArrayLiteral> expression);
       break;
 
     case ast.SyntaxKind.AssignmentExpression:
-      emitAssignmentExpression(context, sourceFile, <ast.AssignmentExpression> expression);
+      emitAssignmentExpression(context, <ast.AssignmentExpression> expression);
       break;
 
     case ast.SyntaxKind.BoolLiteral:
-      emitBooleanLiteral(context, sourceFile, <ast.BoolLiteral> expression);
+      emitBooleanLiteral(context, <ast.BoolLiteral> expression);
       break;
 
     case ast.SyntaxKind.CallExpression:
-      emitCallExpression(context, sourceFile, <ast.CallExpression> expression);
+      emitCallExpression(context, <ast.CallExpression> expression);
       break;
 
     case ast.SyntaxKind.ComparisonExpression:
-      emitComparisonExpression(context, sourceFile, <ast.ComparisonExpression> expression);
+      emitComparisonExpression(context, <ast.ComparisonExpression> expression);
       break;
 
     case ast.SyntaxKind.ElementAccessExpression:
-      emitElementAccessExpression(context, sourceFile, <ast.ElementAccessExpression> expression);
+      emitElementAccessExpression(context, <ast.ElementAccessExpression> expression);
       break;
 
     case ast.SyntaxKind.EqualityExpression:
-      emitEqualityExpression(context, sourceFile, <ast.EqualityExpression> expression);
+      emitEqualityExpression(context, <ast.EqualityExpression> expression);
       break;
 
     case ast.SyntaxKind.Identifier:
-      emitIdentifier(context, sourceFile, <ast.Identifier> expression);
+      emitIdentifier(context, <ast.Identifier> expression);
       break;
 
     case ast.SyntaxKind.IntLiteral:
-      emitIntegerLiteral(context, sourceFile, <ast.IntLiteral> expression);
+      emitIntegerLiteral(context, <ast.IntLiteral> expression);
       break;
 
     case ast.SyntaxKind.LogicalExpression:
-      emitLogicalExpression(context, sourceFile, <ast.LogicalExpression> expression);
+      emitLogicalExpression(context, <ast.LogicalExpression> expression);
       break;
 
     case ast.SyntaxKind.MultiplicativeExpression:
-      emitMultiplicativeExpression(context, sourceFile, <ast.MultiplicativeExpression> expression);
+      emitMultiplicativeExpression(context, <ast.MultiplicativeExpression> expression);
       break;
 
     case ast.SyntaxKind.ParenthesizedExpression:
-      emitParenthesizedExpression(context, sourceFile, <ast.ParenthesizedExpression> expression);
+      emitParenthesizedExpression(context, <ast.ParenthesizedExpression> expression);
       break;
 
     case ast.SyntaxKind.PropertyAccessExpression:
-      emitPropertyAccessExpression(context, sourceFile, <ast.PropertyAccessExpression> expression);
+      emitPropertyAccessExpression(context, <ast.PropertyAccessExpression> expression);
       break;
 
     case ast.SyntaxKind.StringLiteral:
-      emitStringLiteral(context, sourceFile, <ast.StringLiteral> expression);
+      emitStringLiteral(context, <ast.StringLiteral> expression);
       break;
 
     case ast.SyntaxKind.StructLiteral:
-      emitStructLiteral(context, sourceFile, <ast.StructLiteral> expression);
+      emitStructLiteral(context, <ast.StructLiteral> expression);
       break;
 
     case ast.SyntaxKind.UnaryExpression:
-      emitUnaryExpression(context, sourceFile, <ast.UnaryExpression> expression);
+      emitUnaryExpression(context, <ast.UnaryExpression> expression);
       break;
 
     default:
-      emitUnexpectedNode(context, nameof(emitExpression), sourceFile, expression);
+      emitUnexpectedNode(context, nameof(emitExpression), expression);
       break;
   }
 }
 
-function emitAssignmentExpression(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  expression: ast.AssignmentExpression,
-): void {
-  emitIdentifier(context, sourceFile, expression.name);
+function emitAssignmentExpression(context: EmitContext, expression: ast.AssignmentExpression): void {
+  emitIdentifier(context, expression.name);
 
   let operator = "=";
   switch (expression.operator) {
@@ -775,35 +757,29 @@ function emitAssignmentExpression(
 
   context.output.append(` ${operator} `);
 
-  emitExpression(context, sourceFile, expression.value);
+  emitExpression(context, expression.value);
 }
 
-function emitAdditiveExpression(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  expression: ast.AdditiveExpression,
-): void {
+function emitAdditiveExpression(context: EmitContext, expression: ast.AdditiveExpression): void {
   if (
     expression.operator == ast.Operator.Plus &&
     expression.lhs?.type?.name == "string" &&
     expression.rhs?.type?.name == "string"
   ) {
     context.output.append("STRING_CONCAT(");
-    emitExpression(context, sourceFile, expression.lhs);
+    emitExpression(context, expression.lhs);
     context.output.append(", ");
-    emitExpression(context, sourceFile, expression.rhs);
+    emitExpression(context, expression.rhs);
     context.output.append(")");
     return;
   }
 
-  emitExpression(context, sourceFile, expression.lhs);
-
+  emitExpression(context, expression.lhs);
   context.output.append(` ${expression.operator == ast.Operator.Plus ? "+" : "-"} `);
-
-  emitExpression(context, sourceFile, expression.rhs);
+  emitExpression(context, expression.rhs);
 }
 
-function emitArrayLiteral(context: EmitContext, sourceFile: ast.SourceFile, arrayLiteral: ast.ArrayLiteral) {
+function emitArrayLiteral(context: EmitContext, arrayLiteral: ast.ArrayLiteral): void {
   context.output.append("{");
 
   for (let i = 0; i < arrayLiteral.elements.length; i += 1) {
@@ -811,17 +787,17 @@ function emitArrayLiteral(context: EmitContext, sourceFile: ast.SourceFile, arra
       context.output.append(", ");
     }
 
-    emitExpression(context, sourceFile, arrayLiteral.elements[i]);
+    emitExpression(context, arrayLiteral.elements[i]);
   }
 
   context.output.append("}");
 }
 
-function emitBooleanLiteral(context: EmitContext, sourceFile: ast.SourceFile, booleanLiteral: ast.BoolLiteral) {
-  context.output.append(booleanLiteral.value ? "true" : "false");
+function emitBooleanLiteral(context: EmitContext, boolLiteral: ast.BoolLiteral): void {
+  context.output.append(boolLiteral.value ? "true" : "false");
 }
 
-function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, callExpression: ast.CallExpression) {
+function emitCallExpression(context: EmitContext, callExpression: ast.CallExpression): void {
   assert.notNull(
     callExpression.symbol,
     `Expected callExpression.symbol not to be null`,
@@ -851,7 +827,7 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
         varadicVariableNames.push(varadicVariableName);
 
         context.output.append(`auto ${varadicVariableName} = `);
-        emitExpression(context, sourceFile, callExpression.args[i]);
+        emitExpression(context, callExpression.args[i]);
         context.output.appendLine(";");
       }
 
@@ -890,13 +866,13 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
       context.output.append(mappedFunctionName);
     } else {
       // FIXME: This leads to only one method can be set per name.
-      emitIdentifier(context, sourceFile, callExpression.expression.name);
+      emitIdentifier(context, callExpression.expression.name);
     }
 
     args.unshift(callExpression.expression.expression);
     beginVaradicArgsIndex += 1;
   } else {
-    emitExpression(context, sourceFile, callExpression.expression);
+    emitExpression(context, callExpression.expression);
   }
   context.output.append("(");
 
@@ -905,7 +881,7 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
       context.output.append(", ");
     }
 
-    emitExpression(context, sourceFile, args[i]);
+    emitExpression(context, args[i]);
   }
 
   if (isVaradicCall && varadicArgsArrayName) {
@@ -919,22 +895,17 @@ function emitCallExpression(context: EmitContext, sourceFile: ast.SourceFile, ca
   context.output.append(")");
 }
 
-function emitElementAccessExpression(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  elementAccessExpression: ast.ElementAccessExpression,
-) {
-  emitExpression(context, sourceFile, elementAccessExpression.expression);
+function emitElementAccessExpression(context: EmitContext, elementAccessExpression: ast.ElementAccessExpression): void {
+  emitExpression(context, elementAccessExpression.expression);
   context.output.append("[");
-  emitExpression(context, sourceFile, elementAccessExpression.argumentExpression);
+  emitExpression(context, elementAccessExpression.argumentExpression);
   context.output.append("]");
 }
 
 function emitPropertyAccessExpression(
   context: EmitContext,
-  sourceFile: ast.SourceFile,
   propertyAccessExpression: ast.PropertyAccessExpression,
-) {
+): void {
   if (propertyAccessExpression.expression.symbol) {
     if (hasFlag(propertyAccessExpression.expression.symbol.flags, ast.SymbolFlags.Module)) {
       const module = getImportedModuleByAlias(context, propertyAccessExpression.expression.symbol.name);
@@ -952,28 +923,27 @@ function emitPropertyAccessExpression(
       const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.expression.symbol.name);
       if (mappedTypeName != null) {
         context.output.append(`${mappedTypeName}_`);
-        emitIdentifier(context, sourceFile, propertyAccessExpression.name);
+        emitIdentifier(context, propertyAccessExpression.name);
         return;
       }
     } else {
-      emitExpression(context, sourceFile, propertyAccessExpression.expression);
+      emitExpression(context, propertyAccessExpression.expression);
       context.output.append(".");
     }
   } else {
     // TODO: Just make this branch an error.
-    emitExpression(context, sourceFile, propertyAccessExpression.expression);
+    emitExpression(context, propertyAccessExpression.expression);
     context.output.append(".");
   }
 
-  emitIdentifier(context, sourceFile, propertyAccessExpression.name);
+  emitIdentifier(context, propertyAccessExpression.name);
 }
 
 function emitComparisonExpression(
   context: EmitContext,
-  sourceFile: ast.SourceFile,
   expression: ast.ComparisonExpression,
 ) {
-  emitExpression(context, sourceFile, expression.lhs);
+  emitExpression(context, expression.lhs);
 
   let operator = ">";
 
@@ -997,23 +967,22 @@ function emitComparisonExpression(
 
   context.output.append(` ${operator} `);
 
-  emitExpression(context, sourceFile, expression.rhs);
+  emitExpression(context, expression.rhs);
 }
 
-function emitEqualityExpression(context: EmitContext, sourceFile: ast.SourceFile, expression: ast.EqualityExpression) {
-  emitExpression(context, sourceFile, expression.lhs);
-
+function emitEqualityExpression(context: EmitContext, expression: ast.EqualityExpression) {
+  emitExpression(context, expression.lhs);
   context.output.append(expression.operator == ast.Operator.EqualsEquals ? " == " : " != ");
-
-  emitExpression(context, sourceFile, expression.rhs);
+  emitExpression(context, expression.rhs);
 }
 
-function emitIdentifier(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier) {
+function emitIdentifier(context: EmitContext, identifier: ast.Identifier) {
   if (identifier.symbol && hasFlag(identifier.symbol.flags, ast.SymbolFlags.Builtin)) {
-    emitBuiltin(context, sourceFile, identifier);
+    emitBuiltin(context, identifier);
     return;
   }
 
+  const sourceFile = getSourceFileOrError(identifier);
   const mappedName = getMappedModuleTypeName(context, sourceFile, identifier.value);
 
   if (mappedName) {
@@ -1023,7 +992,7 @@ function emitIdentifier(context: EmitContext, sourceFile: ast.SourceFile, identi
   }
 }
 
-function emitBuiltin(context: EmitContext, sourceFile: ast.SourceFile, identifier: ast.Identifier): void {
+function emitBuiltin(context: EmitContext, identifier: ast.Identifier): void {
   if (
     !identifier.symbol ||
     !hasFlag(identifier.symbol.flags, ast.SymbolFlags.Builtin)
@@ -1048,45 +1017,33 @@ function emitBuiltin(context: EmitContext, sourceFile: ast.SourceFile, identifie
   context.output.append(name);
 }
 
-function emitIntegerLiteral(context: EmitContext, sourceFile: ast.SourceFile, integerLiteral: ast.IntLiteral) {
-  context.output.append(integerLiteral.value);
+function emitIntegerLiteral(context: EmitContext, intLiteral: ast.IntLiteral) {
+  context.output.append(intLiteral.value);
 }
 
-function emitLogicalExpression(context: EmitContext, sourceFile: ast.SourceFile, expression: ast.LogicalExpression) {
-  emitExpression(context, sourceFile, expression.lhs);
-
+function emitLogicalExpression(context: EmitContext, expression: ast.LogicalExpression) {
+  emitExpression(context, expression.lhs);
   context.output.append(expression.operator == ast.Operator.AmpersandAmpersand ? " && " : " || ");
-
-  emitExpression(context, sourceFile, expression.rhs);
+  emitExpression(context, expression.rhs);
 }
 
-function emitMultiplicativeExpression(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  expression: ast.MultiplicativeExpression,
-) {
-  emitExpression(context, sourceFile, expression.lhs);
-
+function emitMultiplicativeExpression(context: EmitContext, expression: ast.MultiplicativeExpression): void {
+  emitExpression(context, expression.lhs);
   context.output.append(expression.operator == ast.Operator.Asterisk ? " * " : " / ");
-
-  emitExpression(context, sourceFile, expression.rhs);
+  emitExpression(context, expression.rhs);
 }
 
-function emitParenthesizedExpression(
-  context: EmitContext,
-  sourceFile: ast.SourceFile,
-  expression: ast.ParenthesizedExpression,
-) {
+function emitParenthesizedExpression(context: EmitContext, expression: ast.ParenthesizedExpression): void {
   context.output.append("(");
-  emitExpression(context, sourceFile, expression.expression);
+  emitExpression(context, expression.expression);
   context.output.append(")");
 }
 
-function emitStringLiteral(context: EmitContext, sourceFile: ast.SourceFile, stringLiteral: ast.StringLiteral) {
+function emitStringLiteral(context: EmitContext, stringLiteral: ast.StringLiteral): void {
   context.output.append(`"${stringLiteral.value}"`);
 }
 
-function emitStructLiteral(context: EmitContext, sourceFile: ast.SourceFile, structLiteral: ast.StructLiteral) {
+function emitStructLiteral(context: EmitContext, structLiteral: ast.StructLiteral): void {
   context.output.appendLine("{");
   context.output.indent();
 
@@ -1104,7 +1061,7 @@ function emitStructLiteral(context: EmitContext, sourceFile: ast.SourceFile, str
       const elementTempVariable = generateTempVariableName(context, "e");
 
       context.output.append(`auto ${elementTempVariable} = `);
-      emitExpression(context, sourceFile, element.expression);
+      emitExpression(context, element.expression);
       context.output.appendLine(";");
 
       popOutput(context);
@@ -1112,7 +1069,7 @@ function emitStructLiteral(context: EmitContext, sourceFile: ast.SourceFile, str
       assert.notNull(element.name, "Expected element.name not to be null.");
       elementTempVariableMap[element.name.value] = elementTempVariable;
     } else {
-      emitExpression(context, sourceFile, element.expression);
+      emitExpression(context, element.expression);
       context.output.appendLine(",");
     }
   }
@@ -1136,7 +1093,7 @@ function emitStructLiteral(context: EmitContext, sourceFile: ast.SourceFile, str
   context.output.append("}");
 }
 
-function emitUnaryExpression(context: EmitContext, sourceFile: ast.SourceFile, expression: ast.UnaryExpression) {
+function emitUnaryExpression(context: EmitContext, expression: ast.UnaryExpression) {
   switch (expression.operator) {
     case ast.Operator.Ampersand:
       context.output.append("&");
@@ -1151,9 +1108,9 @@ function emitUnaryExpression(context: EmitContext, sourceFile: ast.SourceFile, e
       context.output.append("-");
       break;
     default:
-      emitUnexpectedNode(context, nameof(emitUnaryExpression), sourceFile, expression);
+      emitUnexpectedNode(context, nameof(emitUnaryExpression), expression);
       break;
   }
 
-  emitExpression(context, sourceFile, expression.expression);
+  emitExpression(context, expression.expression);
 }

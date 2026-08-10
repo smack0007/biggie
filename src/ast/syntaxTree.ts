@@ -1,4 +1,4 @@
-import { uint, uint32 } from "../shims.ts";
+import { bool, uint, uint32 } from "../shims.ts";
 
 export enum SyntaxKind {
   AdditiveExpression,
@@ -269,7 +269,7 @@ export interface VarDeclaration extends SyntaxNode, Declaration {
 export interface EnumDeclaration extends SyntaxNode, Declaration {
   kind: SyntaxKind.EnumDeclaration;
 
-  isExported: boolean;
+  isExported: bool;
 
   name: Identifier;
 
@@ -287,7 +287,7 @@ export interface EnumMember extends SyntaxNode, Declaration {
 export interface FuncDeclaration extends SyntaxNode, Declaration, Scope {
   kind: SyntaxKind.FuncDeclaration;
 
-  isExported: boolean;
+  isExported: bool;
 
   name: Identifier;
 
@@ -301,7 +301,7 @@ export interface FuncDeclaration extends SyntaxNode, Declaration, Scope {
 export interface MethodDeclaration extends SyntaxNode, Declaration, Scope {
   kind: SyntaxKind.MethodDeclaration;
 
-  isExported: boolean;
+  isExported: bool;
 
   receiver: MethodReceiver;
 
@@ -325,7 +325,7 @@ export interface MethodReceiver extends SyntaxNode, Declaration {
 export interface StructDeclaration extends SyntaxNode, Declaration {
   kind: SyntaxKind.StructDeclaration;
 
-  isExported: boolean;
+  isExported: bool;
 
   name: Identifier;
 
@@ -545,7 +545,7 @@ export interface StructLiteralElement extends SyntaxNode {
 export interface BoolLiteral extends Expression {
   kind: SyntaxKind.BoolLiteral;
 
-  value: boolean;
+  value: bool;
 }
 
 export interface IntLiteral extends Expression {

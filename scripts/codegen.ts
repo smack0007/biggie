@@ -214,7 +214,6 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
             "operator",
             "startPos",
             "symbol?",
-            "value",
           ]
             .includes(
               propertyName,
@@ -225,7 +224,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
 
         const type = parts[1].substring(0, parts[1].length - 1);
 
-        if (type == "string") {
+        if (type == "string" || type == "bool") {
           continue;
         }
 
@@ -335,7 +334,7 @@ async function writeAstNameof(syntaxTreeContents: string[]): Promise<void> {
 
 async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   const DO_NOT_IMPORT = [
-    "boolean",
+    "bool",
     "int",
     "int32",
     "string",
@@ -453,7 +452,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   }
 
   const output = createAstOutputWriter();
-  output.appendLine(`import { uint, uint32 } from "../shims.ts";`);
+  output.appendLine(`import { bool, uint, uint32 } from "../shims.ts";`);
   output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
   output.appendLine(`export function makeTextPosition(line: uint, column: uint): TextPosition {
@@ -462,8 +461,6 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   output.appendLine();
 
   for (const [name, props] of Object.entries(factories)) {
-    console.info(name, props);
-
     output.appendLine(`export interface Make${name}OptionalProps {`);
 
     if (name != "Symbol") {
