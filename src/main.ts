@@ -35,7 +35,7 @@ async function main(argv: string[]): Promise<int> {
 
   try {
     program = await parser.parse(entryFileName, {
-      enter: (name: string, fileName: string, token?: scanner.Token) =>
+      enter: (name: string, fileName: string, token?: ast.Token) =>
         parsedArgs.debug &&
         console.info(`/*${fileName} ${name} (${token?.pos.line}, ${token?.pos.column}) <${token?.text}> */`),
     });

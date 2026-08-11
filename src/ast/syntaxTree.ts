@@ -1,4 +1,5 @@
 import { bool, uint, uint32 } from "../shims.ts";
+import { TextPosition } from "./textPosition.ts";
 
 export enum SyntaxKind {
   AdditiveExpression,
@@ -122,11 +123,6 @@ export enum Operator {
   Slash,
 
   SlashEquals,
-}
-
-export interface TextPosition {
-  line: uint;
-  column: uint;
 }
 
 export enum BindState {

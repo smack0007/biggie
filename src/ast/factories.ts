@@ -46,13 +46,13 @@ import {
   SymbolTable,
   SyntaxKind,
   SyntaxNode,
-  TextPosition,
   TypeNode,
   TypeReference,
   UnaryExpression,
   VarDeclaration,
   WhileStatement,
 } from "./syntaxTree.ts";
+import { TextPosition } from "./textPosition.ts";
 
 export function makeTextPosition(line: uint, column: uint): TextPosition {
   return { line, column };

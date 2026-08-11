@@ -1,6 +1,7 @@
 import * as assert from "node:assert";
 import { describe, it } from "node:test";
-import { scan, TokenType } from "./scanner.ts";
+import { scan } from "./scanner.ts";
+import { TokenType } from "../ast/mod.ts";
 
 describe("scanner", () => {
   describe("scan", () => {

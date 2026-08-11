@@ -309,6 +309,7 @@ async function writeAstNameof(syntaxTreeContents: string[]): Promise<void> {
   }
 
   output.appendLine(`import { ${Object.keys(enums).toSorted().join(", ")} } from "./syntaxTree.ts";`);
+  output.appendLine(`import { TextPosition } from "./textPosition.ts"`);
   output.appendLine();
 
   // Generate nameof functions for each enum
@@ -362,7 +363,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   let interfaceName: string | null = null;
   let collectedLine = "";
 
-  const syntaxTreeImports: string[] = ["BindState", "Operator", "SourceFile", "SyntaxKind", "TextPosition"];
+  const syntaxTreeImports: string[] = ["BindState", "Operator", "SourceFile", "SyntaxKind"];
   const factories: Record<string, {
     extends: string[];
     required: Record<string, string>;
@@ -454,6 +455,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   const output = createAstOutputWriter();
   output.appendLine(`import { bool, uint, uint32 } from "../shims.ts";`);
   output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
+  output.appendLine(`import { TextPosition } from "./textPosition.ts"`);
   output.appendLine();
   output.appendLine(`export function makeTextPosition(line: uint, column: uint): TextPosition {
     return { line, column };
