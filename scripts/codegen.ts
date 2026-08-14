@@ -309,7 +309,6 @@ async function writeAstNameof(syntaxTreeContents: string[]): Promise<void> {
   }
 
   output.appendLine(`import { ${Object.keys(enums).toSorted().join(", ")} } from "./syntaxTree.ts";`);
-  output.appendLine(`import { TextPosition } from "./textPosition.ts"`);
   output.appendLine();
 
   // Generate nameof functions for each enum

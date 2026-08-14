@@ -28,7 +28,7 @@ export enum SyntaxKind {
 
   ExpressionStatement,
 
-  FuncArgument,
+  ExternFuncDeclaration,
 
   FuncDeclaration,
 
@@ -47,6 +47,8 @@ export enum SyntaxKind {
   MethodReceiver,
 
   MultiplicativeExpression,
+
+  NoOpStatement,
 
   ParenthesizedExpression,
 
@@ -138,25 +140,27 @@ export enum SymbolFlags {
 
   Builtin = 1 << 0,
 
-  Module = 1 << 1,
+  Extern = 1 << 1,
 
-  Type = 1 << 2,
+  Module = 1 << 2,
 
-  Var = 1 << 3,
+  Type = 1 << 3,
 
-  Enum = 1 << 4,
+  Var = 1 << 4,
 
-  EnumMember = 1 << 5,
+  Enum = 1 << 5,
 
-  Func = 1 << 6,
+  EnumMember = 1 << 6,
 
-  Varadic = 1 << 7,
+  Func = 1 << 7,
 
-  Struct = 1 << 8,
+  Varadic = 1 << 8,
 
-  StructMember = 1 << 9,
+  Struct = 1 << 9,
 
-  Method = 1 << 10,
+  StructMember = 1 << 10,
+
+  Method = 1 << 11,
 }
 
 export type SymbolTable = Record<string, Symbol>;
@@ -242,6 +246,10 @@ export interface SourceFile extends SyntaxNode, Scope {
 
 export interface Statement extends SyntaxNode {}
 
+export interface NoOpStatement extends SyntaxNode {
+  kind: SyntaxKind.NoOpStatement;
+}
+
 export interface ImportDeclaration extends SyntaxNode, Declaration {
   kind: SyntaxKind.ImportDeclaration;
 
@@ -292,6 +300,16 @@ export interface FuncDeclaration extends SyntaxNode, Declaration, Scope {
   returnType: TypeNode;
 
   body: StatementBlock;
+}
+
+export interface ExternFuncDeclaration extends SyntaxNode, Declaration {
+  kind: SyntaxKind.ExternFuncDeclaration;
+
+  name: Identifier;
+
+  args: VarDeclaration[];
+
+  returnType: TypeNode;
 }
 
 export interface MethodDeclaration extends SyntaxNode, Declaration, Scope {

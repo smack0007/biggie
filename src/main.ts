@@ -94,11 +94,11 @@ async function main(argv: string[]): Promise<int> {
 
   // TODO: The output from this is almost impossible to read. Make a function
   // that will produce more readable output.
-  await fs.writeFile(
-    path.join(path.dirname(outputFileName), path.basename(outputFileName)) + ".ast",
-    ast.toGraphviz(program),
-    "utf-8",
-  );
+  // await fs.writeFile(
+  //   path.join(path.dirname(outputFileName), path.basename(outputFileName)) + ".ast",
+  //   ast.toGraphviz(program),
+  //   "utf-8",
+  // );
 
   return 0;
 }

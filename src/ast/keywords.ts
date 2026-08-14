@@ -5,6 +5,7 @@ export const KeywordMap: Readonly<Record<string, TokenType>> = {
   "else": TokenType.Else,
   "enum": TokenType.Enum,
   "export": TokenType.Export,
+  "extern": TokenType.Extern,
   "false": TokenType.False,
   "for": TokenType.For,
   "func": TokenType.Func,

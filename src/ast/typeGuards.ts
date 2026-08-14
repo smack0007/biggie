@@ -15,6 +15,7 @@ import {
   EqualityExpression,
   Expression,
   ExpressionStatement,
+  ExternFuncDeclaration,
   FuncDeclaration,
   Identifier,
   IfStatement,
@@ -24,6 +25,7 @@ import {
   MethodDeclaration,
   MethodReceiver,
   MultiplicativeExpression,
+  NoOpStatement,
   ParenthesizedExpression,
   PointerType,
   Program,
@@ -81,6 +83,7 @@ export function isDeclaration(node: SyntaxNode): node is Declaration {
   return (
     node.kind == SyntaxKind.EnumDeclaration ||
     node.kind == SyntaxKind.EnumMember ||
+    node.kind == SyntaxKind.ExternFuncDeclaration ||
     node.kind == SyntaxKind.FuncDeclaration ||
     node.kind == SyntaxKind.ImportDeclaration ||
     node.kind == SyntaxKind.MethodDeclaration ||
@@ -137,6 +140,10 @@ export function isExpressionStatement(node: SyntaxNode): node is ExpressionState
   return node.kind == SyntaxKind.ExpressionStatement;
 }
 
+export function isExternFuncDeclaration(node: SyntaxNode): node is ExternFuncDeclaration {
+  return node.kind == SyntaxKind.ExternFuncDeclaration;
+}
+
 export function isFuncDeclaration(node: SyntaxNode): node is FuncDeclaration {
   return node.kind == SyntaxKind.FuncDeclaration;
 }
@@ -171,6 +178,10 @@ export function isMethodReceiver(node: SyntaxNode): node is MethodReceiver {
 
 export function isMultiplicativeExpression(node: SyntaxNode): node is MultiplicativeExpression {
   return node.kind == SyntaxKind.MultiplicativeExpression;
+}
+
+export function isNoOpStatement(node: SyntaxNode): node is NoOpStatement {
+  return node.kind == SyntaxKind.NoOpStatement;
 }
 
 export function isParenthesizedExpression(node: SyntaxNode): node is ParenthesizedExpression {

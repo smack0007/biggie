@@ -207,6 +207,10 @@ function bindSourceFile(sourceFile: ast.SourceFile): void {
         bindImportDeclaration(<ast.ImportDeclaration> node);
         break;
 
+      case ast.SyntaxKind.ExternFuncDeclaration:
+        bindExternFuncDeclaration(<ast.ExternFuncDeclaration> node);
+        break;
+
       case ast.SyntaxKind.EnumDeclaration:
         bindEnumDeclaration(<ast.EnumDeclaration> node);
         break;
@@ -267,6 +271,30 @@ function bindImportDeclaration(importDeclaration: ast.ImportDeclaration): void {
   }
 
   importDeclaration.bindState = ast.BindState.Finished;
+}
+
+function bindExternFuncDeclaration(externFuncDeclaration: ast.ExternFuncDeclaration): void {
+  for (const arg of externFuncDeclaration.args) {
+    bindVarDeclaration(arg);
+  }
+
+  bindTypeNode(externFuncDeclaration.returnType);
+
+  externFuncDeclaration.symbol = {
+    id: generateId(IDType.symbol),
+    flags: ast.SymbolFlags.Extern | ast.SymbolFlags.Func,
+    declaration: externFuncDeclaration,
+    name: externFuncDeclaration.name.value,
+  };
+  externFuncDeclaration.type = externFuncDeclaration.symbol;
+
+  const sourceFile = getSourceFileOrError(externFuncDeclaration);
+  setLocal(externFuncDeclaration, sourceFile, externFuncDeclaration.symbol.name, externFuncDeclaration.symbol);
+  // if (funcDeclaration.isExported) {
+  //   setExport(funcDeclaration, sourceFile, funcDeclaration.symbol.name, funcDeclaration.symbol);
+  // }
+
+  externFuncDeclaration.bindState = ast.BindState.Finished;
 }
 
 function bindEnumDeclaration(

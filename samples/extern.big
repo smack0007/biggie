@@ -1,0 +1,6 @@
+extern func atoi(str: string): int;
+
+func main(): int {
+  println("Hello {}", atoi("42"));
+  return 0;
+}

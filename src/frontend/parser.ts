@@ -4,6 +4,7 @@ import * as ast from "../ast/mod.ts";
 import * as scanner from "./scanner.ts";
 import { bool, int, nameof } from "../shims.ts";
 import { nameofSyntaxKind } from "../ast/nameof.ts";
+import { argon2Sync } from "node:crypto";
 
 export interface ParserLogger {
   enter(name: string, fileName: string, token?: ast.Token): void;
@@ -114,6 +115,7 @@ function next(context: ParserSourceFileContext): ast.Token {
   return context.tokens[index];
 }
 
+// TODO: Split this out into expect and expectAny.
 function expect(
   context: ParserSourceFileContext,
   expectedType: ast.TokenType | ast.TokenType[],
@@ -244,14 +246,23 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
   context.logger.enter(nameof(parseTopLevelStatement));
 
   let isExported = false;
+  // TODO: BUG: This causes the startPos and endPos to be incorrect.
   if (peek(context).type == ast.TokenType.Export) {
     isExported = true;
     advance(context);
   }
 
-  let result: ast.Statement;
   const token = peek(context);
   switch (token.type) {
+    case ast.TokenType.Enum:
+      return parseEnumDeclaration(context, { isExported });
+
+    case ast.TokenType.Extern:
+      return parseExternStatement(context);
+
+    case ast.TokenType.Func:
+      return parseFuncOrMethodDeclaration(context, { isExported });
+
     case ast.TokenType.Import:
       if (isExported) {
         throw parserError(
@@ -262,25 +273,14 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
         );
       }
 
-      result = await parseImportDeclaration(context);
-      break;
+      return await parseImportDeclaration(context);
+
+    case ast.TokenType.Struct:
+      return parseStructDeclaration(context, { isExported });
 
     case ast.TokenType.Var:
       // TODO: export var?
-      result = parseVarDeclaration(context);
-      break;
-
-    case ast.TokenType.Enum:
-      result = parseEnumDeclaration(context, { isExported });
-      break;
-
-    case ast.TokenType.Func:
-      result = parseFuncOrMethodDeclaration(context, { isExported });
-      break;
-
-    case ast.TokenType.Struct:
-      result = parseStructDeclaration(context, { isExported });
-      break;
+      return parseVarDeclaration(context);
 
     default:
       throw parserError(
@@ -290,6 +290,42 @@ async function parseTopLevelStatement(context: ParserSourceFileContext): Promise
         `Token type ${ast.TokenType[token.type]} unexpected in ${nameof(parseTopLevelStatement)}`,
       );
   }
+}
+
+function parseExternStatement(
+  context: ParserSourceFileContext,
+): ast.Statement {
+  context.logger.enter(nameof(parseExternStatement));
+  const startPos = getPos(context);
+
+  expect(context, ast.TokenType.Extern, nameof(parseExternStatement));
+  advance(context);
+
+  let result: ast.Statement = ast.makeNoOpStatement();
+  const token = peek(context);
+  switch (token.type) {
+    case ast.TokenType.Func:
+      {
+        const funcDeclaration = parseFuncDeclaration(context, { excludeBody: true });
+
+        expect(context, ast.TokenType.Semicolon, nameof(parseExternStatement));
+        advance(context);
+
+        result = <ast.ExternFuncDeclaration> {
+          kind: ast.SyntaxKind.ExternFuncDeclaration,
+          bindState: ast.BindState.Uninitialized,
+          name: funcDeclaration.name,
+          args: funcDeclaration.args,
+          returnType: funcDeclaration.returnType,
+        };
+      }
+      break;
+  }
+
+  const endPos = getPos(context);
+
+  result.startPos = startPos;
+  result.endPos = endPos;
 
   return result;
 }
@@ -455,6 +491,7 @@ function parseEnumMember(context: ParserSourceFileContext): ast.EnumMember {
 }
 
 interface ParseFuncOrMethodDeclarationOptions {
+  excludeBody?: bool;
   isExported?: bool;
 }
 
@@ -506,7 +543,7 @@ function parseFuncDeclaration(
 
   const returnType = parseType(context);
 
-  const body = parseStatementBlock(context);
+  const body = !options.excludeBody ? parseStatementBlock(context) : ast.makeStatementBlock([]);
 
   const endPos = getPos(context);
 

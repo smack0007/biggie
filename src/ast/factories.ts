@@ -17,6 +17,7 @@ import {
   EqualityExpression,
   Expression,
   ExpressionStatement,
+  ExternFuncDeclaration,
   FuncDeclaration,
   Identifier,
   IfStatement,
@@ -26,6 +27,7 @@ import {
   MethodDeclaration,
   MethodReceiver,
   MultiplicativeExpression,
+  NoOpStatement,
   Operator,
   ParenthesizedExpression,
   PointerType,
@@ -127,6 +129,22 @@ export function makeSourceFile(
     fileName,
     statements,
     exports,
+  };
+}
+
+export interface MakeNoOpStatementOptionalProps {
+  startPos?: TextPosition;
+  endPos?: TextPosition;
+}
+
+export function makeNoOpStatement(
+  optional: MakeNoOpStatementOptionalProps = {},
+): NoOpStatement {
+  return {
+    kind: SyntaxKind.NoOpStatement,
+    startPos: optional.startPos ?? makeTextPosition(0, 0),
+    endPos: optional.endPos ?? makeTextPosition(0, 0),
+    bindState: BindState.Uninitialized,
   };
 }
 
@@ -241,6 +259,28 @@ export function makeFuncDeclaration(
     returnType,
     body,
     isExported: optional.isExported ?? false,
+  };
+}
+
+export interface MakeExternFuncDeclarationOptionalProps {
+  startPos?: TextPosition;
+  endPos?: TextPosition;
+}
+
+export function makeExternFuncDeclaration(
+  name: Identifier,
+  args: VarDeclaration[],
+  returnType: TypeNode,
+  optional: MakeExternFuncDeclarationOptionalProps = {},
+): ExternFuncDeclaration {
+  return {
+    kind: SyntaxKind.ExternFuncDeclaration,
+    startPos: optional.startPos ?? makeTextPosition(0, 0),
+    endPos: optional.endPos ?? makeTextPosition(0, 0),
+    bindState: BindState.Uninitialized,
+    name,
+    args,
+    returnType,
   };
 }
 

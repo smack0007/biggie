@@ -12,6 +12,7 @@ import {
   EnumMember,
   EqualityExpression,
   ExpressionStatement,
+  ExternFuncDeclaration,
   FuncDeclaration,
   IfStatement,
   ImportDeclaration,
@@ -126,6 +127,14 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
         walkArrayParent(funcDeclaration.args, <WalkCallback> callback, funcDeclaration);
         walkParent(funcDeclaration.returnType, <WalkCallback> callback, funcDeclaration);
         walkParent(funcDeclaration.body, <WalkCallback> callback, funcDeclaration);
+      }
+      break;
+    case SyntaxKind.ExternFuncDeclaration:
+      {
+        const externFuncDeclaration = <ExternFuncDeclaration> node;
+        walkParent(externFuncDeclaration.name, <WalkCallback> callback, externFuncDeclaration);
+        walkArrayParent(externFuncDeclaration.args, <WalkCallback> callback, externFuncDeclaration);
+        walkParent(externFuncDeclaration.returnType, <WalkCallback> callback, externFuncDeclaration);
       }
       break;
     case SyntaxKind.MethodDeclaration:

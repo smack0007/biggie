@@ -67,6 +67,9 @@ export enum TokenType {
   // export
   Export,
 
+  // extern
+  Extern,
+
   // false
   False,
 
