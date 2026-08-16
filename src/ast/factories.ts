@@ -208,9 +208,9 @@ export function makeEnumDeclaration(
     startPos: optional.startPos ?? makeTextPosition(0, 0),
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
+    isExported: optional.isExported ?? false,
     name,
     members,
-    isExported: optional.isExported ?? false,
   };
 }
 
@@ -252,13 +252,13 @@ export function makeFuncDeclaration(
     startPos: optional.startPos ?? makeTextPosition(0, 0),
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
+    isExported: optional.isExported ?? false,
     locals: {},
     nextSymbolScope: null,
     name,
     args,
     returnType,
     body,
-    isExported: optional.isExported ?? false,
   };
 }
 
@@ -303,6 +303,7 @@ export function makeMethodDeclaration(
     startPos: optional.startPos ?? makeTextPosition(0, 0),
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
+    isExported: optional.isExported ?? false,
     locals: {},
     nextSymbolScope: null,
     receiver,
@@ -310,7 +311,6 @@ export function makeMethodDeclaration(
     args,
     returnType,
     body,
-    isExported: optional.isExported ?? false,
   };
 }
 
@@ -350,9 +350,9 @@ export function makeStructDeclaration(
     startPos: optional.startPos ?? makeTextPosition(0, 0),
     endPos: optional.endPos ?? makeTextPosition(0, 0),
     bindState: BindState.Uninitialized,
+    isExported: optional.isExported ?? false,
     name,
     members,
-    isExported: optional.isExported ?? false,
   };
 }
 

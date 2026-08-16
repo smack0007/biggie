@@ -189,7 +189,17 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
       interfaceName = parts[2];
 
       if (
-        ["TextPosition", "Diagnostic", "SyntaxNode", "BlockScope", "Declaration", "Symbol", "BindNode", "Scope"]
+        [
+          "TextPosition",
+          "Diagnostic",
+          "SyntaxNode",
+          "BlockScope",
+          "Declaration",
+          "Exportable",
+          "Symbol",
+          "BindNode",
+          "Scope",
+        ]
           .includes(interfaceName)
       ) {
         interfaceName = null;
@@ -344,6 +354,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   const EXCLUDE_INTERFACES = [
     "Declaration",
     "Diagnostic",
+    "Exportable",
     "Expression",
     "Reference",
     "Scope",
@@ -469,6 +480,10 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
       output.appendLine(`endPos?: TextPosition;`);
     }
 
+    if (props.extends.includes("Exportable")) {
+      output.appendLine(`isExported?: bool;`);
+    }
+
     for (const [propName, propType] of Object.entries(props.optional)) {
       output.appendLine(`${propName}?: ${propType};`);
     }
@@ -497,6 +512,10 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
       output.appendLine(`startPos: optional.startPos ?? makeTextPosition(0, 0),`);
       output.appendLine(`endPos: optional.endPos ?? makeTextPosition(0, 0),`);
       output.appendLine(`bindState: BindState.Uninitialized,`);
+    }
+
+    if (props.extends.includes("Exportable")) {
+      output.appendLine(`isExported: optional.isExported ?? false,`);
     }
 
     if (props.extends.includes("Scope")) {

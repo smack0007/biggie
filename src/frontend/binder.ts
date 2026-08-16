@@ -27,6 +27,7 @@ function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): 
   console.error((new Error()).stack);
 
   return {
+    category: ast.DiagnosticCategory.Error,
     kind,
     message,
     fileName: sourceFile?.fileName ?? "<unknown>",
@@ -166,6 +167,23 @@ function getSymbolFromScopeByName(scope: ast.Scope, name: string): ast.Symbol {
   }
 
   throw bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${name}".`, scope);
+}
+
+function getSymbolFromScopeByIdentifier(identifier: ast.Identifier): ast.Symbol {
+  let scope = getScopeOrError(identifier);
+
+  while (scope.nextSymbolScope) {
+    if (scope.locals[identifier.value]) {
+      return scope.locals[identifier.value];
+    }
+    scope = scope.nextSymbolScope;
+  }
+
+  if (scope.locals[identifier.value]) {
+    return scope.locals[identifier.value];
+  }
+
+  throw bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${identifier.value}".`, identifier);
 }
 
 function getSymbolMemberByIdentifier(symbol: ast.Symbol, identifier: ast.Identifier): ast.Symbol {
@@ -683,8 +701,7 @@ function bindPropertyAccessExpression(propertyAccessExpression: ast.PropertyAcce
 
 function bindIdentifier(identifier: ast.Identifier, parentSymbol?: ast.Symbol): void {
   if (!parentSymbol) {
-    const scope = getScopeOrError(identifier);
-    identifier.symbol = getSymbolFromScopeByName(scope, identifier.value);
+    identifier.symbol = getSymbolFromScopeByIdentifier(identifier);
   } else {
     identifier.symbol = getSymbolMemberByIdentifier(parentSymbol, identifier);
   }

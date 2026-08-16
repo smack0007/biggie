@@ -13,6 +13,7 @@ import {
   EnumDeclaration,
   EnumMember,
   EqualityExpression,
+  Exportable,
   Expression,
   ExpressionStatement,
   ExternFuncDeclaration,
@@ -112,6 +113,15 @@ export function isEnumMember(node: SyntaxNode): node is EnumMember {
 
 export function isEqualityExpression(node: SyntaxNode): node is EqualityExpression {
   return node.kind == SyntaxKind.EqualityExpression;
+}
+
+export function isExportable(node: SyntaxNode): node is Exportable {
+  return (
+    node.kind == SyntaxKind.EnumDeclaration ||
+    node.kind == SyntaxKind.FuncDeclaration ||
+    node.kind == SyntaxKind.MethodDeclaration ||
+    node.kind == SyntaxKind.StructDeclaration
+  );
 }
 
 export function isExpression(node: SyntaxNode): node is Expression {

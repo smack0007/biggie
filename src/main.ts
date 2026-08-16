@@ -35,9 +35,9 @@ async function main(argv: string[]): Promise<int> {
 
   try {
     program = await parser.parse(entryFileName, {
-      enter: (name: string, fileName: string, token?: ast.Token) =>
+      log: (message: string) =>
         parsedArgs.debug &&
-        console.info(`/*${fileName} ${name} (${token?.pos.line}, ${token?.pos.column}) <${token?.text}> */`),
+        console.info(`/* ${message} */`),
     });
   } catch (error) {
     const parseError = <parser.ParserError> error;

@@ -201,6 +201,10 @@ export interface Declaration extends SyntaxNode {
   symbol?: Symbol;
 }
 
+export interface Exportable extends SyntaxNode {
+  isExported: bool;
+}
+
 export interface Reference extends SyntaxNode {
   symbol?: Symbol;
 }
@@ -211,7 +215,14 @@ export interface Scope extends SyntaxNode {
   nextSymbolScope: Scope | null;
 }
 
+export enum DiagnosticCategory {
+  Error,
+}
+
 export interface Diagnostic {
+  // The category of the diagnostic. Warning, Error, etc.
+  category: DiagnosticCategory;
+
   // The fileName of the source file the diagnositic is associated with.
   fileName: string;
 
@@ -270,10 +281,8 @@ export interface VarDeclaration extends SyntaxNode, Declaration {
   initializer?: Expression;
 }
 
-export interface EnumDeclaration extends SyntaxNode, Declaration {
+export interface EnumDeclaration extends SyntaxNode, Declaration, Exportable {
   kind: SyntaxKind.EnumDeclaration;
-
-  isExported: bool;
 
   name: Identifier;
 
@@ -288,10 +297,8 @@ export interface EnumMember extends SyntaxNode, Declaration {
   initializer?: Expression;
 }
 
-export interface FuncDeclaration extends SyntaxNode, Declaration, Scope {
+export interface FuncDeclaration extends SyntaxNode, Declaration, Exportable, Scope {
   kind: SyntaxKind.FuncDeclaration;
-
-  isExported: bool;
 
   name: Identifier;
 
@@ -312,10 +319,8 @@ export interface ExternFuncDeclaration extends SyntaxNode, Declaration {
   returnType: TypeNode;
 }
 
-export interface MethodDeclaration extends SyntaxNode, Declaration, Scope {
+export interface MethodDeclaration extends SyntaxNode, Declaration, Exportable, Scope {
   kind: SyntaxKind.MethodDeclaration;
-
-  isExported: bool;
 
   receiver: MethodReceiver;
 
@@ -336,10 +341,8 @@ export interface MethodReceiver extends SyntaxNode, Declaration {
   declaredType: TypeReference;
 }
 
-export interface StructDeclaration extends SyntaxNode, Declaration {
+export interface StructDeclaration extends SyntaxNode, Declaration, Exportable {
   kind: SyntaxKind.StructDeclaration;
-
-  isExported: bool;
 
   name: Identifier;
 
