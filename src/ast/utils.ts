@@ -80,34 +80,44 @@ export function getSymbol(node: Declaration | Reference, expectedFlags: SymbolFl
   return node.symbol;
 }
 
-export function makeProgramFromExpression(expression: Expression): Program {
+export interface MakeProgramFromOptions {
+  topLevelStatements?: Statement[];
+}
+
+export function makeProgramFromExpression(expression: Expression, options: MakeProgramFromOptions = {}): Program {
   return makeProgram(
     SOURCE_FILE_NAME,
     {
-      FILE_NAME: makeSourceFile(SOURCE_FILE_NAME, [makeFuncDeclaration(
-        makeIdentifier("main"),
-        [],
-        makeTypeReference(makeIdentifier("void")),
-        makeStatementBlock([
-          makeExpressionStatement(expression),
-        ]),
-      )], {}),
+      [SOURCE_FILE_NAME]: makeSourceFile(SOURCE_FILE_NAME, [
+        ...(options.topLevelStatements ?? []),
+        makeFuncDeclaration(
+          makeIdentifier("main"),
+          [],
+          makeTypeReference(makeIdentifier("void")),
+          makeStatementBlock([
+            makeExpressionStatement(expression),
+          ]),
+        ),
+      ], {}),
     },
   );
 }
 
-export function makeProgramFromStatement(statement: Statement): Program {
+export function makeProgramFromStatement(statement: Statement, options: MakeProgramFromOptions = {}): Program {
   return makeProgram(
     SOURCE_FILE_NAME,
     {
-      FILE_NAME: makeSourceFile(SOURCE_FILE_NAME, [makeFuncDeclaration(
-        makeIdentifier("main"),
-        [],
-        makeTypeReference(makeIdentifier("void")),
-        makeStatementBlock([
-          statement,
-        ]),
-      )], {}),
+      [SOURCE_FILE_NAME]: makeSourceFile(SOURCE_FILE_NAME, [
+        ...(options.topLevelStatements ?? []),
+        makeFuncDeclaration(
+          makeIdentifier("main"),
+          [],
+          makeTypeReference(makeIdentifier("void")),
+          makeStatementBlock([
+            statement,
+          ]),
+        ),
+      ], {}),
     },
   );
 }

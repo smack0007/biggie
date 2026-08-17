@@ -6,7 +6,6 @@ import * as cpp from "./backend/cppBackend.ts";
 import * as ast from "./ast/mod.ts";
 import * as binder from "./frontend/binder.ts";
 import * as parser from "./frontend/parser.ts";
-import * as scanner from "./frontend/scanner.ts";
 import { int } from "./shims.ts";
 import { dump } from "./utils.ts";
 
@@ -40,17 +39,18 @@ async function main(argv: string[]): Promise<int> {
         console.info(`/* ${message} */`),
     });
   } catch (error) {
-    const parseError = <parser.ParserError> error;
-    console.error(
-      `Error: (${parseError.pos.line}, ${parseError.pos.column}) ${parseError.fileName} [${
-        parser.ParserErrorKind[parseError.kind]
-      }] ${parseError.message}\n`,
-    );
-
+    console.error(`Error: ${error}\n`);
     return 1;
   }
 
   process.chdir(oldDirectory);
+
+  try {
+    binder.bind(program);
+  } catch (error) {
+    console.error(`Error: ${error}\n`);
+    return 1;
+  }
 
   if (program.diagnostics.length > 0) {
     for (const diagnostic of program.diagnostics) {
@@ -60,24 +60,6 @@ async function main(argv: string[]): Promise<int> {
       );
     }
 
-    return 1;
-  }
-
-  try {
-    binder.bind(program);
-  } catch (error) {
-    try {
-      const bindError = <binder.BindError> error;
-      console.error(
-        `Error: (${bindError.pos.line}, ${bindError.pos.column}) ${bindError.fileName} [${
-          binder.BindErrorKind[bindError.kind]
-        }] ${bindError.message}`,
-      );
-    } catch {
-      console.error(
-        `Error: ${error}`,
-      );
-    }
     return 1;
   }
 

@@ -1,5 +1,6 @@
+import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
-import { bool, nameof } from "../shims.ts";
+import { bool, hasFlag, nameof } from "../shims.ts";
 import { dump } from "../utils.ts";
 import * as builtins from "./builtins.ts";
 import * as checker from "./checker.ts";
@@ -7,29 +8,27 @@ import { generateId, IDType } from "./ids.ts";
 
 export enum BindErrorKind {
   Unexpected,
-  MissingSymbol,
   DuplicateSymbol,
   DuplicateSymbolMember,
+  MissingSymbol,
+  NotCallable,
   TypeMismatch,
 }
 
 export interface BindError extends ast.Diagnostic {
   kind: BindErrorKind;
-  message: string;
-  fileName: string;
-  pos: ast.TextPosition;
 }
 
 function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): BindError {
   const sourceFile = ast.findSourceFileFromNode(node);
 
   // TODO: There should be some --debug flag that will pack this into the error.
-  console.error((new Error()).stack);
+  // console.error((new Error()).stack);
 
   return {
     category: ast.DiagnosticCategory.Error,
     kind,
-    message,
+    message: `[${BindErrorKind[kind]}]: ${message}`,
     fileName: sourceFile?.fileName ?? "<unknown>",
     pos: node.startPos,
   };
@@ -220,41 +219,47 @@ function setExport(node: ast.SyntaxNode, sourceFile: ast.SourceFile, name: strin
 
 function bindSourceFile(sourceFile: ast.SourceFile): void {
   for (const node of sourceFile.statements) {
-    switch (node.kind) {
-      case ast.SyntaxKind.ImportDeclaration:
-        bindImportDeclaration(<ast.ImportDeclaration> node);
-        break;
+    try {
+      switch (node.kind) {
+        case ast.SyntaxKind.ImportDeclaration:
+          bindImportDeclaration(<ast.ImportDeclaration> node);
+          break;
 
-      case ast.SyntaxKind.ExternFuncDeclaration:
-        bindExternFuncDeclaration(<ast.ExternFuncDeclaration> node);
-        break;
+        case ast.SyntaxKind.ExternFuncDeclaration:
+          bindExternFuncDeclaration(<ast.ExternFuncDeclaration> node);
+          break;
 
-      case ast.SyntaxKind.EnumDeclaration:
-        bindEnumDeclaration(<ast.EnumDeclaration> node);
-        break;
+        case ast.SyntaxKind.EnumDeclaration:
+          bindEnumDeclaration(<ast.EnumDeclaration> node);
+          break;
 
-      case ast.SyntaxKind.FuncDeclaration:
-        bindFuncDeclaration(<ast.FuncDeclaration> node);
-        break;
+        case ast.SyntaxKind.FuncDeclaration:
+          bindFuncDeclaration(<ast.FuncDeclaration> node);
+          break;
 
-      case ast.SyntaxKind.MethodDeclaration:
-        bindMethodDeclaration(<ast.MethodDeclaration> node);
-        break;
+        case ast.SyntaxKind.MethodDeclaration:
+          bindMethodDeclaration(<ast.MethodDeclaration> node);
+          break;
 
-      case ast.SyntaxKind.StructDeclaration:
-        bindStructDeclaration(<ast.StructDeclaration> node);
-        break;
+        case ast.SyntaxKind.StructDeclaration:
+          bindStructDeclaration(<ast.StructDeclaration> node);
+          break;
 
-      case ast.SyntaxKind.VarDeclaration:
-        bindVarDeclaration(<ast.VarDeclaration> node);
-        break;
+        case ast.SyntaxKind.VarDeclaration:
+          bindVarDeclaration(<ast.VarDeclaration> node);
+          break;
 
-      default:
-        throw bindError(
-          BindErrorKind.Unexpected,
-          `Unexpected top level node ${ast.nameofSyntaxKind(node.kind)} in ${nameof(bindSourceFile)}`,
-          node,
-        );
+        default:
+          throw bindError(
+            BindErrorKind.Unexpected,
+            `Unexpected top level node ${ast.nameofSyntaxKind(node.kind)} in ${nameof(bindSourceFile)}`,
+            node,
+          );
+      }
+    } catch (error) {
+      // TODO: Rethrow assertion errors
+      const program = getProgramOrError(sourceFile);
+      program.diagnostics.push(<BindError> error);
     }
   }
 
@@ -535,7 +540,13 @@ function bindReturnStatement(returnStatement: ast.ReturnStatement): void {
 
 function bindStatementBlock(statementBlock: ast.StatementBlock): void {
   for (const statement of statementBlock.statements) {
-    bindStatement(statement);
+    try {
+      bindStatement(statement);
+    } catch (error) {
+      // TODO: Rethrow assertion errors
+      const program = getProgramOrError(statementBlock);
+      program.diagnostics.push(<BindError> error);
+    }
   }
 
   statementBlock.bindState = ast.BindState.Finished;
@@ -659,6 +670,21 @@ function bindCallExpression(callExpression: ast.CallExpression): void {
   for (const arg of callExpression.args) {
     bindExpression(arg);
   }
+
+  assert.notNull(callExpression.expression.symbol, "Expected callExpress.expression.symbol not to be null");
+
+  if (
+    !hasFlag(callExpression.expression.symbol.flags, ast.SymbolFlags.Func) &&
+    !hasFlag(callExpression.expression.symbol.flags, ast.SymbolFlags.Method)
+  ) {
+    throw bindError(
+      BindErrorKind.NotCallable,
+      `Symbol "${callExpression.expression.symbol.name}" is not callable.`,
+      callExpression,
+    );
+  }
+
+  // TODO: Validate arguments are of correct type.
 
   callExpression.symbol = callExpression.expression.symbol;
   callExpression.type = callExpression.expression.type;

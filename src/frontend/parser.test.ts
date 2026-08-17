@@ -14,7 +14,7 @@ function makeParseTestOptions(source: string): ParseOptions {
 }
 
 describe("parser", () => {
-  describe("produces diagnostic error for invalid top level statements", () => {
+  describe("diagnostic error for invalid top level statements", () => {
     const INVALID_SOURCES: string[] = [
       "defer cleanup();",
       "if(true) {}",
@@ -30,7 +30,7 @@ describe("parser", () => {
     }
   });
 
-  describe("produces diagnostic error for invalid export declarations", () => {
+  describe("diagnostic error for invalid export declarations", () => {
     const INVALID_SOURCES: string[] = [
       "export extern func foo(): void;",
       //`export import foo "./foo.big";`,
@@ -45,7 +45,7 @@ describe("parser", () => {
     }
   });
 
-  describe("produces diagnostic error for invalid extern declarations", () => {
+  describe("diagnostic error for invalid extern declarations", () => {
     const INVALID_SOURCES: string[] = [
       "extern enum Foo {}",
       "extern struct Foo {}",
