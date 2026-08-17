@@ -55,7 +55,12 @@ function setLocal(node: ast.SyntaxNode, scope: ast.Scope, name: string, value: a
   scope.locals[name] = value;
 }
 
-function setMember(node: ast.SyntaxNode, symbol: ast.Symbol, name: string, value: ast.Symbol): void {
+function setMember(
+  node: ast.SyntaxNode,
+  symbol: ast.SymbolWithMembers,
+  name: string,
+  value: ast.Symbol,
+): void {
   if (!symbol.members) {
     throw bindError(BindErrorKind.Unexpected, `Symbol named "${symbol.name}" does not have members.`, node);
   }
@@ -185,7 +190,7 @@ function getSymbolFromScopeByIdentifier(identifier: ast.Identifier): ast.Symbol 
   throw bindError(BindErrorKind.MissingSymbol, `Failed to get symbol named "${identifier.value}".`, identifier);
 }
 
-function getSymbolMemberByIdentifier(symbol: ast.Symbol, identifier: ast.Identifier): ast.Symbol {
+function getSymbolMemberByIdentifier(symbol: ast.SymbolWithMembers, identifier: ast.Identifier): ast.Symbol {
   if (!symbol.members) {
     throw bindError(
       BindErrorKind.Unexpected,
@@ -257,7 +262,7 @@ function bindSourceFile(sourceFile: ast.SourceFile): void {
           );
       }
     } catch (error) {
-      // TODO: Rethrow assertion errors
+      assert.rethrow(error);
       const program = getProgramOrError(sourceFile);
       program.diagnostics.push(<BindError> error);
     }
@@ -277,14 +282,15 @@ function bindImportDeclaration(importDeclaration: ast.ImportDeclaration): void {
   const exports = program.sourceFiles[importDeclaration.resolvedFileName].exports;
 
   if (importDeclaration.alias?.value) {
-    importDeclaration.symbol = {
+    const importSymbol = <ast.ImportSymbol> {
       id: generateId(IDType.symbol),
       flags: ast.SymbolFlags.Module,
       declaration: importDeclaration,
       name: importDeclaration.alias.value,
       members: exports,
     };
-    importDeclaration.type = importDeclaration.symbol;
+    importDeclaration.symbol = importSymbol;
+    importDeclaration.type = importSymbol;
 
     sourceFile.locals[importDeclaration.alias.value] = importDeclaration.symbol!;
   } else {
@@ -303,13 +309,15 @@ function bindExternFuncDeclaration(externFuncDeclaration: ast.ExternFuncDeclarat
 
   bindTypeNode(externFuncDeclaration.returnType);
 
-  externFuncDeclaration.symbol = {
+  const externFuncSymbol = <ast.FuncSymbol> {
     id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Extern | ast.SymbolFlags.Func,
     declaration: externFuncDeclaration,
     name: externFuncDeclaration.name.value,
+    beginVaradicArgsIndex: 0,
   };
-  externFuncDeclaration.type = externFuncDeclaration.symbol;
+  externFuncDeclaration.symbol = externFuncSymbol;
+  externFuncDeclaration.type = externFuncSymbol;
 
   const sourceFile = getSourceFileOrError(externFuncDeclaration);
   setLocal(externFuncDeclaration, sourceFile, externFuncDeclaration.symbol.name, externFuncDeclaration.symbol);
@@ -329,14 +337,15 @@ function bindEnumDeclaration(
     members[enumMember.symbol!.name] = enumMember.symbol!;
   }
 
-  enumDeclaration.symbol = {
+  const enumSymbol = <ast.EnumSymbol> {
     id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Enum,
     declaration: enumDeclaration,
     name: enumDeclaration.name.value,
     members,
   };
-  enumDeclaration.type = enumDeclaration.symbol;
+  enumDeclaration.symbol = enumSymbol;
+  enumDeclaration.type = enumSymbol;
 
   const sourceFile = getSourceFileOrError(enumDeclaration);
   setLocal(enumDeclaration, sourceFile, enumDeclaration.symbol.name, enumDeclaration.symbol);
@@ -400,7 +409,7 @@ function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
   };
   methodDeclaration.type = methodDeclaration.symbol;
 
-  const receiverType = ast.getSymbol(methodDeclaration.receiver.declaredType, ast.SymbolFlags.Struct);
+  const receiverType = ast.getSymbolWithMembers(methodDeclaration.receiver.declaredType, ast.SymbolFlags.Struct);
   setMember(methodDeclaration, receiverType, methodDeclaration.symbol.name, methodDeclaration.symbol);
 
   // TODO: How do we export methods?
@@ -414,13 +423,14 @@ function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
 function bindMethodReceiver(methodReceiver: ast.MethodReceiver): void {
   bindTypeReference(methodReceiver.declaredType);
 
-  methodReceiver.symbol = {
+  const methodReceiverSymbol = <ast.SymbolWithMembers> {
     id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Var,
     declaration: methodReceiver,
     name: methodReceiver.name.value,
-    members: methodReceiver.declaredType.symbol?.members,
+    members: (<ast.SymbolWithMembers> methodReceiver.declaredType.symbol).members,
   };
+  methodReceiver.symbol = methodReceiverSymbol;
   methodReceiver.type = methodReceiver.declaredType.type;
 
   const scope = getScopeOrError(methodReceiver);
@@ -436,14 +446,15 @@ function bindStructDeclaration(structDeclaration: ast.StructDeclaration): void {
     members[structMember.symbol!.name] = structMember.symbol!;
   }
 
-  structDeclaration.symbol = {
+  const structSymbol = <ast.StructSymbol> {
     id: generateId(IDType.symbol),
     flags: ast.SymbolFlags.Type | ast.SymbolFlags.Struct,
     declaration: structDeclaration,
     name: structDeclaration.name.value,
     members,
   };
-  structDeclaration.type = structDeclaration.symbol;
+  structDeclaration.symbol = structSymbol;
+  structDeclaration.type = structSymbol;
 
   const sourceFile = getSourceFileOrError(structDeclaration);
   setLocal(structDeclaration, sourceFile, structDeclaration.symbol.name, structDeclaration.symbol);
@@ -543,7 +554,7 @@ function bindStatementBlock(statementBlock: ast.StatementBlock): void {
     try {
       bindStatement(statement);
     } catch (error) {
-      // TODO: Rethrow assertion errors
+      assert.rethrow(error);
       const program = getProgramOrError(statementBlock);
       program.diagnostics.push(<BindError> error);
     }
@@ -729,7 +740,11 @@ function bindIdentifier(identifier: ast.Identifier, parentSymbol?: ast.Symbol): 
   if (!parentSymbol) {
     identifier.symbol = getSymbolFromScopeByIdentifier(identifier);
   } else {
-    identifier.symbol = getSymbolMemberByIdentifier(parentSymbol, identifier);
+    if (ast.isSymbolWithMembers(parentSymbol)) {
+      identifier.symbol = getSymbolMemberByIdentifier(parentSymbol, identifier);
+    } else {
+      throw bindError(BindErrorKind.Unexpected, "parentSymbol has no members.", identifier);
+    }
   }
 
   identifier.type = identifier.symbol.declaration?.type;

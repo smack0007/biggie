@@ -9,8 +9,6 @@ import {
   Scope,
   SourceFile,
   Statement,
-  Symbol,
-  SymbolFlags,
   SyntaxNode,
 } from "./syntaxTree.ts";
 import { isProgram, isScope, isSourceFile } from "./typeGuards.ts";
@@ -25,15 +23,9 @@ import {
   makeTypeReference,
 } from "./factories.ts";
 import { bool } from "../shims.ts";
+import { Symbol, SymbolFlags, SymbolWithMembers } from "./symbols.ts";
 
 export const SOURCE_FILE_NAME = "<source>";
-
-export function getModulePrefixByFileName(importDeclaration: ImportDeclaration): string {
-  return path.basename(
-    importDeclaration.module.value,
-    path.extname(importDeclaration.module.value),
-  );
-}
 
 function findNodeByTypeGuard<T>(node: SyntaxNode, typeGuard: (node: SyntaxNode) => bool): T | null {
   while (!typeGuard(node) && node.parent != null) {
@@ -59,13 +51,11 @@ export function findSourceFileFromNode(node: SyntaxNode): SourceFile | null {
   return findNodeByTypeGuard(node, isSourceFile);
 }
 
-export function getQualifiedNameForSymbol(symbol: Symbol): string {
-  let name = symbol.name;
-  while (symbol.parent) {
-    symbol = symbol.parent;
-    name = symbol.name + "." + name;
-  }
-  return name;
+export function getModulePrefixByFileName(importDeclaration: ImportDeclaration): string {
+  return path.basename(
+    importDeclaration.module.value,
+    path.extname(importDeclaration.module.value),
+  );
 }
 
 export function getSymbol(node: Declaration | Reference, expectedFlags: SymbolFlags): Symbol {
@@ -78,6 +68,14 @@ export function getSymbol(node: Declaration | Reference, expectedFlags: SymbolFl
   );
 
   return node.symbol;
+}
+
+export function getSymbolWithMembers(node: Declaration | Reference, expectedFlags: SymbolFlags): SymbolWithMembers {
+  const symbol = getSymbol(node, expectedFlags);
+
+  assert.notNull((<SymbolWithMembers> symbol).members, "symbol does not have memebers");
+
+  return <SymbolWithMembers> symbol;
 }
 
 export interface MakeProgramFromOptions {

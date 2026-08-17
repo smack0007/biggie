@@ -1,4 +1,4 @@
-import { Symbol, SymbolFlags, SymbolTable } from "../ast/syntaxTree.ts";
+import { FuncSymbol, Symbol, SymbolFlags, SymbolTable, SymbolWithMembers } from "../ast/symbols.ts";
 import { generateId, IDType } from "./ids.ts";
 import { uint } from "../shims.ts";
 
@@ -16,9 +16,17 @@ function builtinSymbol(
     id: generateId(IDType.symbol),
     flags: SymbolFlags.Builtin | flags,
     name,
-    members: members ?? undefined,
-    beginVaradicArgsIndex: optional.beginVaradicArgsIndex,
   };
+
+  // TODO: Fix this hack
+  if (members) {
+    (<SymbolWithMembers> symbol).members = members;
+  }
+
+  // TODO: Fix this hack
+  if (optional.beginVaradicArgsIndex !== undefined) {
+    (<FuncSymbol> symbol).beginVaradicArgsIndex = optional.beginVaradicArgsIndex;
+  }
 
   if (members) {
     for (const member of Object.values(members)) {

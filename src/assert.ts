@@ -33,3 +33,9 @@ export function notNull<T>(value: T | null | undefined, message: string): assert
     throw new AssertionError(message);
   }
 }
+
+export function rethrow(error: unknown): void {
+  if (error instanceof AssertionError) {
+    throw error;
+  }
+}

@@ -2,6 +2,7 @@ export * from "./factories.ts";
 export * from "./keywords.ts";
 export * from "./toGraphviz.ts";
 export * from "./nameof.ts";
+export * from "./symbols.ts";
 export * from "./syntaxTree.ts";
 export * from "./textPosition.ts";
 export * from "./tokens.ts";

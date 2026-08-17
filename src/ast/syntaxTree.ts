@@ -1,4 +1,5 @@
-import { bool, uint, uint32 } from "../shims.ts";
+import { bool } from "../shims.ts";
+import { BindState, Symbol, SymbolTable } from "./symbols.ts";
 import { TextPosition } from "./textPosition.ts";
 
 export enum SyntaxKind {
@@ -125,60 +126,6 @@ export enum Operator {
   Slash,
 
   SlashEquals,
-}
-
-export enum BindState {
-  Uninitialized = 0,
-
-  Initialized = 1,
-
-  Finished = 2,
-}
-
-export enum SymbolFlags {
-  None = 0,
-
-  Builtin = 1 << 0,
-
-  Extern = 1 << 1,
-
-  Module = 1 << 2,
-
-  Type = 1 << 3,
-
-  Var = 1 << 4,
-
-  Enum = 1 << 5,
-
-  EnumMember = 1 << 6,
-
-  Func = 1 << 7,
-
-  Varadic = 1 << 8,
-
-  Struct = 1 << 9,
-
-  StructMember = 1 << 10,
-
-  Method = 1 << 11,
-}
-
-export type SymbolTable = Record<string, Symbol>;
-
-export interface Symbol {
-  id: uint32;
-
-  flags: SymbolFlags;
-
-  declaration?: SyntaxNode;
-
-  parent?: Symbol;
-
-  name: string;
-
-  members?: SymbolTable;
-
-  beginVaradicArgsIndex?: uint;
 }
 
 export interface SyntaxNode {

@@ -25,13 +25,17 @@ const TYPE_GUARDS_NOT_TO_EMIT = [
 main(argv.slice(2)).then(exit);
 
 async function main(_argv: string[]): Promise<int> {
+  const symbolsContents = (await readFile(join(ROOT_PATH, "src", "ast", "symbols.ts"), "utf-8"))
+    .split(EOL)
+    .map((x) => x.trim());
+
   const syntaxTreeContents = (await readFile(join(ROOT_PATH, "src", "ast", "syntaxTree.ts"), "utf-8"))
     .split(EOL)
     .map((x) => x.trim());
 
   await writeAstTypeGuards(syntaxTreeContents);
   await writeAstWalk(syntaxTreeContents);
-  await writeAstNameof(syntaxTreeContents);
+  await writeAstNameof(symbolsContents, syntaxTreeContents);
   await writeAstFactories(syntaxTreeContents);
 
   return 0;
@@ -293,50 +297,68 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
   await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "walk.ts"), output);
 }
 
-async function writeAstNameof(syntaxTreeContents: string[]): Promise<void> {
+async function writeAstNameof(
+  symbolsContents: string[],
+  syntaxTreeContents: string[],
+): Promise<void> {
   const output = createAstOutputWriter();
 
   // Extract enum names and their values
-  const enums: Record<string, string[]> = {};
   let currentEnumName: string | null = null;
 
-  for (const line of syntaxTreeContents) {
-    if (line.startsWith("export enum ")) {
-      currentEnumName = line.split(" ")[2];
-      enums[currentEnumName] = [];
-    } else if (currentEnumName && line.startsWith("}")) {
-      currentEnumName = null;
-    } else if (currentEnumName && line.includes("=")) {
-      // Handle enum with explicit values
-      const parts = line.split("=");
-      const enumValue = parts[0].trim();
-      enums[currentEnumName].push(enumValue);
-    } else if (currentEnumName && line.endsWith(",")) {
-      // Handle regular enum without explicit values
-      const enumValue = line.substring(0, line.length - 1).trim();
-      enums[currentEnumName].push(enumValue);
+  const data: Record<string, string[]> = {
+    "symbols.ts": symbolsContents,
+    "syntaxTree.ts": syntaxTreeContents,
+  };
+
+  // Map[fileName] => (Map[name] => [...members])
+  const enums: Record<string, Record<string, string[]>> = {};
+
+  for (const [fileName, lines] of Object.entries(data)) {
+    enums[fileName] = {};
+
+    for (const line of lines) {
+      if (line.startsWith("export enum ")) {
+        currentEnumName = line.split(" ")[2];
+        enums[fileName][currentEnumName] = [];
+      } else if (currentEnumName && line.startsWith("}")) {
+        currentEnumName = null;
+      } else if (currentEnumName && line.includes("=")) {
+        // Handle enum with explicit values
+        const parts = line.split("=");
+        const enumValue = parts[0].trim();
+        enums[fileName][currentEnumName].push(enumValue);
+      } else if (currentEnumName && line.endsWith(",")) {
+        // Handle regular enum without explicit values
+        const enumValue = line.substring(0, line.length - 1).trim();
+        enums[fileName][currentEnumName].push(enumValue);
+      }
     }
   }
 
-  output.appendLine(`import { ${Object.keys(enums).toSorted().join(", ")} } from "./syntaxTree.ts";`);
+  for (const [fileName, fileEnums] of Object.entries(enums)) {
+    output.appendLine(`import { ${Object.keys(fileEnums).toSorted().join(", ")} } from "./${fileName}";`);
+  }
   output.appendLine();
 
   // Generate nameof functions for each enum
-  for (const [enumName, values] of Object.entries(enums)) {
-    output.appendLine(`export function nameof${enumName}(kind: ${enumName}): string {`);
-    output.indent();
-    output.appendLine("switch (kind) {");
-    output.indent();
+  for (const [_, fileEnums] of Object.entries(enums)) {
+    for (const [enumName, values] of Object.entries(fileEnums)) {
+      output.appendLine(`export function nameof${enumName}(kind: ${enumName}): string {`);
+      output.indent();
+      output.appendLine("switch (kind) {");
+      output.indent();
 
-    for (const value of values) {
-      output.appendLine(`case ${enumName}.${value}: return "${value}";`);
+      for (const value of values) {
+        output.appendLine(`case ${enumName}.${value}: return "${value}";`);
+      }
+
+      output.unindent();
+      output.appendLine("}");
+      output.unindent();
+      output.appendLine("}");
+      output.appendLine();
     }
-
-    output.unindent();
-    output.appendLine("}");
-    output.unindent();
-    output.appendLine("}");
-    output.appendLine();
   }
 
   await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "nameof.ts"), output);
@@ -350,6 +372,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
     "string",
     "uint",
     "uint32",
+    "SymbolTable",
   ];
   const EXCLUDE_INTERFACES = [
     "Declaration",
@@ -373,7 +396,7 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   let interfaceName: string | null = null;
   let collectedLine = "";
 
-  const syntaxTreeImports: string[] = ["BindState", "Operator", "SourceFile", "SyntaxKind"];
+  const syntaxTreeImports: string[] = ["Operator", "SourceFile", "SyntaxKind"];
   const factories: Record<string, {
     extends: string[];
     required: Record<string, string>;
@@ -463,7 +486,8 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   }
 
   const output = createAstOutputWriter();
-  output.appendLine(`import { bool, uint, uint32 } from "../shims.ts";`);
+  output.appendLine(`import { bool, uint } from "../shims.ts";`);
+  output.appendLine(`import { BindState, SymbolTable } from "./symbols.ts";`);
   output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine(`import { TextPosition } from "./textPosition.ts"`);
   output.appendLine();
