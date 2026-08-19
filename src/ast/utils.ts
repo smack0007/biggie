@@ -12,7 +12,7 @@ import {
   SyntaxNode,
 } from "./syntaxTree.ts";
 import { isProgram, isScope, isSourceFile } from "./typeGuards.ts";
-import { nameofSymbolFlags, nameofSyntaxKind } from "./nameof.ts";
+import { nameofSymbolKind, nameofSyntaxKind } from "./nameof.ts";
 import {
   makeExpressionStatement,
   makeFuncDeclaration,
@@ -23,7 +23,7 @@ import {
   makeTypeReference,
 } from "./factories.ts";
 import { bool } from "../shims.ts";
-import { Symbol, SymbolFlags, SymbolWithMembers } from "./symbols.ts";
+import { Symbol, SymbolKind } from "./symbols.ts";
 
 export const SOURCE_FILE_NAME = "<source>";
 
@@ -58,24 +58,17 @@ export function getModulePrefixByFileName(importDeclaration: ImportDeclaration):
   );
 }
 
-export function getSymbol(node: Declaration | Reference, expectedFlags: SymbolFlags): Symbol {
+// TODO(symbols): Remove this function.
+export function getSymbol(node: Declaration | Reference, kind: SymbolKind): Symbol {
   assert.notNull(node.symbol, `symbol is null in ${nameofSyntaxKind(node.kind)} node`);
 
-  assert.hasFlag(
-    node.symbol.flags,
-    expectedFlags,
-    `symbol did not have expected flag ${nameofSymbolFlags(expectedFlags)} in ${nameofSyntaxKind(node.kind)} node`,
+  assert.areEqual(
+    node.symbol.kind,
+    kind,
+    `symbol did not have expected kind ${nameofSymbolKind(kind)} in ${nameofSyntaxKind(node.kind)} node`,
   );
 
   return node.symbol;
-}
-
-export function getSymbolWithMembers(node: Declaration | Reference, expectedFlags: SymbolFlags): SymbolWithMembers {
-  const symbol = getSymbol(node, expectedFlags);
-
-  assert.notNull((<SymbolWithMembers> symbol).members, "symbol does not have memebers");
-
-  return <SymbolWithMembers> symbol;
 }
 
 export interface MakeProgramFromOptions {

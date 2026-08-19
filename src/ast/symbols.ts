@@ -1,5 +1,4 @@
-import * as assert from "../assert.ts";
-import { hasFlag, uint, uint32 } from "../shims.ts";
+import { uint, uint32 } from "../shims.ts";
 import { SyntaxNode } from "./syntaxTree.ts";
 
 export enum BindState {
@@ -10,6 +9,28 @@ export enum BindState {
   Finished = 2,
 }
 
+export enum SymbolKind {
+  Enum,
+
+  EnumMember,
+
+  Func,
+
+  Import,
+
+  Method,
+
+  MethodReceiver,
+
+  Struct,
+
+  StructMember,
+
+  Type,
+
+  Var,
+}
+
 export enum SymbolFlags {
   None = 0,
 
@@ -17,31 +38,15 @@ export enum SymbolFlags {
 
   Extern = 1 << 1,
 
-  Module = 1 << 2,
-
-  Type = 1 << 3,
-
-  Var = 1 << 4,
-
-  Enum = 1 << 5,
-
-  EnumMember = 1 << 6,
-
-  Func = 1 << 7,
-
-  Varadic = 1 << 8,
-
-  Struct = 1 << 9,
-
-  StructMember = 1 << 10,
-
-  Method = 1 << 11,
+  Varadic = 1 << 2,
 }
 
 export type SymbolTable = Record<string, Symbol>;
 
 export interface Symbol {
   id: uint32;
+
+  kind: SymbolKind;
 
   flags: SymbolFlags;
 
@@ -56,21 +61,44 @@ export interface SymbolWithMembers extends Symbol {
   members: SymbolTable;
 }
 
-export interface EnumSymbol extends SymbolWithMembers {
+export interface CallableSymbol extends Symbol {
+  beginVaradicArgsIndex: uint;
 }
 
-export interface FuncSymbol extends Symbol {
-  beginVaradicArgsIndex: uint;
+export interface EnumSymbol extends SymbolWithMembers {
+  kind: SymbolKind.Enum;
+}
+
+export interface EnumMemberSymbol extends Symbol {
+  kind: SymbolKind.EnumMember;
+}
+
+export interface FuncSymbol extends CallableSymbol {
+  kind: SymbolKind.Func;
 }
 
 export interface ImportSymbol extends SymbolWithMembers {
+  kind: SymbolKind.Import;
 }
 
-export interface MethodSymbol extends Symbol {
-  beginVaradicArgsIndex: uint;
+export interface MethodSymbol extends CallableSymbol {
+  kind: SymbolKind.Method;
+}
+
+export interface MethodReceiverSymbol extends SymbolWithMembers {
+  kind: SymbolKind.MethodReceiver;
 }
 
 export interface StructSymbol extends SymbolWithMembers {
+  kind: SymbolKind.Struct;
+}
+
+export interface StructMemberSymbol extends SymbolWithMembers {
+  kind: SymbolKind.StructMember;
+}
+
+export interface VarSymbol extends Symbol {
+  kind: SymbolKind.Var;
 }
 
 export function getQualifiedNameForSymbol(symbol: Symbol): string {
@@ -82,18 +110,27 @@ export function getQualifiedNameForSymbol(symbol: Symbol): string {
   return name;
 }
 
+export function isSymbolCallable(symbol: Symbol): symbol is CallableSymbol {
+  return symbol.kind == SymbolKind.Func || symbol.kind == SymbolKind.Method;
+}
+
 export function isSymbolWithMembers(symbol: Symbol): symbol is SymbolWithMembers {
-  return hasFlag(symbol.flags, SymbolFlags.Enum | SymbolFlags.Module | SymbolFlags.Struct | SymbolFlags.Type);
+  return (
+    symbol.kind == SymbolKind.Enum ||
+    symbol.kind == SymbolKind.Import ||
+    symbol.kind == SymbolKind.Struct ||
+    symbol.kind == SymbolKind.Type
+  );
 }
 
 export function isEnumSymbol(symbol: Symbol): symbol is EnumSymbol {
-  return hasFlag(symbol.flags, SymbolFlags.Enum);
+  return symbol.kind == SymbolKind.Enum;
 }
 
 export function isFuncSymbol(symbol: Symbol): symbol is FuncSymbol {
-  return hasFlag(symbol.flags, SymbolFlags.Func);
+  return symbol.kind == SymbolKind.Func;
 }
 
 export function isStructSymbol(symbol: Symbol): symbol is StructSymbol {
-  return hasFlag(symbol.flags, SymbolFlags.Struct);
+  return symbol.kind == SymbolKind.Struct;
 }

@@ -1,6 +1,6 @@
 import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
-import { bool, hasFlag, nameof } from "../shims.ts";
+import { bool, nameof } from "../shims.ts";
 import { dump } from "../utils.ts";
 import * as builtins from "./builtins.ts";
 import * as checker from "./checker.ts";
@@ -10,6 +10,7 @@ export enum BindErrorKind {
   Unexpected,
   DuplicateSymbol,
   DuplicateSymbolMember,
+  InvalidMethodReceiver,
   MissingSymbol,
   NotCallable,
   TypeMismatch,
@@ -283,8 +284,9 @@ function bindImportDeclaration(importDeclaration: ast.ImportDeclaration): void {
 
   if (importDeclaration.alias?.value) {
     const importSymbol = <ast.ImportSymbol> {
+      kind: ast.SymbolKind.Import,
       id: generateId(IDType.symbol),
-      flags: ast.SymbolFlags.Module,
+      flags: ast.SymbolFlags.None,
       declaration: importDeclaration,
       name: importDeclaration.alias.value,
       members: exports,
@@ -310,8 +312,9 @@ function bindExternFuncDeclaration(externFuncDeclaration: ast.ExternFuncDeclarat
   bindTypeNode(externFuncDeclaration.returnType);
 
   const externFuncSymbol = <ast.FuncSymbol> {
+    kind: ast.SymbolKind.Func,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.Extern | ast.SymbolFlags.Func,
+    flags: ast.SymbolFlags.Extern,
     declaration: externFuncDeclaration,
     name: externFuncDeclaration.name.value,
     beginVaradicArgsIndex: 0,
@@ -338,8 +341,9 @@ function bindEnumDeclaration(
   }
 
   const enumSymbol = <ast.EnumSymbol> {
+    kind: ast.SymbolKind.Enum,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.Enum,
+    flags: ast.SymbolFlags.None,
     declaration: enumDeclaration,
     name: enumDeclaration.name.value,
     members,
@@ -357,9 +361,10 @@ function bindEnumDeclaration(
 }
 
 function bindEnumMember(enumMember: ast.EnumMember): void {
-  enumMember.symbol = {
+  enumMember.symbol = <ast.EnumMemberSymbol> {
+    kind: ast.SymbolKind.EnumMember,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.EnumMember,
+    flags: ast.SymbolFlags.None,
     name: enumMember.name.value,
   };
 
@@ -374,13 +379,16 @@ function bindFuncDeclaration(funcDeclaration: ast.FuncDeclaration): void {
   bindTypeNode(funcDeclaration.returnType);
   bindStatementBlock(funcDeclaration.body);
 
-  funcDeclaration.symbol = {
+  const funcSymbol = <ast.FuncSymbol> {
+    kind: ast.SymbolKind.Func,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.Func,
+    flags: ast.SymbolFlags.None,
     declaration: funcDeclaration,
     name: funcDeclaration.name.value,
+    beginVaradicArgsIndex: 0,
   };
-  funcDeclaration.type = funcDeclaration.symbol;
+  funcDeclaration.symbol = funcSymbol;
+  funcDeclaration.type = funcSymbol;
 
   const sourceFile = getSourceFileOrError(funcDeclaration);
   setLocal(funcDeclaration, sourceFile, funcDeclaration.symbol.name, funcDeclaration.symbol);
@@ -401,15 +409,27 @@ function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
   bindTypeNode(methodDeclaration.returnType);
   bindStatementBlock(methodDeclaration.body);
 
-  methodDeclaration.symbol = {
+  const methodSymbol = <ast.MethodSymbol> {
+    kind: ast.SymbolKind.Method,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.Method,
+    flags: ast.SymbolFlags.None,
     declaration: methodDeclaration,
     name: methodDeclaration.name.value,
+    beginVaradicArgsIndex: 0,
   };
-  methodDeclaration.type = methodDeclaration.symbol;
+  methodDeclaration.symbol = methodSymbol;
+  methodDeclaration.type = methodSymbol;
 
-  const receiverType = ast.getSymbolWithMembers(methodDeclaration.receiver.declaredType, ast.SymbolFlags.Struct);
+  const receiverType = methodDeclaration.receiver.declaredType.symbol;
+
+  if (!receiverType || !ast.isStructSymbol(receiverType)) {
+    throw bindError(
+      BindErrorKind.InvalidMethodReceiver,
+      `Method receiver must be a struct.`,
+      methodDeclaration.receiver,
+    );
+  }
+
   setMember(methodDeclaration, receiverType, methodDeclaration.symbol.name, methodDeclaration.symbol);
 
   // TODO: How do we export methods?
@@ -423,9 +443,10 @@ function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
 function bindMethodReceiver(methodReceiver: ast.MethodReceiver): void {
   bindTypeReference(methodReceiver.declaredType);
 
-  const methodReceiverSymbol = <ast.SymbolWithMembers> {
+  const methodReceiverSymbol = <ast.MethodReceiverSymbol> {
+    kind: ast.SymbolKind.MethodReceiver,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.Var,
+    flags: ast.SymbolFlags.None,
     declaration: methodReceiver,
     name: methodReceiver.name.value,
     members: (<ast.SymbolWithMembers> methodReceiver.declaredType.symbol).members,
@@ -447,8 +468,9 @@ function bindStructDeclaration(structDeclaration: ast.StructDeclaration): void {
   }
 
   const structSymbol = <ast.StructSymbol> {
+    kind: ast.SymbolKind.Struct,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.Type | ast.SymbolFlags.Struct,
+    flags: ast.SymbolFlags.None,
     declaration: structDeclaration,
     name: structDeclaration.name.value,
     members,
@@ -466,9 +488,10 @@ function bindStructDeclaration(structDeclaration: ast.StructDeclaration): void {
 }
 
 function bindStructMember(structMember: ast.StructMember): void {
-  structMember.symbol = {
+  structMember.symbol = <ast.StructMemberSymbol> {
+    kind: ast.SymbolKind.StructMember,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.StructMember,
+    flags: ast.SymbolFlags.None,
     name: structMember.name.value,
   };
 
@@ -589,9 +612,10 @@ function bindVarDeclaration(varDeclaration: ast.VarDeclaration): void {
   }
 
   varDeclaration.type = varDeclaration.declaredType.type;
-  varDeclaration.symbol = {
+  varDeclaration.symbol = <ast.VarSymbol> {
+    kind: ast.SymbolKind.Var,
     id: generateId(IDType.symbol),
-    flags: ast.SymbolFlags.Var,
+    flags: ast.SymbolFlags.None,
     declaration: varDeclaration,
     name: varDeclaration.name.value,
   };
@@ -684,10 +708,7 @@ function bindCallExpression(callExpression: ast.CallExpression): void {
 
   assert.notNull(callExpression.expression.symbol, "Expected callExpress.expression.symbol not to be null");
 
-  if (
-    !hasFlag(callExpression.expression.symbol.flags, ast.SymbolFlags.Func) &&
-    !hasFlag(callExpression.expression.symbol.flags, ast.SymbolFlags.Method)
-  ) {
+  if (!ast.isSymbolCallable(callExpression.expression.symbol)) {
     throw bindError(
       BindErrorKind.NotCallable,
       `Symbol "${callExpression.expression.symbol.name}" is not callable.`,

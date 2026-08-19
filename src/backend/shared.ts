@@ -21,6 +21,7 @@ export function backendError(kind: BackendErrorKind, message: string, node: ast.
   }
 
   return {
+    category: ast.DiagnosticCategory.Error,
     kind,
     message,
     fileName: sourceFile.fileName,

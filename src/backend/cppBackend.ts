@@ -3,6 +3,7 @@ import * as ast from "../ast/mod.ts";
 import { hasFlag, int, nameof } from "../shims.ts";
 import { makeOutputWriter, OutputWriter } from "../outputWriter.ts";
 import { dump } from "../utils.ts";
+import { backendError, BackendErrorKind } from "./shared.ts";
 
 interface EmitContext {
   // TODO: We probably just need to have a reference to
@@ -363,7 +364,7 @@ function emitMethodDeclaration(context: EmitContext, methodDeclaration: ast.Meth
       mappedReceiverName = getMappedModuleTypeName(
         context,
         module,
-        ast.getSymbol(methodDeclaration.receiver.declaredType.typeName.right, ast.SymbolFlags.Type).name,
+        ast.getSymbol(methodDeclaration.receiver.declaredType.typeName.right, ast.SymbolKind.Struct).name,
       ) ?? "";
 
       mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
@@ -379,7 +380,7 @@ function emitMethodDeclaration(context: EmitContext, methodDeclaration: ast.Meth
     const mappedReceiverName = getMappedModuleTypeName(
       context,
       sourceFile,
-      ast.getSymbol(methodDeclaration.receiver.declaredType, ast.SymbolFlags.Struct).name,
+      ast.getSymbol(methodDeclaration.receiver.declaredType, ast.SymbolKind.Struct).name,
     )!;
     mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
     mapModuleTypeName(context, sourceFile, methodDeclaration.name.value, mappedFunctionName);
@@ -803,6 +804,10 @@ function emitCallExpression(context: EmitContext, callExpression: ast.CallExpres
     `Expected callExpression.symbol not to be null`,
   );
 
+  if (!ast.isSymbolCallable(callExpression.symbol)) {
+    throw backendError(BackendErrorKind.Unexpected, "callExpression.symbol is not callable", callExpression);
+  }
+
   const isVaradicCall = hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Varadic);
   let varadicArgsArrayName = "";
 
@@ -844,12 +849,12 @@ function emitCallExpression(context: EmitContext, callExpression: ast.CallExpres
   // into the front of the array.
   const args = [...callExpression.args];
 
-  if (hasFlag(callExpression.symbol.flags, ast.SymbolFlags.Method)) {
+  if (callExpression.symbol.kind == ast.SymbolKind.Method) {
     if (!ast.isPropertyAccessExpression(callExpression.expression)) {
       throw new Error(
         `Expected callExpression.expression to be kind ${
           ast.nameofSyntaxKind(ast.SyntaxKind.PropertyAccessExpression)
-        } when ${ast.nameofSymbolFlags(ast.SymbolFlags.Method)} is set`,
+        } when ${ast.nameofSymbolKind(ast.SymbolKind.Method)} is set`,
       );
     }
 
@@ -907,7 +912,7 @@ function emitPropertyAccessExpression(
   propertyAccessExpression: ast.PropertyAccessExpression,
 ): void {
   if (propertyAccessExpression.expression.symbol) {
-    if (hasFlag(propertyAccessExpression.expression.symbol.flags, ast.SymbolFlags.Module)) {
+    if (propertyAccessExpression.expression.symbol.kind == ast.SymbolKind.Import) {
       const module = getImportedModuleByAlias(context, propertyAccessExpression.expression.symbol.name);
 
       if (module != null) {
@@ -918,7 +923,7 @@ function emitPropertyAccessExpression(
           return;
         }
       }
-    } else if (hasFlag(propertyAccessExpression.expression.symbol.flags, ast.SymbolFlags.Enum)) {
+    } else if (propertyAccessExpression.expression.symbol.kind == ast.SymbolKind.Enum) {
       const module = getSourceFileFromSymbol(context, propertyAccessExpression.expression.symbol);
       const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.expression.symbol.name);
       if (mappedTypeName != null) {
