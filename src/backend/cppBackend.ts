@@ -380,7 +380,7 @@ function emitMethodDeclaration(context: EmitContext, methodDeclaration: ast.Meth
     const mappedReceiverName = getMappedModuleTypeName(
       context,
       sourceFile,
-      ast.getSymbol(methodDeclaration.receiver.declaredType, ast.SymbolKind.Struct).name,
+      ast.getSymbol(methodDeclaration.receiver, ast.SymbolKind.MethodReceiver).name,
     )!;
     mappedFunctionName = getNamePrefix(context) + mappedReceiverName + "_" + methodDeclaration.name.value;
     mapModuleTypeName(context, sourceFile, methodDeclaration.name.value, mappedFunctionName);
@@ -801,7 +801,7 @@ function emitBooleanLiteral(context: EmitContext, boolLiteral: ast.BoolLiteral):
 function emitCallExpression(context: EmitContext, callExpression: ast.CallExpression): void {
   assert.notNull(
     callExpression.symbol,
-    `Expected callExpression.symbol not to be null`,
+    `Expected callExpression.symbol not to be null: ${ast.toString(callExpression)}`,
   );
 
   if (!ast.isSymbolCallable(callExpression.symbol)) {

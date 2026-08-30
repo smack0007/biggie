@@ -12,11 +12,13 @@ const ROOT_PATH = resolve(import.meta.dirname!, "..");
 
 const BASE_NODES = [
   "Expression",
+  "Literal",
   "TypeNode",
 ];
 
 const TYPE_GUARDS_NOT_TO_EMIT = [
   "Diagnostic",
+  "Literal",
   "SyntaxNode",
   "Symbol",
   "TextPosition",
@@ -203,6 +205,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
           "Symbol",
           "BindNode",
           "Scope",
+          "Literal",
         ]
           .includes(interfaceName)
       ) {
@@ -218,6 +221,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
 
         if (
           [
+            "bindState",
             "diagnostics",
             "endPos",
             "exports",
@@ -227,7 +231,8 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
             "locals",
             "operator",
             "startPos",
-            "symbol?",
+            "symbol",
+            "type",
           ]
             .includes(
               propertyName,
@@ -372,13 +377,16 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
     "string",
     "uint",
     "uint32",
+    "BindState",
     "SymbolTable",
+    "TypeSymbol",
   ];
   const EXCLUDE_INTERFACES = [
     "Declaration",
     "Diagnostic",
     "Exportable",
     "Expression",
+    "Literal",
     "Reference",
     "Scope",
     "Statement",
@@ -387,10 +395,13 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
     "TypeNode",
   ];
   const EXCLUDE_PROPS = ["kind"];
-  const ALWAYS_OPTIONAL_PROPS = ["diagnostics", "isExported"];
+  const ALWAYS_OPTIONAL_PROPS = ["bindState", "diagnostics", "isExported", "symbol", "type"];
   const OPTIONAL_DEFAULT_VALUES: Record<string, string> = {
+    "bindState": "BindState.Uninitialized",
     "diagnostics": "[]",
     "isExported": "false",
+    "symbol": "UnknownSymbol",
+    "type": "UnknownTypeSymbol",
   };
 
   let interfaceName: string | null = null;
@@ -487,7 +498,9 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
 
   const output = createAstOutputWriter();
   output.appendLine(`import { bool, uint } from "../shims.ts";`);
-  output.appendLine(`import { BindState, SymbolTable } from "./symbols.ts";`);
+  output.appendLine(
+    `import { BindState, SymbolTable, TypeSymbol, UnknownSymbol, UnknownTypeSymbol } from "./symbols.ts";`,
+  );
   output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine(`import { TextPosition } from "./textPosition.ts"`);
   output.appendLine();
@@ -535,11 +548,19 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
       output.appendLine(`kind: SyntaxKind.${name},`);
       output.appendLine(`startPos: optional.startPos ?? makeTextPosition(0, 0),`);
       output.appendLine(`endPos: optional.endPos ?? makeTextPosition(0, 0),`);
-      output.appendLine(`bindState: BindState.Uninitialized,`);
     }
 
     if (props.extends.includes("Exportable")) {
       output.appendLine(`isExported: optional.isExported ?? false,`);
+    }
+
+    if (
+      props.extends.includes("Expression") || props.extends.includes("Literal") || props.extends.includes("TypeNode")
+    ) {
+      output.appendLine(`symbol: UnknownSymbol,`);
+      output.appendLine(`type: UnknownTypeSymbol,`);
+    } else if (props.extends.includes("Declaration") || props.extends.includes("Reference")) {
+      output.appendLine(`symbol: UnknownSymbol,`);
     }
 
     if (props.extends.includes("Scope")) {

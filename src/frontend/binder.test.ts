@@ -66,7 +66,6 @@ describe("binder", () => {
       const stringLiteral = ast.makeStringLiteral("Hello World!");
       const program = ast.makeProgramFromExpression(stringLiteral);
       bind(program);
-      assert.strictEqual(stringLiteral.bindState, ast.BindState.Finished);
       assert.strictEqual(stringLiteral.type, program.locals[builtins.GlobalName.string]);
     });
   });
@@ -82,7 +81,6 @@ describe("binder", () => {
         },
       );
       bind(ast.makeProgramFromStatement(varDeclaration));
-      assert.strictEqual(varDeclaration.bindState, ast.BindState.Finished);
       assert.strictEqual(varDeclaration.type, varDeclaration.declaredType.type);
     });
 

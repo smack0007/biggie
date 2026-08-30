@@ -15,6 +15,8 @@ export function nameofBindState(kind: BindState): string {
 
 export function nameofSymbolKind(kind: SymbolKind): string {
   switch (kind) {
+    case SymbolKind.Unknown:
+      return "Unknown";
     case SymbolKind.Enum:
       return "Enum";
     case SymbolKind.EnumMember:

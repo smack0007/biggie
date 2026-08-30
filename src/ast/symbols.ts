@@ -10,6 +10,8 @@ export enum BindState {
 }
 
 export enum SymbolKind {
+  Unknown = 0,
+
   Enum,
 
   EnumMember,
@@ -44,9 +46,9 @@ export enum SymbolFlags {
 export type SymbolTable = Record<string, Symbol>;
 
 export interface Symbol {
-  id: uint32;
-
   kind: SymbolKind;
+
+  id: uint32;
 
   flags: SymbolFlags;
 
@@ -57,12 +59,16 @@ export interface Symbol {
   name: string;
 }
 
+export interface CallableSymbol extends Symbol {
+  beginVaradicArgsIndex: uint;
+}
+
 export interface SymbolWithMembers extends Symbol {
   members: SymbolTable;
 }
 
-export interface CallableSymbol extends Symbol {
-  beginVaradicArgsIndex: uint;
+export interface UnknownSymbol extends Symbol {
+  kind: SymbolKind.Unknown;
 }
 
 export interface EnumSymbol extends SymbolWithMembers {
@@ -97,9 +103,28 @@ export interface StructMemberSymbol extends SymbolWithMembers {
   kind: SymbolKind.StructMember;
 }
 
+export interface TypeSymbol extends SymbolWithMembers {
+  kind: SymbolKind.Type;
+}
+
 export interface VarSymbol extends Symbol {
   kind: SymbolKind.Var;
 }
+
+export const UnknownSymbol: UnknownSymbol = {
+  kind: SymbolKind.Unknown,
+  name: "<unknown>",
+  id: 0,
+  flags: SymbolFlags.None,
+} as const;
+
+export const UnknownTypeSymbol: TypeSymbol = {
+  kind: SymbolKind.Type,
+  name: "<unknownType>",
+  id: 0,
+  flags: SymbolFlags.None,
+  members: {},
+} as const;
 
 export function getQualifiedNameForSymbol(symbol: Symbol): string {
   let name = symbol.name;

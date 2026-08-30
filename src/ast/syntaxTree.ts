@@ -1,5 +1,5 @@
 import { bool } from "../shims.ts";
-import { BindState, Symbol, SymbolTable } from "./symbols.ts";
+import { BindState, Symbol, SymbolTable, TypeSymbol } from "./symbols.ts";
 import { TextPosition } from "./textPosition.ts";
 
 export enum SyntaxKind {
@@ -136,16 +136,10 @@ export interface SyntaxNode {
   endPos: TextPosition;
 
   parent?: SyntaxNode;
-
-  bindState: BindState;
-
-  type?: Symbol;
-
-  symbol?: Symbol;
 }
 
 export interface Declaration extends SyntaxNode {
-  symbol?: Symbol;
+  symbol: Symbol;
 }
 
 export interface Exportable extends SyntaxNode {
@@ -153,7 +147,7 @@ export interface Exportable extends SyntaxNode {
 }
 
 export interface Reference extends SyntaxNode {
-  symbol?: Symbol;
+  symbol: Symbol;
 }
 
 export interface Scope extends SyntaxNode {
@@ -200,6 +194,8 @@ export interface SourceFile extends SyntaxNode, Scope {
   statements: Statement[];
 
   exports: SymbolTable;
+
+  bindState: BindState;
 }
 
 export interface Statement extends SyntaxNode {}
@@ -226,6 +222,8 @@ export interface VarDeclaration extends SyntaxNode, Declaration {
   declaredType: TypeNode;
 
   initializer?: Expression;
+
+  type: TypeSymbol;
 }
 
 export interface EnumDeclaration extends SyntaxNode, Declaration, Exportable {
@@ -286,6 +284,8 @@ export interface MethodReceiver extends SyntaxNode, Declaration {
   name: Identifier;
 
   declaredType: TypeReference;
+
+  type: TypeSymbol;
 }
 
 export interface StructDeclaration extends SyntaxNode, Declaration, Exportable {
@@ -347,7 +347,9 @@ export interface StatementBlock extends Statement, Scope {
   statements: Statement[];
 }
 
-export interface Expression extends SyntaxNode, Reference {}
+export interface Expression extends SyntaxNode, Reference {
+  type: TypeSymbol;
+}
 
 export interface LogicalExpression extends Expression {
   kind: SyntaxKind.LogicalExpression;
@@ -452,7 +454,9 @@ export interface PropertyAccessExpression extends Expression {
   name: Identifier;
 }
 
-export interface TypeNode extends SyntaxNode, Reference {}
+export interface TypeNode extends SyntaxNode, Reference {
+  type: TypeSymbol;
+}
 
 export interface ArrayType extends TypeNode {
   kind: SyntaxKind.ArrayType;
@@ -486,13 +490,17 @@ export interface Identifier extends Expression, Reference {
   value: string;
 }
 
-export interface ArrayLiteral extends Expression {
+export interface Literal extends Expression {
+  type: TypeSymbol;
+}
+
+export interface ArrayLiteral extends Literal {
   kind: SyntaxKind.ArrayLiteral;
 
   elements: Expression[];
 }
 
-export interface StructLiteral extends Expression {
+export interface StructLiteral extends Literal {
   kind: SyntaxKind.StructLiteral;
 
   elements: StructLiteralElement[];
@@ -506,19 +514,19 @@ export interface StructLiteralElement extends SyntaxNode {
   expression: Expression;
 }
 
-export interface BoolLiteral extends Expression {
+export interface BoolLiteral extends Literal {
   kind: SyntaxKind.BoolLiteral;
 
   value: bool;
 }
 
-export interface IntLiteral extends Expression {
+export interface IntLiteral extends Literal {
   kind: SyntaxKind.IntLiteral;
 
   value: string;
 }
 
-export interface StringLiteral extends Expression {
+export interface StringLiteral extends Literal {
   kind: SyntaxKind.StringLiteral;
 
   value: string;

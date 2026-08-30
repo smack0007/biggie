@@ -1,4 +1,12 @@
-import { FuncSymbol, Symbol, SymbolFlags, SymbolKind, SymbolTable, SymbolWithMembers } from "../ast/symbols.ts";
+import {
+  FuncSymbol,
+  Symbol,
+  SymbolFlags,
+  SymbolKind,
+  SymbolTable,
+  SymbolWithMembers,
+  TypeSymbol,
+} from "../ast/symbols.ts";
 import { generateId, IDType } from "./ids.ts";
 import { uint } from "../shims.ts";
 
@@ -6,12 +14,12 @@ interface BuiltinSymbolOptionalArgs {
   beginVaradicArgsIndex?: uint;
 }
 
-function builtinSymbol(
+function builtinSymbol<T extends Symbol>(
   kind: SymbolKind,
   name: string,
   members: SymbolTable | null = null,
   optional: BuiltinSymbolOptionalArgs = {},
-): Symbol {
+): T {
   const symbol: Symbol = {
     id: generateId(IDType.symbol),
     kind,
@@ -35,7 +43,7 @@ function builtinSymbol(
     }
   }
 
-  return symbol;
+  return <T> symbol;
 }
 
 function builtinSymbolTable(...symbols: Symbol[]): SymbolTable {
@@ -57,37 +65,37 @@ export enum GlobalName {
 }
 
 export const globals = builtinSymbolTable(
-  builtinSymbol(
+  builtinSymbol<TypeSymbol>(
     SymbolKind.Type,
     GlobalName.Array,
     builtinSymbolTable(
       builtinSymbol(SymbolKind.Method, "length"),
     ),
   ),
-  builtinSymbol(
+  builtinSymbol<TypeSymbol>(
     SymbolKind.Type,
     GlobalName.bool,
   ),
-  builtinSymbol(
+  builtinSymbol<TypeSymbol>(
     SymbolKind.Type,
     GlobalName.int,
   ),
-  builtinSymbol(
+  builtinSymbol<TypeSymbol>(
     SymbolKind.Type,
     GlobalName.int32,
   ),
-  builtinSymbol(
+  builtinSymbol<TypeSymbol>(
     SymbolKind.Func,
     GlobalName.println,
   ),
-  builtinSymbol(
+  builtinSymbol<TypeSymbol>(
     SymbolKind.Type,
     GlobalName.string,
     builtinSymbolTable(
       builtinSymbol(SymbolKind.Method, "length"),
     ),
   ),
-  builtinSymbol(
+  builtinSymbol<TypeSymbol>(
     SymbolKind.Type,
     GlobalName.void,
   ),

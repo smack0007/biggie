@@ -181,7 +181,6 @@ export async function parse(
     entryFileName,
     sourceFiles: context.sourceFiles,
     diagnostics: context.diagnostics,
-    bindState: ast.BindState.Uninitialized,
     locals: {},
     nextSymbolScope: null,
   };
@@ -225,10 +224,10 @@ export async function parseSourceFile(
     endPos,
     fileName,
     statements,
-    bindState: ast.BindState.Uninitialized,
     exports: {},
     locals: {},
     nextSymbolScope: null,
+    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -345,10 +344,10 @@ function parseExternStatement(
 
         result = <ast.ExternFuncDeclaration> {
           kind: ast.SyntaxKind.ExternFuncDeclaration,
-          bindState: ast.BindState.Uninitialized,
           name: funcDeclaration.name,
           args: funcDeclaration.args,
           returnType: funcDeclaration.returnType,
+          symbol: ast.UnknownSymbol,
         };
       }
       break;
@@ -408,7 +407,7 @@ async function parseImportDeclaration(
     alias: alias,
     module: module,
     resolvedFileName,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
   };
 }
 
@@ -458,7 +457,8 @@ function parseVarDeclaration(
     name: identifier,
     declaredType: type,
     initializer: initializer,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -502,7 +502,7 @@ function parseEnumDeclaration(
     isExported: !!options.isExported,
     name,
     members,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
   };
 }
 
@@ -526,7 +526,7 @@ function parseEnumMember(context: ParserSourceFileContext): ast.EnumMember {
     endPos,
     name,
     initializer,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
   };
 }
 
@@ -596,9 +596,9 @@ function parseFuncDeclaration(
     args: args,
     returnType,
     body,
-    bindState: ast.BindState.Uninitialized,
     locals: {},
     nextSymbolScope: null,
+    symbol: ast.UnknownSymbol,
   };
 }
 
@@ -651,9 +651,9 @@ function parseMethodDeclaration(
     args: args,
     returnType,
     body,
-    bindState: ast.BindState.Uninitialized,
     locals: {},
     nextSymbolScope: null,
+    symbol: ast.UnknownSymbol,
   };
 }
 
@@ -684,7 +684,8 @@ function parseMethodReciever(
     endPos,
     name: identifier,
     declaredType: type,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -724,7 +725,7 @@ function parseStructDeclaration(
     isExported: !!options.isExported,
     name,
     members,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
   };
 }
 
@@ -750,7 +751,7 @@ function parseStructMember(context: ParserSourceFileContext): ast.StructMember {
     endPos,
     name,
     declaredType: type,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
   };
 }
 
@@ -786,7 +787,6 @@ function parseStatementBlock(context: ParserSourceFileContext): ast.StatementBlo
     startPos,
     endPos,
     statements,
-    bindState: ast.BindState.Uninitialized,
     locals: {},
     nextSymbolScope: null,
   };
@@ -846,7 +846,6 @@ function parseExpressionStatement(context: ParserSourceFileContext): ast.Express
     startPos,
     endPos,
     expression,
-    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -866,7 +865,6 @@ function parseDeferStatement(context: ParserSourceFileContext): ast.DeferStateme
     startPos,
     endPos,
     body,
-    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -903,7 +901,6 @@ function parseIfStatement(context: ParserSourceFileContext): ast.IfStatement {
     condition,
     then,
     else: _else,
-    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -932,7 +929,6 @@ function parseWhileStatement(context: ParserSourceFileContext): ast.WhileStateme
     endPos,
     condition,
     body,
-    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -955,7 +951,6 @@ function parseReturnStatement(context: ParserSourceFileContext): ast.ReturnState
     startPos,
     endPos,
     expression,
-    bindState: ast.BindState.Uninitialized,
   };
 }
 
@@ -1002,14 +997,18 @@ function parseAssignmentExpression(context: ParserSourceFileContext): ast.Expres
 
     const endPos = getPos(context);
 
-    return <ast.AssignmentExpression> {
+    const assignmentExpression: ast.AssignmentExpression = {
       kind: ast.SyntaxKind.AssignmentExpression,
       startPos,
       endPos,
       name: <ast.Identifier> expression,
       operator: ASSIGNMENT_OPERATORS_MAP[operatorToken.type] as ast.AssignmentExpression["operator"],
       value,
+      symbol: ast.UnknownSymbol,
+      type: ast.UnknownTypeSymbol,
     };
+
+    return assignmentExpression;
   } else {
     return expression;
   }
@@ -1033,6 +1032,7 @@ function parseLogicalOrExpression(context: ParserSourceFileContext): ast.Express
       lhs: result,
       operator: ast.Operator.BarBar,
       rhs: rhs,
+      type: ast.UnknownTypeSymbol,
     };
   }
 
@@ -1057,6 +1057,7 @@ function parseLogicalAndExpression(context: ParserSourceFileContext): ast.Expres
       lhs: result,
       operator: ast.Operator.AmpersandAmpersand,
       rhs,
+      type: ast.UnknownTypeSymbol,
     };
   }
 
@@ -1085,6 +1086,7 @@ function parseEqualityExpression(context: ParserSourceFileContext): ast.Expressi
         ? ast.Operator.EqualsEquals
         : ast.Operator.ExclamationEquals,
       rhs,
+      type: ast.UnknownTypeSymbol,
     };
   }
 
@@ -1129,14 +1131,18 @@ function parseComparisonExpression(context: ParserSourceFileContext): ast.Expres
 
     const endPos = getPos(context);
 
-    return <ast.ComparisonExpression> {
+    const comparisonExpression: ast.ComparisonExpression = {
       kind: ast.SyntaxKind.ComparisonExpression,
       startPos,
       endPos,
       lhs,
       operator,
       rhs,
+      symbol: ast.UnknownSymbol,
+      type: ast.UnknownTypeSymbol,
     };
+
+    return comparisonExpression;
   } else {
     return lhs;
   }
@@ -1163,6 +1169,7 @@ function parseAdditiveExpression(context: ParserSourceFileContext): ast.Expressi
       lhs: result,
       operator: operatorToken.type == ast.TokenType.Plus ? ast.Operator.Plus : ast.Operator.Minus,
       rhs,
+      type: ast.UnknownTypeSymbol,
     };
 
     operatorToken = peek(context);
@@ -1192,6 +1199,7 @@ function parseMultiplicativeExpression(context: ParserSourceFileContext): ast.Ex
       lhs: result,
       operator: operatorToken.type == ast.TokenType.Asterisk ? ast.Operator.Asterisk : ast.Operator.Slash,
       rhs,
+      type: ast.UnknownTypeSymbol,
     };
 
     operatorToken = peek(context);
@@ -1237,13 +1245,17 @@ function parseUnaryExpression(context: ParserSourceFileContext): ast.Expression 
 
     const endPos = getPos(context);
 
-    return <ast.UnaryExpression> {
+    const unaryExpression: ast.UnaryExpression = {
       kind: ast.SyntaxKind.UnaryExpression,
       startPos,
       endPos,
       operator,
       expression,
+      symbol: ast.UnknownSymbol,
+      type: ast.UnknownTypeSymbol,
     };
+
+    return unaryExpression;
   } else {
     return parsePrimaryExpression(context);
   }
@@ -1330,7 +1342,8 @@ function parseParenthesizedExpression(context: ParserSourceFileContext): ast.Par
     startPos,
     endPos,
     expression,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1357,7 +1370,8 @@ function parseCallExpression(
     endPos,
     expression,
     args: args,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1384,7 +1398,8 @@ function parseElementAccessExpression(
     endPos,
     expression,
     argumentExpression,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1408,7 +1423,8 @@ function parsePropertyAccessExpression(
     endPos,
     expression,
     name,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1461,7 +1477,8 @@ function parsePointerType(context: ParserSourceFileContext): ast.PointerType {
     startPos,
     endPos,
     elementType,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1484,7 +1501,8 @@ function parseArrayType(context: ParserSourceFileContext): ast.ArrayType {
     startPos,
     endPos,
     elementType,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1501,7 +1519,8 @@ function parseTypeReference(context: ParserSourceFileContext): ast.TypeReference
     startPos,
     endPos,
     typeName,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1526,7 +1545,7 @@ function parseQualifiedTypeOrIdentifier(context: ParserSourceFileContext): ast.Q
       endPos,
       left: result,
       right: right,
-      bindState: ast.BindState.Uninitialized,
+      symbol: ast.UnknownSymbol,
     };
   }
 
@@ -1557,7 +1576,8 @@ function parseIdentifier(context: ParserSourceFileContext): ast.Identifier {
     startPos,
     endPos,
     value: token.text,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1600,14 +1620,15 @@ function parseStructLiteral(context: ParserSourceFileContext): ast.StructLiteral
 
     const elementEndPos = getPos(context);
 
-    elements.push({
-      kind: ast.SyntaxKind.StructLiteralElement,
-      startPos: elementStartPos,
-      endPos: elementEndPos,
-      name: name,
-      expression: expression,
-      bindState: ast.BindState.Uninitialized,
-    });
+    elements.push(
+      {
+        kind: ast.SyntaxKind.StructLiteralElement,
+        startPos: elementStartPos,
+        endPos: elementEndPos,
+        name: name,
+        expression: expression,
+      },
+    );
 
     token = peek(context);
   }
@@ -1631,7 +1652,8 @@ function parseStructLiteral(context: ParserSourceFileContext): ast.StructLiteral
     startPos,
     endPos,
     elements,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1671,7 +1693,8 @@ function parseArrayLiteral(context: ParserSourceFileContext): ast.ArrayLiteral {
     startPos,
     endPos,
     elements,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1689,7 +1712,8 @@ function parseBoolLiteral(context: ParserSourceFileContext): ast.BoolLiteral {
     startPos,
     endPos,
     value: token.type == ast.TokenType.True,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1717,7 +1741,8 @@ function parseIntLiteral(context: ParserSourceFileContext): ast.IntLiteral {
     startPos,
     endPos,
     value: token.text,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }
 
@@ -1745,6 +1770,7 @@ function parseStringLiteral(context: ParserSourceFileContext): ast.StringLiteral
     startPos,
     endPos,
     value: token.text,
-    bindState: ast.BindState.Uninitialized,
+    symbol: ast.UnknownSymbol,
+    type: ast.UnknownTypeSymbol,
   };
 }

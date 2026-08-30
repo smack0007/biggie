@@ -55,9 +55,16 @@ async function main(argv: string[]): Promise<int> {
   if (program.diagnostics.length > 0) {
     for (const diagnostic of program.diagnostics) {
       // TODO: Diagnostics could also be warnings.
-      console.error(
-        `Error: (${diagnostic.pos.line}, ${diagnostic.pos.column}) ${diagnostic.fileName} ${diagnostic.message}`,
-      );
+      try {
+        console.error(
+          `Error: (${diagnostic.pos.line}, ${diagnostic.pos.column}) ${diagnostic.fileName} ${diagnostic.message}`,
+        );
+      } catch {
+        // TODO: How do we get here?
+        console.error(
+          `Error: ${diagnostic}`,
+        );
+      }
     }
 
     return 1;

@@ -34,12 +34,12 @@ export function isConvertible(from: ast.Symbol | null, to: ast.Symbol | null): b
 
 export function operationResult(
   operator: ast.Operator,
-  lhs: ast.Symbol | null,
-  rhs: ast.Symbol | null,
-): ast.Symbol | null {
+  lhs: ast.TypeSymbol,
+  rhs: ast.TypeSymbol,
+): ast.TypeSymbol {
   if (lhs == rhs) {
     return lhs;
   }
 
-  return null;
+  return ast.UnknownTypeSymbol;
 }

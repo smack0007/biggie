@@ -4,10 +4,11 @@ import * as ast from "../ast/mod.ts";
 import * as builtins from "./builtins.ts";
 import * as checker from "./checker.ts";
 import { bool } from "../shims.ts";
+import { TypeSymbol } from "../ast/symbols.ts";
 
-const int = builtins.globals[builtins.GlobalName.int];
-const int32 = builtins.globals[builtins.GlobalName.int32];
-const string = builtins.globals[builtins.GlobalName.string];
+const int = <TypeSymbol> builtins.globals[builtins.GlobalName.int];
+const int32 = <TypeSymbol> builtins.globals[builtins.GlobalName.int32];
+const string = <TypeSymbol> builtins.globals[builtins.GlobalName.string];
 
 describe("checker", () => {
   describe("isConvertible", () => {
@@ -28,9 +29,8 @@ describe("checker", () => {
   });
 
   describe("operationResult", () => {
-    const TESTS: Record<number, [ast.Symbol | null, ast.Symbol | null, ast.Symbol | null][]> = {
+    const TESTS: Record<number, [ast.TypeSymbol, ast.TypeSymbol, ast.Symbol | null][]> = {
       [ast.Operator.Plus]: [
-        [null, null, null],
         [string, string, string],
       ],
     };
