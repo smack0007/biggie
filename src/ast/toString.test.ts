@@ -31,7 +31,7 @@ import {
   makeTypeReference,
   makeUnaryExpression,
   makeVarDeclaration,
-} from "./factories.ts";
+} from "./syntaxTreeFactories.ts";
 import { Operator } from "./syntaxTree.ts";
 import { EOL } from "../shims.ts";
 

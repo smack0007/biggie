@@ -4,7 +4,6 @@ import { bool, nameof } from "../shims.ts";
 import { dump } from "../utils.ts";
 import * as builtins from "./builtins.ts";
 import * as checker from "./checker.ts";
-import { generateId, IDType } from "./ids.ts";
 
 export enum BindErrorKind {
   Unexpected,
@@ -308,7 +307,7 @@ function bindImportDeclaration(importDeclaration: ast.ImportDeclaration): void {
   if (importDeclaration.alias?.value) {
     importDeclaration.symbol = <ast.ImportSymbol> {
       kind: ast.SymbolKind.Import,
-      id: generateId(IDType.symbol),
+      id: ast.generateId(ast.IDType.Symbol),
       flags: ast.SymbolFlags.None,
       declaration: importDeclaration,
       name: importDeclaration.alias.value,
@@ -332,7 +331,7 @@ function bindExternFuncDeclaration(externFuncDeclaration: ast.ExternFuncDeclarat
 
   externFuncDeclaration.symbol = <ast.FuncSymbol> {
     kind: ast.SymbolKind.Func,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.Extern,
     declaration: externFuncDeclaration,
     name: externFuncDeclaration.name.value,
@@ -357,7 +356,7 @@ function bindEnumDeclaration(
 
   const enumSymbol = <ast.EnumSymbol> {
     kind: ast.SymbolKind.Enum,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: enumDeclaration,
     name: enumDeclaration.name.value,
@@ -375,7 +374,7 @@ function bindEnumDeclaration(
 function bindEnumMember(enumMember: ast.EnumMember): void {
   enumMember.symbol = <ast.EnumMemberSymbol> {
     kind: ast.SymbolKind.EnumMember,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     name: enumMember.name.value,
   };
@@ -391,7 +390,7 @@ function bindFuncDeclaration(funcDeclaration: ast.FuncDeclaration): void {
 
   funcDeclaration.symbol = <ast.FuncSymbol> {
     kind: ast.SymbolKind.Func,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: funcDeclaration,
     name: funcDeclaration.name.value,
@@ -417,7 +416,7 @@ function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
 
   methodDeclaration.symbol = <ast.MethodSymbol> {
     kind: ast.SymbolKind.Method,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: methodDeclaration,
     name: methodDeclaration.name.value,
@@ -448,7 +447,7 @@ function bindMethodReceiver(methodReceiver: ast.MethodReceiver): void {
 
   methodReceiver.symbol = <ast.MethodReceiverSymbol> {
     kind: ast.SymbolKind.MethodReceiver,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: methodReceiver,
     name: methodReceiver.name.value,
@@ -469,7 +468,7 @@ function bindStructDeclaration(structDeclaration: ast.StructDeclaration): void {
 
   structDeclaration.symbol = <ast.StructSymbol> {
     kind: ast.SymbolKind.Struct,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: structDeclaration,
     name: structDeclaration.name.value,
@@ -486,7 +485,7 @@ function bindStructDeclaration(structDeclaration: ast.StructDeclaration): void {
 function bindStructMember(structMember: ast.StructMember): void {
   structMember.symbol = <ast.StructMemberSymbol> {
     kind: ast.SymbolKind.StructMember,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     name: structMember.name.value,
   };
@@ -589,7 +588,7 @@ function bindVarDeclaration(varDeclaration: ast.VarDeclaration): void {
 
   varDeclaration.symbol = <ast.VarSymbol> {
     kind: ast.SymbolKind.Var,
-    id: generateId(IDType.symbol),
+    id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: varDeclaration,
     name: varDeclaration.name.value,

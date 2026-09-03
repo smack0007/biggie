@@ -1,5 +1,5 @@
 import { bool } from "../shims.ts";
-import { BindState, Symbol, SymbolTable, TypeSymbol } from "./symbols.ts";
+import { ImportSymbol, Symbol, SymbolTable, TypeSymbol } from "./symbols.ts";
 import { TextPosition } from "./textPosition.ts";
 
 export enum SyntaxKind {
@@ -158,6 +158,14 @@ export interface Scope extends SyntaxNode {
 
 export enum DiagnosticCategory {
   Error,
+}
+
+export enum BindState {
+  Uninitialized = 0,
+
+  Initialized = 1,
+
+  Finished = 2,
 }
 
 export interface Diagnostic {

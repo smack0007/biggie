@@ -1,3 +1,4 @@
+import { generateId, IDType } from "../ast/ids.ts";
 import {
   FuncSymbol,
   Symbol,
@@ -7,7 +8,6 @@ import {
   SymbolWithMembers,
   TypeSymbol,
 } from "../ast/symbols.ts";
-import { generateId, IDType } from "./ids.ts";
 import { uint } from "../shims.ts";
 
 interface BuiltinSymbolOptionalArgs {
@@ -21,7 +21,7 @@ function builtinSymbol<T extends Symbol>(
   optional: BuiltinSymbolOptionalArgs = {},
 ): T {
   const symbol: Symbol = {
-    id: generateId(IDType.symbol),
+    id: generateId(IDType.Symbol),
     kind,
     flags: SymbolFlags.Builtin,
     name,

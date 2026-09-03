@@ -38,7 +38,8 @@ async function main(_argv: string[]): Promise<int> {
   await writeAstTypeGuards(syntaxTreeContents);
   await writeAstWalk(syntaxTreeContents);
   await writeAstNameof(symbolsContents, syntaxTreeContents);
-  await writeAstFactories(syntaxTreeContents);
+  await writeAstSyntaxTreeFactories(syntaxTreeContents);
+  await writeAstSymbolFactories(symbolsContents);
 
   return 0;
 }
@@ -369,7 +370,7 @@ async function writeAstNameof(
   await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "nameof.ts"), output);
 }
 
-async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
+async function writeAstSyntaxTreeFactories(syntaxTreeContents: string[]): Promise<void> {
   const DO_NOT_IMPORT = [
     "bool",
     "int",
@@ -377,7 +378,6 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
     "string",
     "uint",
     "uint32",
-    "BindState",
     "SymbolTable",
     "TypeSymbol",
   ];
@@ -499,14 +499,10 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
   const output = createAstOutputWriter();
   output.appendLine(`import { bool, uint } from "../shims.ts";`);
   output.appendLine(
-    `import { BindState, SymbolTable, TypeSymbol, UnknownSymbol, UnknownTypeSymbol } from "./symbols.ts";`,
+    `import { SymbolTable, TypeSymbol, UnknownSymbol, UnknownTypeSymbol } from "./symbols.ts";`,
   );
   output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
-  output.appendLine(`import { TextPosition } from "./textPosition.ts"`);
-  output.appendLine();
-  output.appendLine(`export function makeTextPosition(line: uint, column: uint): TextPosition {
-    return { line, column };
-  }`);
+  output.appendLine(`import { makeTextPosition, TextPosition } from "./textPosition.ts"`);
   output.appendLine();
 
   for (const [name, props] of Object.entries(factories)) {
@@ -585,5 +581,203 @@ async function writeAstFactories(syntaxTreeContents: string[]): Promise<void> {
     output.appendLine();
   }
 
-  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "factories.ts"), output);
+  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "syntaxTreeFactories.ts"), output);
+}
+
+async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void> {
+  const DO_NOT_IMPORT = [
+    "bool",
+    "int",
+    "int32",
+    "string",
+    "uint",
+    "uint32",
+    "BindState",
+    "SymbolTable",
+    "SymbolKind",
+    "SymbolFlags",
+    "SyntaxNode",
+  ];
+
+  const EXCLUDE_INTERFACES = [
+    "Symbol",
+    "CallableSymbol",
+    "SymbolWithMembers",
+    "UnknownSymbol",
+    "UnknownTypeSymbol",
+  ];
+
+  const EXCLUDE_PROPS: string[] = ["kind"];
+  const ALWAYS_OPTIONAL_PROPS: string[] = [];
+  const OPTIONAL_DEFAULT_VALUES: Record<string, string> = {};
+
+  let interfaceName: string | null = null;
+  let collectedLine = "";
+
+  const symbolsImports: string[] = ["SymbolKind", "SymbolFlags", "SymbolTable"];
+  const factories: Record<string, {
+    extends: string[];
+    required: Record<string, string>;
+    optional: Record<string, string>;
+  }> = {};
+
+  for (let line of symbolsContents) {
+    line = line.trim();
+
+    if (line.startsWith("//")) {
+      continue;
+    }
+
+    if (interfaceName == null && line.startsWith("export interface ")) {
+      const parts = line.split(" ");
+
+      interfaceName = parts[2];
+
+      if (EXCLUDE_INTERFACES.includes(interfaceName)) {
+        interfaceName = null;
+        continue;
+      }
+
+      factories[interfaceName] = {
+        extends: [],
+        required: {},
+        optional: {},
+      };
+
+      if (parts[3] == "extends") {
+        for (let i = 4; i < parts.length - 1; i += 1) {
+          let extended = parts[i];
+          if (extended.endsWith(",")) {
+            extended = extended.substring(0, extended.length - 1);
+          }
+          factories[interfaceName].extends.push(extended);
+        }
+      }
+
+      if (!symbolsImports.includes(interfaceName)) {
+        symbolsImports.push(interfaceName);
+      }
+    } else if (interfaceName != null) {
+      if (line.startsWith("}")) {
+        interfaceName = null;
+        continue;
+      }
+
+      collectedLine += line;
+
+      if (collectedLine.trimEnd().endsWith(";")) {
+        let [name, type] = collectedLine.split(":");
+        collectedLine = "";
+
+        if (EXCLUDE_PROPS.includes(name)) {
+          continue;
+        }
+
+        type = type.trim();
+        if (type.endsWith(";")) {
+          type = type.substring(0, type.length - 1);
+        }
+        if (type.startsWith("| ")) {
+          type = type.substring("| ".length);
+        }
+
+        if (ALWAYS_OPTIONAL_PROPS.includes(name) || name.endsWith("?")) {
+          if (name.endsWith("?")) {
+            name = name.substring(0, name.length - 1);
+          }
+          factories[interfaceName].optional[name] = type;
+        } else {
+          factories[interfaceName].required[name] = type;
+        }
+
+        if (!DO_NOT_IMPORT.includes(type) && !type.includes("|") && !type.startsWith("Record<")) {
+          if (type.endsWith("[]")) {
+            type = type.substring(0, type.length - "[]".length);
+          }
+
+          if (!symbolsImports.includes(type)) {
+            symbolsImports.push(type);
+          }
+        }
+      }
+    }
+  }
+
+  const output = createAstOutputWriter();
+  output.appendLine(`import { uint, uint32 } from "../shims.ts";`);
+  output.appendLine(`import { generateId, IDType } from "./ids.ts";`);
+  output.appendLine(`import { ${symbolsImports.toSorted().join(", ")} } from "./symbols.ts";`);
+  output.appendLine();
+
+  for (const [name, props] of Object.entries(factories)) {
+    output.appendLine(`export interface Make${name}OptionalProps {`);
+
+    output.indent();
+    output.appendLine(`id?: uint32;`);
+    output.appendLine(`flags?: uint;`);
+
+    if (props.extends.includes("CallableSymbol")) {
+      output.appendLine(`beginVaradicArgsIndex?: uint;`);
+    }
+
+    if (props.extends.includes("SymbolWithMembers")) {
+      output.appendLine(`members?: SymbolTable;`);
+    }
+
+    for (const [propName, propType] of Object.entries(props.optional)) {
+      output.appendLine(`${propName}?: ${propType};`);
+    }
+
+    output.unindent();
+    output.appendLine("}");
+    output.appendLine();
+
+    output.appendLine(`export function make${name}(`);
+
+    output.indent();
+    output.appendLine(`name: string,`);
+    for (const [propName, propType] of Object.entries(props.required)) {
+      output.appendLine(`${propName}: ${propType},`);
+    }
+    output.appendLine(`optional: Make${name}OptionalProps = {},`);
+    output.unindent();
+
+    output.appendLine(`): ${name} {`);
+
+    output.indent();
+    output.appendLine("return {");
+
+    output.indent();
+
+    output.appendLine(`kind: SymbolKind.${name.replace("Symbol", "")},`);
+    output.appendLine(`name,`);
+    output.appendLine(`id: optional.id ?? generateId(IDType.Symbol),`);
+    output.appendLine(`flags: optional.flags ?? SymbolFlags.None,`);
+
+    if (props.extends.includes("CallableSymbol")) {
+      output.appendLine(`beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? 0,`);
+    }
+
+    if (props.extends.includes("SymbolWithMembers")) {
+      output.appendLine(`members: optional.members ?? {},`);
+    }
+
+    for (const propName of Object.keys(props.required)) {
+      output.appendLine(`${propName},`);
+    }
+
+    for (const propName of Object.keys(props.optional)) {
+      output.appendLine(`${propName}: optional.${propName} ?? ${OPTIONAL_DEFAULT_VALUES[propName] ?? "undefined"},`);
+    }
+
+    output.unindent();
+
+    output.appendLine("};");
+    output.unindent();
+
+    output.appendLine("}");
+    output.appendLine();
+  }
+
+  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "symbolFactories.ts"), output);
 }

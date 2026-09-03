@@ -1,14 +1,6 @@
 import { uint, uint32 } from "../shims.ts";
 import { SyntaxNode } from "./syntaxTree.ts";
 
-export enum BindState {
-  Uninitialized = 0,
-
-  Initialized = 1,
-
-  Finished = 2,
-}
-
 export enum SymbolKind {
   Unknown = 0,
 

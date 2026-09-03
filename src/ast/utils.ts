@@ -21,7 +21,7 @@ import {
   makeSourceFile,
   makeStatementBlock,
   makeTypeReference,
-} from "./factories.ts";
+} from "./syntaxTreeFactories.ts";
 import { bool } from "../shims.ts";
 import { Symbol, SymbolKind } from "./symbols.ts";
 
