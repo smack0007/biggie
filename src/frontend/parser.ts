@@ -347,7 +347,6 @@ function parseExternStatement(
           name: funcDeclaration.name,
           args: funcDeclaration.args,
           returnType: funcDeclaration.returnType,
-          symbol: ast.UnknownSymbol,
         };
       }
       break;
@@ -407,7 +406,7 @@ async function parseImportDeclaration(
     alias: alias,
     module: module,
     resolvedFileName,
-    symbol: ast.UnknownSymbol,
+    symbol: null,
   };
 }
 
@@ -457,8 +456,8 @@ function parseVarDeclaration(
     name: identifier,
     declaredType: type,
     initializer: initializer,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -502,7 +501,7 @@ function parseEnumDeclaration(
     isExported: !!options.isExported,
     name,
     members,
-    symbol: ast.UnknownSymbol,
+    symbol: null,
   };
 }
 
@@ -526,7 +525,7 @@ function parseEnumMember(context: ParserSourceFileContext): ast.EnumMember {
     endPos,
     name,
     initializer,
-    symbol: ast.UnknownSymbol,
+    symbol: null,
   };
 }
 
@@ -598,7 +597,7 @@ function parseFuncDeclaration(
     body,
     locals: {},
     nextSymbolScope: null,
-    symbol: ast.UnknownSymbol,
+    symbol: null,
   };
 }
 
@@ -653,7 +652,7 @@ function parseMethodDeclaration(
     body,
     locals: {},
     nextSymbolScope: null,
-    symbol: ast.UnknownSymbol,
+    symbol: null,
   };
 }
 
@@ -684,8 +683,8 @@ function parseMethodReciever(
     endPos,
     name: identifier,
     declaredType: type,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -725,7 +724,7 @@ function parseStructDeclaration(
     isExported: !!options.isExported,
     name,
     members,
-    symbol: ast.UnknownSymbol,
+    symbol: null,
   };
 }
 
@@ -751,7 +750,7 @@ function parseStructMember(context: ParserSourceFileContext): ast.StructMember {
     endPos,
     name,
     declaredType: type,
-    symbol: ast.UnknownSymbol,
+    symbol: null,
   };
 }
 
@@ -1004,8 +1003,8 @@ function parseAssignmentExpression(context: ParserSourceFileContext): ast.Expres
       name: <ast.Identifier> expression,
       operator: ASSIGNMENT_OPERATORS_MAP[operatorToken.type] as ast.AssignmentExpression["operator"],
       value,
-      symbol: ast.UnknownSymbol,
-      type: ast.UnknownTypeSymbol,
+      symbol: null,
+      type: null,
     };
 
     return assignmentExpression;
@@ -1032,7 +1031,7 @@ function parseLogicalOrExpression(context: ParserSourceFileContext): ast.Express
       lhs: result,
       operator: ast.Operator.BarBar,
       rhs: rhs,
-      type: ast.UnknownTypeSymbol,
+      type: null,
     };
   }
 
@@ -1057,7 +1056,7 @@ function parseLogicalAndExpression(context: ParserSourceFileContext): ast.Expres
       lhs: result,
       operator: ast.Operator.AmpersandAmpersand,
       rhs,
-      type: ast.UnknownTypeSymbol,
+      type: null,
     };
   }
 
@@ -1086,7 +1085,7 @@ function parseEqualityExpression(context: ParserSourceFileContext): ast.Expressi
         ? ast.Operator.EqualsEquals
         : ast.Operator.ExclamationEquals,
       rhs,
-      type: ast.UnknownTypeSymbol,
+      type: null,
     };
   }
 
@@ -1138,8 +1137,8 @@ function parseComparisonExpression(context: ParserSourceFileContext): ast.Expres
       lhs,
       operator,
       rhs,
-      symbol: ast.UnknownSymbol,
-      type: ast.UnknownTypeSymbol,
+      symbol: null,
+      type: null,
     };
 
     return comparisonExpression;
@@ -1169,7 +1168,7 @@ function parseAdditiveExpression(context: ParserSourceFileContext): ast.Expressi
       lhs: result,
       operator: operatorToken.type == ast.TokenType.Plus ? ast.Operator.Plus : ast.Operator.Minus,
       rhs,
-      type: ast.UnknownTypeSymbol,
+      type: null,
     };
 
     operatorToken = peek(context);
@@ -1199,7 +1198,7 @@ function parseMultiplicativeExpression(context: ParserSourceFileContext): ast.Ex
       lhs: result,
       operator: operatorToken.type == ast.TokenType.Asterisk ? ast.Operator.Asterisk : ast.Operator.Slash,
       rhs,
-      type: ast.UnknownTypeSymbol,
+      type: null,
     };
 
     operatorToken = peek(context);
@@ -1251,8 +1250,8 @@ function parseUnaryExpression(context: ParserSourceFileContext): ast.Expression 
       endPos,
       operator,
       expression,
-      symbol: ast.UnknownSymbol,
-      type: ast.UnknownTypeSymbol,
+      symbol: null,
+      type: null,
     };
 
     return unaryExpression;
@@ -1342,8 +1341,8 @@ function parseParenthesizedExpression(context: ParserSourceFileContext): ast.Par
     startPos,
     endPos,
     expression,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1370,8 +1369,8 @@ function parseCallExpression(
     endPos,
     expression,
     args: args,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1398,8 +1397,8 @@ function parseElementAccessExpression(
     endPos,
     expression,
     argumentExpression,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1423,8 +1422,8 @@ function parsePropertyAccessExpression(
     endPos,
     expression,
     name,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1477,8 +1476,8 @@ function parsePointerType(context: ParserSourceFileContext): ast.PointerType {
     startPos,
     endPos,
     elementType,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1501,8 +1500,8 @@ function parseArrayType(context: ParserSourceFileContext): ast.ArrayType {
     startPos,
     endPos,
     elementType,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1519,8 +1518,8 @@ function parseTypeReference(context: ParserSourceFileContext): ast.TypeReference
     startPos,
     endPos,
     typeName,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1545,7 +1544,7 @@ function parseQualifiedTypeOrIdentifier(context: ParserSourceFileContext): ast.Q
       endPos,
       left: result,
       right: right,
-      symbol: ast.UnknownSymbol,
+      symbol: null,
     };
   }
 
@@ -1576,8 +1575,8 @@ function parseIdentifier(context: ParserSourceFileContext): ast.Identifier {
     startPos,
     endPos,
     value: token.text,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1652,8 +1651,8 @@ function parseStructLiteral(context: ParserSourceFileContext): ast.StructLiteral
     startPos,
     endPos,
     elements,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1693,8 +1692,8 @@ function parseArrayLiteral(context: ParserSourceFileContext): ast.ArrayLiteral {
     startPos,
     endPos,
     elements,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1712,8 +1711,8 @@ function parseBoolLiteral(context: ParserSourceFileContext): ast.BoolLiteral {
     startPos,
     endPos,
     value: token.type == ast.TokenType.True,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1741,8 +1740,8 @@ function parseIntLiteral(context: ParserSourceFileContext): ast.IntLiteral {
     startPos,
     endPos,
     value: token.text,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }
 
@@ -1770,7 +1769,7 @@ function parseStringLiteral(context: ParserSourceFileContext): ast.StringLiteral
     startPos,
     endPos,
     value: token.text,
-    symbol: ast.UnknownSymbol,
-    type: ast.UnknownTypeSymbol,
+    symbol: null,
+    type: null,
   };
 }

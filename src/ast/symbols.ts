@@ -103,22 +103,11 @@ export interface VarSymbol extends Symbol {
   kind: SymbolKind.Var;
 }
 
-export const UnknownSymbol: UnknownSymbol = {
-  kind: SymbolKind.Unknown,
-  name: "<unknown>",
-  id: 0,
-  flags: SymbolFlags.None,
-} as const;
+export function getQualifiedNameForSymbol(symbol: Symbol | null): string {
+  if (symbol == null) {
+    return "";
+  }
 
-export const UnknownTypeSymbol: TypeSymbol = {
-  kind: SymbolKind.Type,
-  name: "<unknownType>",
-  id: 0,
-  flags: SymbolFlags.None,
-  members: {},
-} as const;
-
-export function getQualifiedNameForSymbol(symbol: Symbol): string {
   let name = symbol.name;
   while (symbol.parent) {
     symbol = symbol.parent;
@@ -127,12 +116,12 @@ export function getQualifiedNameForSymbol(symbol: Symbol): string {
   return name;
 }
 
-export function isSymbolCallable(symbol: Symbol): symbol is CallableSymbol {
-  return symbol.kind == SymbolKind.Func || symbol.kind == SymbolKind.Method;
+export function isSymbolCallable(symbol: Symbol | null): symbol is CallableSymbol {
+  return symbol != null && (symbol.kind == SymbolKind.Func || symbol.kind == SymbolKind.Method);
 }
 
-export function isSymbolWithMembers(symbol: Symbol): symbol is SymbolWithMembers {
-  return (
+export function isSymbolWithMembers(symbol: Symbol | null): symbol is SymbolWithMembers {
+  return symbol != null && (
     symbol.kind == SymbolKind.Enum ||
     symbol.kind == SymbolKind.Import ||
     symbol.kind == SymbolKind.Struct ||
@@ -140,14 +129,14 @@ export function isSymbolWithMembers(symbol: Symbol): symbol is SymbolWithMembers
   );
 }
 
-export function isEnumSymbol(symbol: Symbol): symbol is EnumSymbol {
-  return symbol.kind == SymbolKind.Enum;
+export function isEnumSymbol(symbol: Symbol | null): symbol is EnumSymbol {
+  return symbol != null && symbol.kind == SymbolKind.Enum;
 }
 
-export function isFuncSymbol(symbol: Symbol): symbol is FuncSymbol {
-  return symbol.kind == SymbolKind.Func;
+export function isFuncSymbol(symbol: Symbol | null): symbol is FuncSymbol {
+  return symbol != null && symbol.kind == SymbolKind.Func;
 }
 
-export function isStructSymbol(symbol: Symbol): symbol is StructSymbol {
-  return symbol.kind == SymbolKind.Struct;
+export function isStructSymbol(symbol: Symbol | null): symbol is StructSymbol {
+  return symbol != null && symbol.kind == SymbolKind.Struct;
 }

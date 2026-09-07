@@ -59,7 +59,7 @@ export function getModulePrefixByFileName(importDeclaration: ImportDeclaration):
 }
 
 // TODO(symbols): Remove this function.
-export function getSymbol(node: Declaration | Reference, kind: SymbolKind): Symbol {
+export function getSymbol(node: Declaration<Symbol> | Reference, kind: SymbolKind): Symbol {
   assert.notNull(node.symbol, `symbol is null in ${nameofSyntaxKind(node.kind)} node`);
 
   assert.areEqual(

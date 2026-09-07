@@ -2,8 +2,9 @@ import * as ast from "../ast/mod.ts";
 import * as builtins from "./builtins.ts";
 import { bool, hasFlag } from "../shims.ts";
 
-const int = builtins.globals[builtins.GlobalName.int];
-const int32 = builtins.globals[builtins.GlobalName.int32];
+const int = <ast.TypeSymbol> builtins.globals[builtins.GlobalName.int];
+const int32 = <ast.TypeSymbol> builtins.globals[builtins.GlobalName.int32];
+const _null = <ast.TypeSymbol> builtins.globals[builtins.GlobalName.null];
 
 export function isConvertible(from: ast.Symbol | null, to: ast.Symbol | null): bool {
   if (to == from) {
@@ -34,12 +35,16 @@ export function isConvertible(from: ast.Symbol | null, to: ast.Symbol | null): b
 
 export function operationResult(
   operator: ast.Operator,
-  lhs: ast.TypeSymbol,
-  rhs: ast.TypeSymbol,
+  lhs: ast.TypeSymbol | null,
+  rhs: ast.TypeSymbol | null,
 ): ast.TypeSymbol {
   if (lhs == rhs) {
-    return lhs;
+    if (lhs == null) {
+      return _null;
+    } else {
+      return lhs;
+    }
   }
 
-  return ast.UnknownTypeSymbol;
+  return _null;
 }

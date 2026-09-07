@@ -1,5 +1,6 @@
 import * as assert from "../assert.ts";
 import * as ast from "../ast/mod.ts";
+import { TypeSymbol } from "../ast/symbols.ts";
 import { bool, nameof } from "../shims.ts";
 import { dump } from "../utils.ts";
 import * as builtins from "./builtins.ts";
@@ -425,14 +426,13 @@ function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
 
   const receiverType = methodDeclaration.receiver.declaredType.type;
 
-  // TODO: Reactivate this check
-  // if (!receiverType || !ast.isStructSymbol(receiverType)) {
-  //   throw bindError(
-  //     BindErrorKind.InvalidMethodReceiver,
-  //     `Method receiver must be a struct.`,
-  //     methodDeclaration.receiver,
-  //   );
-  // }
+  if (!receiverType || !ast.isStructSymbol(receiverType)) {
+    throw bindError(
+      BindErrorKind.InvalidMethodReceiver,
+      `Method receiver must be a struct.`,
+      methodDeclaration.receiver,
+    );
+  }
 
   setMember(methodDeclaration, receiverType, methodDeclaration.symbol.name, methodDeclaration.symbol);
 
@@ -445,14 +445,17 @@ function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
 function bindMethodReceiver(methodReceiver: ast.MethodReceiver): void {
   bindTypeReference(methodReceiver.declaredType);
 
-  methodReceiver.symbol = <ast.MethodReceiverSymbol> {
+  assert.notNull(methodReceiver.declaredType.type, "Expected methodReceiver.declaredType.type not to be null.");
+  const symbol: ast.MethodReceiverSymbol = {
     kind: ast.SymbolKind.MethodReceiver,
     id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: methodReceiver,
     name: methodReceiver.name.value,
-    members: (<ast.SymbolWithMembers> methodReceiver.declaredType.symbol).members,
+    members: methodReceiver.declaredType.type.members,
   };
+
+  methodReceiver.symbol = symbol;
   methodReceiver.type = methodReceiver.declaredType.type;
 
   const scope = getScopeOrError(methodReceiver);
@@ -535,11 +538,11 @@ function bindDeferStatement(deferStatement: ast.DeferStatement): void {
 }
 
 function bindExpressionStatement(expressionStatement: ast.ExpressionStatement): void {
-  bindExpression(expressionStatement.expression);
+  bindExpression(expressionStatement.expression, null);
 }
 
 function bindIfStatement(ifStatement: ast.IfStatement): void {
-  bindExpression(ifStatement.condition);
+  bindExpression(ifStatement.condition, null);
   bindStatement(ifStatement.then);
 
   if (ifStatement.else) {
@@ -548,7 +551,7 @@ function bindIfStatement(ifStatement: ast.IfStatement): void {
 }
 
 function bindReturnStatement(returnStatement: ast.ReturnStatement): void {
-  bindExpression(returnStatement.expression);
+  bindExpression(returnStatement.expression, null);
 }
 
 function bindStatementBlock(statementBlock: ast.StatementBlock): void {
@@ -564,7 +567,7 @@ function bindStatementBlock(statementBlock: ast.StatementBlock): void {
 }
 
 function bindWhileStatement(whileStatement: ast.WhileStatement): void {
-  bindExpression(whileStatement.condition);
+  bindExpression(whileStatement.condition, null);
   bindStatement(whileStatement.body);
 }
 
@@ -599,7 +602,7 @@ function bindVarDeclaration(varDeclaration: ast.VarDeclaration): void {
   setLocal(varDeclaration, scope, varDeclaration.symbol.name, varDeclaration.symbol);
 }
 
-function bindExpression(expression: ast.Expression, typeContext?: ast.TypeSymbol): void {
+function bindExpression(expression: ast.Expression, typeContext: ast.TypeSymbol | null): void {
   switch (expression.kind) {
     case ast.SyntaxKind.AdditiveExpression:
       bindAdditiveExpression(<ast.AdditiveExpression> expression);
@@ -626,7 +629,7 @@ function bindExpression(expression: ast.Expression, typeContext?: ast.TypeSymbol
       break;
 
     case ast.SyntaxKind.Identifier:
-      bindIdentifier(<ast.Identifier> expression);
+      bindIdentifier(<ast.Identifier> expression, null);
       break;
 
     case ast.SyntaxKind.IntLiteral:
@@ -652,8 +655,8 @@ function bindExpression(expression: ast.Expression, typeContext?: ast.TypeSymbol
 }
 
 function bindAdditiveExpression(additiveExpression: ast.AdditiveExpression): void {
-  bindExpression(additiveExpression.lhs);
-  bindExpression(additiveExpression.rhs);
+  bindExpression(additiveExpression.lhs, null);
+  bindExpression(additiveExpression.rhs, null);
 
   additiveExpression.type = checker.operationResult(
     additiveExpression.operator,
@@ -664,7 +667,7 @@ function bindAdditiveExpression(additiveExpression: ast.AdditiveExpression): voi
 
 function bindArrayLiteral(arrayLiteral: ast.ArrayLiteral): void {
   for (const element of arrayLiteral.elements) {
-    bindExpression(element);
+    bindExpression(element, null);
   }
 
   const globals = getGlobalsOrError(arrayLiteral);
@@ -672,9 +675,9 @@ function bindArrayLiteral(arrayLiteral: ast.ArrayLiteral): void {
 }
 
 function bindCallExpression(callExpression: ast.CallExpression): void {
-  bindExpression(callExpression.expression);
+  bindExpression(callExpression.expression, null);
   for (const arg of callExpression.args) {
-    bindExpression(arg);
+    bindExpression(arg, null);
   }
 
   assert.notNull(callExpression.expression.symbol, "Expected callExpress.expression.symbol not to be null");
@@ -693,27 +696,27 @@ function bindCallExpression(callExpression: ast.CallExpression): void {
 }
 
 function bindComparisonExpression(comparisonExpression: ast.ComparisonExpression): void {
-  bindExpression(comparisonExpression.lhs);
-  bindExpression(comparisonExpression.rhs);
+  bindExpression(comparisonExpression.lhs, null);
+  bindExpression(comparisonExpression.rhs, null);
 
   comparisonExpression.type = <ast.TypeSymbol> builtins.globals[builtins.GlobalName.bool];
 }
 
 function bindEqualityExpression(equalityExpression: ast.EqualityExpression): void {
-  bindExpression(equalityExpression.lhs);
-  bindExpression(equalityExpression.rhs);
+  bindExpression(equalityExpression.lhs, null);
+  bindExpression(equalityExpression.rhs, null);
 
   equalityExpression.type = <ast.TypeSymbol> builtins.globals[builtins.GlobalName.bool];
 }
 
 function bindParenthesizedExpression(parenthesizedExpression: ast.ParenthesizedExpression): void {
-  bindExpression(parenthesizedExpression.expression);
+  bindExpression(parenthesizedExpression.expression, null);
 
   parenthesizedExpression.type = parenthesizedExpression.expression.type;
 }
 
 function bindPropertyAccessExpression(propertyAccessExpression: ast.PropertyAccessExpression): void {
-  bindExpression(propertyAccessExpression.expression);
+  bindExpression(propertyAccessExpression.expression, null);
   bindIdentifier(
     propertyAccessExpression.name,
     ast.isSymbolWithMembers(propertyAccessExpression.expression.symbol)
@@ -725,7 +728,7 @@ function bindPropertyAccessExpression(propertyAccessExpression: ast.PropertyAcce
   propertyAccessExpression.type = propertyAccessExpression.name.type;
 }
 
-function bindIdentifier(identifier: ast.Identifier, parentSymbol?: ast.Symbol): void {
+function bindIdentifier(identifier: ast.Identifier, parentSymbol: ast.Symbol | null): void {
   if (!parentSymbol) {
     identifier.symbol = getSymbolFromScopeByIdentifier(identifier);
   } else {
@@ -736,9 +739,8 @@ function bindIdentifier(identifier: ast.Identifier, parentSymbol?: ast.Symbol): 
     }
   }
 
-  // TODO: Get rid of the "as any". `ast.hasType(identifier.symbol.declaration)`
-  if ((identifier.symbol.declaration as any)?.type) {
-    identifier.type = (identifier.symbol.declaration as any).type;
+  if (identifier.symbol.declaration && (identifier.symbol.declaration as unknown as { type: TypeSymbol | null }).type) {
+    identifier.type = (identifier.symbol.declaration as unknown as { type: TypeSymbol | null }).type;
   }
 }
 
@@ -766,7 +768,7 @@ function bindTypeReference(typeReference: ast.TypeReference): void {
   if (ast.isQualifiedName(typeReference.typeName)) {
     bindQualifiedName(typeReference.typeName);
   } else {
-    bindIdentifier(typeReference.typeName);
+    bindIdentifier(typeReference.typeName, null);
   }
 
   // TODO: We should check this cast.
@@ -774,7 +776,7 @@ function bindTypeReference(typeReference: ast.TypeReference): void {
 }
 
 function bindQualifiedName(qualifiedName: ast.QualifiedName): void {
-  bindIdentifier(qualifiedName.left);
+  bindIdentifier(qualifiedName.left, null);
   bindIdentifier(qualifiedName.right, qualifiedName.left.symbol);
 
   qualifiedName.symbol = qualifiedName.right.symbol;
@@ -799,7 +801,7 @@ function bindStringLiteral(stringLiteral: ast.StringLiteral): void {
   );
 }
 
-function bindStructLiteral(structLiteral: ast.StructLiteral, typeContext?: ast.TypeSymbol): void {
+function bindStructLiteral(structLiteral: ast.StructLiteral, typeContext: ast.TypeSymbol | null): void {
   // TODO: Extend the grammer so that StructLiteral can explicitly specify what type it is.
   if (!typeContext) {
     throw bindError(

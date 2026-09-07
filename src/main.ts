@@ -62,7 +62,7 @@ async function main(argv: string[]): Promise<int> {
       } catch {
         // TODO: How do we get here?
         console.error(
-          `Error: ${diagnostic}`,
+          `Error: ${diagnostic}\n${(diagnostic as unknown as Error).stack}`,
         );
       }
     }

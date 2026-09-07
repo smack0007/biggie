@@ -59,6 +59,7 @@ export enum GlobalName {
   bool = "bool",
   int = "int",
   int32 = "int32",
+  null = "null",
   println = "println",
   string = "string",
   void = "void",
@@ -83,6 +84,10 @@ export const globals = builtinSymbolTable(
   builtinSymbol<TypeSymbol>(
     SymbolKind.Type,
     GlobalName.int32,
+  ),
+  builtinSymbol<TypeSymbol>(
+    SymbolKind.Type,
+    GlobalName.null,
   ),
   builtinSymbol<TypeSymbol>(
     SymbolKind.Func,

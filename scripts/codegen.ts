@@ -55,6 +55,10 @@ function createAstOutputWriter(): OutputWriter {
   return output;
 }
 
+function filterExportInterfaceLine(line: string): string {
+  return line.replaceAll("<T extends Symbol>", "");
+}
+
 async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
   const output = createAstOutputWriter();
 
@@ -64,9 +68,10 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
 
   for (const line of syntaxTreeContents) {
     if (line.startsWith("export interface ")) {
-      const parts = line.split(" ");
+      const parts = filterExportInterfaceLine(line).split(" ");
 
       const interfaceName = parts[2];
+
       if (!TYPE_GUARDS_NOT_TO_EMIT.includes(interfaceName)) {
         typeGuardsToEmit.push(interfaceName);
       }
@@ -74,7 +79,8 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
       if (parts[3] == "extends") {
         const extendedInterfaces = parts.slice(4)
           .filter((x) => x != "{")
-          .map((x) => x.endsWith(",") ? x.substring(0, x.length - 1) : x);
+          .map((x) => x.endsWith(",") ? x.substring(0, x.length - 1) : x)
+          .map((x) => x.endsWith(">") ? x.substring(0, x.indexOf("<")) : x);
 
         for (const extendedInterface of extendedInterfaces) {
           const isBaseNode = BASE_NODES.includes(extendedInterface);
@@ -103,12 +109,15 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
     }
   }
 
+  output.appendLine(`import { Symbol } from "./symbols.ts";`);
   output.appendLine(`import { SyntaxKind, SyntaxNode, ${typeGuardsToEmit.join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
 
   typeGuardsToEmit.sort();
   for (const typeGuard of typeGuardsToEmit) {
-    output.appendLine(`export function is${typeGuard}(node: SyntaxNode): node is ${typeGuard} {`);
+    const isType = typeGuard == "Declaration" ? "Declaration<Symbol>" : typeGuard;
+
+    output.appendLine(`export function is${typeGuard}(node: SyntaxNode): node is ${isType} {`);
     output.indent();
 
     const kinds = typeMap[typeGuard]?.toSorted();
@@ -192,7 +201,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
     }
 
     if (interfaceName == null && line.startsWith("export interface ") && !line.endsWith("{}")) {
-      const parts = line.split(" ");
+      const parts = filterExportInterfaceLine(line).split(" ");
       interfaceName = parts[2];
 
       if (
@@ -203,8 +212,7 @@ export function walkChildren(node: SyntaxNode, callback: WalkChildrenCallback): 
           "BlockScope",
           "Declaration",
           "Exportable",
-          "Symbol",
-          "BindNode",
+          "Reference",
           "Scope",
           "Literal",
         ]
@@ -400,8 +408,8 @@ async function writeAstSyntaxTreeFactories(syntaxTreeContents: string[]): Promis
     "bindState": "BindState.Uninitialized",
     "diagnostics": "[]",
     "isExported": "false",
-    "symbol": "UnknownSymbol",
-    "type": "UnknownTypeSymbol",
+    "symbol": "null",
+    "type": "null",
   };
 
   let interfaceName: string | null = null;
@@ -422,7 +430,7 @@ async function writeAstSyntaxTreeFactories(syntaxTreeContents: string[]): Promis
     }
 
     if (interfaceName == null && line.startsWith("export interface ")) {
-      const parts = line.split(" ");
+      const parts = line.replaceAll("<T extends Symbol>", "").split(" ");
 
       interfaceName = parts[2];
 
@@ -440,9 +448,15 @@ async function writeAstSyntaxTreeFactories(syntaxTreeContents: string[]): Promis
       if (parts[3] == "extends") {
         for (let i = 4; i < parts.length - 1; i += 1) {
           let extended = parts[i];
+
           if (extended.endsWith(",")) {
             extended = extended.substring(0, extended.length - 1);
           }
+
+          if (extended.endsWith(">")) {
+            extended = extended.substring(0, extended.indexOf("<"));
+          }
+
           factories[interfaceName].extends.push(extended);
         }
       }
@@ -499,7 +513,7 @@ async function writeAstSyntaxTreeFactories(syntaxTreeContents: string[]): Promis
   const output = createAstOutputWriter();
   output.appendLine(`import { bool, uint } from "../shims.ts";`);
   output.appendLine(
-    `import { SymbolTable, TypeSymbol, UnknownSymbol, UnknownTypeSymbol } from "./symbols.ts";`,
+    `import { SymbolTable, TypeSymbol } from "./symbols.ts";`,
   );
   output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine(`import { makeTextPosition, TextPosition } from "./textPosition.ts"`);
@@ -540,11 +554,9 @@ async function writeAstSyntaxTreeFactories(syntaxTreeContents: string[]): Promis
 
     output.indent();
 
-    if (name != "Symbol") {
-      output.appendLine(`kind: SyntaxKind.${name},`);
-      output.appendLine(`startPos: optional.startPos ?? makeTextPosition(0, 0),`);
-      output.appendLine(`endPos: optional.endPos ?? makeTextPosition(0, 0),`);
-    }
+    output.appendLine(`kind: SyntaxKind.${name},`);
+    output.appendLine(`startPos: optional.startPos ?? makeTextPosition(0, 0),`);
+    output.appendLine(`endPos: optional.endPos ?? makeTextPosition(0, 0),`);
 
     if (props.extends.includes("Exportable")) {
       output.appendLine(`isExported: optional.isExported ?? false,`);
@@ -553,10 +565,10 @@ async function writeAstSyntaxTreeFactories(syntaxTreeContents: string[]): Promis
     if (
       props.extends.includes("Expression") || props.extends.includes("Literal") || props.extends.includes("TypeNode")
     ) {
-      output.appendLine(`symbol: UnknownSymbol,`);
-      output.appendLine(`type: UnknownTypeSymbol,`);
+      output.appendLine(`symbol: null,`);
+      output.appendLine(`type: null,`);
     } else if (props.extends.includes("Declaration") || props.extends.includes("Reference")) {
-      output.appendLine(`symbol: UnknownSymbol,`);
+      output.appendLine(`symbol: null,`);
     }
 
     if (props.extends.includes("Scope")) {

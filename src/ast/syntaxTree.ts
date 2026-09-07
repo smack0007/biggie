@@ -1,5 +1,15 @@
 import { bool } from "../shims.ts";
-import { ImportSymbol, Symbol, SymbolTable, TypeSymbol } from "./symbols.ts";
+import { MethodReceiverSymbol, MethodSymbol, StructMemberSymbol, StructSymbol } from "./mod.ts";
+import {
+  EnumMemberSymbol,
+  EnumSymbol,
+  FuncSymbol,
+  ImportSymbol,
+  Symbol,
+  SymbolTable,
+  TypeSymbol,
+  VarSymbol,
+} from "./symbols.ts";
 import { TextPosition } from "./textPosition.ts";
 
 export enum SyntaxKind {
@@ -138,8 +148,8 @@ export interface SyntaxNode {
   parent?: SyntaxNode;
 }
 
-export interface Declaration extends SyntaxNode {
-  symbol: Symbol;
+export interface Declaration<T extends Symbol> extends SyntaxNode {
+  symbol: T | null;
 }
 
 export interface Exportable extends SyntaxNode {
@@ -147,7 +157,7 @@ export interface Exportable extends SyntaxNode {
 }
 
 export interface Reference extends SyntaxNode {
-  symbol: Symbol;
+  symbol: Symbol | null;
 }
 
 export interface Scope extends SyntaxNode {
@@ -212,7 +222,7 @@ export interface NoOpStatement extends SyntaxNode {
   kind: SyntaxKind.NoOpStatement;
 }
 
-export interface ImportDeclaration extends SyntaxNode, Declaration {
+export interface ImportDeclaration extends SyntaxNode, Declaration<ImportSymbol> {
   kind: SyntaxKind.ImportDeclaration;
 
   alias?: Identifier;
@@ -222,7 +232,7 @@ export interface ImportDeclaration extends SyntaxNode, Declaration {
   resolvedFileName: string;
 }
 
-export interface VarDeclaration extends SyntaxNode, Declaration {
+export interface VarDeclaration extends SyntaxNode, Declaration<VarSymbol> {
   kind: SyntaxKind.VarDeclaration;
 
   name: Identifier;
@@ -231,10 +241,10 @@ export interface VarDeclaration extends SyntaxNode, Declaration {
 
   initializer?: Expression;
 
-  type: TypeSymbol;
+  type: TypeSymbol | null;
 }
 
-export interface EnumDeclaration extends SyntaxNode, Declaration, Exportable {
+export interface EnumDeclaration extends SyntaxNode, Declaration<EnumSymbol>, Exportable {
   kind: SyntaxKind.EnumDeclaration;
 
   name: Identifier;
@@ -242,7 +252,7 @@ export interface EnumDeclaration extends SyntaxNode, Declaration, Exportable {
   members: EnumMember[];
 }
 
-export interface EnumMember extends SyntaxNode, Declaration {
+export interface EnumMember extends SyntaxNode, Declaration<EnumMemberSymbol> {
   kind: SyntaxKind.EnumMember;
 
   name: Identifier;
@@ -250,7 +260,7 @@ export interface EnumMember extends SyntaxNode, Declaration {
   initializer?: Expression;
 }
 
-export interface FuncDeclaration extends SyntaxNode, Declaration, Exportable, Scope {
+export interface FuncDeclaration extends SyntaxNode, Declaration<FuncSymbol>, Exportable, Scope {
   kind: SyntaxKind.FuncDeclaration;
 
   name: Identifier;
@@ -262,7 +272,7 @@ export interface FuncDeclaration extends SyntaxNode, Declaration, Exportable, Sc
   body: StatementBlock;
 }
 
-export interface ExternFuncDeclaration extends SyntaxNode, Declaration {
+export interface ExternFuncDeclaration extends SyntaxNode, Declaration<FuncSymbol> {
   kind: SyntaxKind.ExternFuncDeclaration;
 
   name: Identifier;
@@ -272,7 +282,7 @@ export interface ExternFuncDeclaration extends SyntaxNode, Declaration {
   returnType: TypeNode;
 }
 
-export interface MethodDeclaration extends SyntaxNode, Declaration, Exportable, Scope {
+export interface MethodDeclaration extends SyntaxNode, Declaration<MethodSymbol>, Exportable, Scope {
   kind: SyntaxKind.MethodDeclaration;
 
   receiver: MethodReceiver;
@@ -286,17 +296,17 @@ export interface MethodDeclaration extends SyntaxNode, Declaration, Exportable, 
   body: StatementBlock;
 }
 
-export interface MethodReceiver extends SyntaxNode, Declaration {
+export interface MethodReceiver extends SyntaxNode, Declaration<MethodReceiverSymbol> {
   kind: SyntaxKind.MethodReceiver;
 
   name: Identifier;
 
   declaredType: TypeReference;
 
-  type: TypeSymbol;
+  type: TypeSymbol | null;
 }
 
-export interface StructDeclaration extends SyntaxNode, Declaration, Exportable {
+export interface StructDeclaration extends SyntaxNode, Declaration<StructSymbol>, Exportable {
   kind: SyntaxKind.StructDeclaration;
 
   name: Identifier;
@@ -304,7 +314,7 @@ export interface StructDeclaration extends SyntaxNode, Declaration, Exportable {
   members: StructMember[];
 }
 
-export interface StructMember extends SyntaxNode, Declaration {
+export interface StructMember extends SyntaxNode, Declaration<StructMemberSymbol> {
   kind: SyntaxKind.StructMember;
 
   name: Identifier;
@@ -356,7 +366,7 @@ export interface StatementBlock extends Statement, Scope {
 }
 
 export interface Expression extends SyntaxNode, Reference {
-  type: TypeSymbol;
+  type: TypeSymbol | null;
 }
 
 export interface LogicalExpression extends Expression {
@@ -463,7 +473,7 @@ export interface PropertyAccessExpression extends Expression {
 }
 
 export interface TypeNode extends SyntaxNode, Reference {
-  type: TypeSymbol;
+  type: TypeSymbol | null;
 }
 
 export interface ArrayType extends TypeNode {
@@ -499,7 +509,6 @@ export interface Identifier extends Expression, Reference {
 }
 
 export interface Literal extends Expression {
-  type: TypeSymbol;
 }
 
 export interface ArrayLiteral extends Literal {
