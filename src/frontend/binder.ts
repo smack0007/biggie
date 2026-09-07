@@ -324,20 +324,26 @@ function bindImportDeclaration(importDeclaration: ast.ImportDeclaration): void {
 }
 
 function bindExternFuncDeclaration(externFuncDeclaration: ast.ExternFuncDeclaration): void {
+  const argSymbols: ast.Symbol[] = [];
   for (const arg of externFuncDeclaration.args) {
     bindVarDeclaration(arg);
+
+    assert.notNull(arg.symbol, "Expected arg.symbol not to be null");
+    argSymbols.push(arg.symbol);
   }
 
   bindTypeNode(externFuncDeclaration.returnType);
 
-  externFuncDeclaration.symbol = <ast.FuncSymbol> {
+  const symbol: ast.FuncSymbol = {
     kind: ast.SymbolKind.Func,
     id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.Extern,
     declaration: externFuncDeclaration,
     name: externFuncDeclaration.name.value,
     beginVaradicArgsIndex: 0,
+    args: argSymbols,
   };
+  externFuncDeclaration.symbol = symbol;
 
   const sourceFile = getSourceFileOrError(externFuncDeclaration);
   setLocal(externFuncDeclaration, sourceFile, externFuncDeclaration.symbol.name, externFuncDeclaration.symbol);
@@ -355,7 +361,7 @@ function bindEnumDeclaration(
     members[enumMember.symbol!.name] = enumMember.symbol!;
   }
 
-  const enumSymbol = <ast.EnumSymbol> {
+  enumDeclaration.symbol = {
     kind: ast.SymbolKind.Enum,
     id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
@@ -363,7 +369,6 @@ function bindEnumDeclaration(
     name: enumDeclaration.name.value,
     members,
   };
-  enumDeclaration.symbol = enumSymbol;
 
   const sourceFile = getSourceFileOrError(enumDeclaration);
   setLocal(enumDeclaration, sourceFile, enumDeclaration.symbol.name, enumDeclaration.symbol);
@@ -373,7 +378,7 @@ function bindEnumDeclaration(
 }
 
 function bindEnumMember(enumMember: ast.EnumMember): void {
-  enumMember.symbol = <ast.EnumMemberSymbol> {
+  enumMember.symbol = {
     kind: ast.SymbolKind.EnumMember,
     id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
@@ -382,20 +387,25 @@ function bindEnumMember(enumMember: ast.EnumMember): void {
 }
 
 function bindFuncDeclaration(funcDeclaration: ast.FuncDeclaration): void {
+  const argSymbols: ast.Symbol[] = [];
   for (const arg of funcDeclaration.args) {
     bindVarDeclaration(arg);
+
+    assert.notNull(arg.symbol, "Expected arg.symbol not to be null");
+    argSymbols.push(arg.symbol);
   }
 
   bindTypeNode(funcDeclaration.returnType);
   bindStatementBlock(funcDeclaration.body);
 
-  funcDeclaration.symbol = <ast.FuncSymbol> {
+  funcDeclaration.symbol = {
     kind: ast.SymbolKind.Func,
     id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: funcDeclaration,
     name: funcDeclaration.name.value,
     beginVaradicArgsIndex: 0,
+    args: argSymbols,
   };
 
   const sourceFile = getSourceFileOrError(funcDeclaration);
@@ -408,20 +418,25 @@ function bindFuncDeclaration(funcDeclaration: ast.FuncDeclaration): void {
 function bindMethodDeclaration(methodDeclaration: ast.MethodDeclaration): void {
   bindMethodReceiver(methodDeclaration.receiver);
 
+  const argSymbols: ast.Symbol[] = [];
   for (const arg of methodDeclaration.args) {
     bindVarDeclaration(arg);
+
+    assert.notNull(arg.symbol, "Expected arg.symbol not to be null");
+    argSymbols.push(arg.symbol);
   }
 
   bindTypeNode(methodDeclaration.returnType);
   bindStatementBlock(methodDeclaration.body);
 
-  methodDeclaration.symbol = <ast.MethodSymbol> {
+  methodDeclaration.symbol = {
     kind: ast.SymbolKind.Method,
     id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     declaration: methodDeclaration,
     name: methodDeclaration.name.value,
     beginVaradicArgsIndex: 0,
+    args: argSymbols,
   };
 
   const receiverType = methodDeclaration.receiver.declaredType.type;
@@ -676,9 +691,6 @@ function bindArrayLiteral(arrayLiteral: ast.ArrayLiteral): void {
 
 function bindCallExpression(callExpression: ast.CallExpression): void {
   bindExpression(callExpression.expression, null);
-  for (const arg of callExpression.args) {
-    bindExpression(arg, null);
-  }
 
   assert.notNull(callExpression.expression.symbol, "Expected callExpress.expression.symbol not to be null");
 
@@ -688,6 +700,10 @@ function bindCallExpression(callExpression: ast.CallExpression): void {
       `Symbol "${callExpression.expression.symbol.name}" is not callable.`,
       callExpression,
     );
+  }
+
+  for (const arg of callExpression.args) {
+    bindExpression(arg, null);
   }
 
   // TODO: Validate arguments are of correct type.

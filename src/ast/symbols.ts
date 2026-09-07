@@ -53,6 +53,8 @@ export interface Symbol {
 
 export interface CallableSymbol extends Symbol {
   beginVaradicArgsIndex: uint;
+
+  args: Symbol[];
 }
 
 export interface SymbolWithMembers extends Symbol {

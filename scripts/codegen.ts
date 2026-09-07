@@ -626,7 +626,7 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
   let interfaceName: string | null = null;
   let collectedLine = "";
 
-  const symbolsImports: string[] = ["SymbolKind", "SymbolFlags", "SymbolTable"];
+  const symbolsImports: string[] = ["Symbol", "SymbolKind", "SymbolFlags", "SymbolTable"];
   const factories: Record<string, {
     extends: string[];
     required: Record<string, string>;
@@ -730,6 +730,7 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
 
     if (props.extends.includes("CallableSymbol")) {
       output.appendLine(`beginVaradicArgsIndex?: uint;`);
+      output.appendLine(`args?: Symbol[];`);
     }
 
     if (props.extends.includes("SymbolWithMembers")) {
@@ -768,6 +769,7 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
 
     if (props.extends.includes("CallableSymbol")) {
       output.appendLine(`beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? 0,`);
+      output.appendLine(`args: optional.args ?? [],`);
     }
 
     if (props.extends.includes("SymbolWithMembers")) {

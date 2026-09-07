@@ -10,6 +10,7 @@ import {
   MethodSymbol,
   StructMemberSymbol,
   StructSymbol,
+  Symbol,
   SymbolFlags,
   SymbolKind,
   SymbolTable,
@@ -57,6 +58,7 @@ export interface MakeFuncSymbolOptionalProps {
   id?: uint32;
   flags?: uint;
   beginVaradicArgsIndex?: uint;
+  args?: Symbol[];
 }
 
 export function makeFuncSymbol(
@@ -69,6 +71,7 @@ export function makeFuncSymbol(
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
     beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? 0,
+    args: optional.args ?? [],
   };
 }
 
@@ -95,6 +98,7 @@ export interface MakeMethodSymbolOptionalProps {
   id?: uint32;
   flags?: uint;
   beginVaradicArgsIndex?: uint;
+  args?: Symbol[];
 }
 
 export function makeMethodSymbol(
@@ -107,6 +111,7 @@ export function makeMethodSymbol(
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
     beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? 0,
+    args: optional.args ?? [],
   };
 }
 
