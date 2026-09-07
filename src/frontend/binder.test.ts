@@ -61,6 +61,34 @@ describe("binder", () => {
     // });
   });
 
+  describe("bindMethod", () => {
+    it("diagnostic error when receiver is not a struct", () => {
+      const fooFunc = ast.makeFuncDeclaration(
+        ast.makeIdentifier("Foo"),
+        [],
+        ast.makeTypeReference(ast.makeIdentifier("void")),
+        ast.makeStatementBlock([]),
+      );
+
+      const barMethod = ast.makeMethodDeclaration(
+        ast.makeMethodReceiver(
+          ast.makeIdentifier("foo"),
+          ast.makeTypeReference(ast.makeIdentifier("Foo")),
+        ),
+        ast.makeIdentifier("bar"),
+        [],
+        ast.makeTypeReference(ast.makeIdentifier("void")),
+        ast.makeStatementBlock([]),
+      );
+
+      const program = ast.makeProgramFromTopLevelStatements([fooFunc, barMethod]);
+      bind(program);
+
+      assert.equal(program.diagnostics.length, 1);
+      assert.equal(program.diagnostics[0].category, ast.DiagnosticCategory.Error);
+    });
+  });
+
   describe("bindStringLiteral", () => {
     it("binds StringLiteral", () => {
       const stringLiteral = ast.makeStringLiteral("Hello World!");

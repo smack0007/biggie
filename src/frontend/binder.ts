@@ -25,7 +25,7 @@ function bindError(kind: BindErrorKind, message: string, node: ast.SyntaxNode): 
   const sourceFile = ast.findSourceFileFromNode(node);
 
   // TODO: There should be some --debug flag that will pack this into the error.
-  console.error((new Error()).stack);
+  // console.error((new Error()).stack);
 
   return {
     category: ast.DiagnosticCategory.Error,

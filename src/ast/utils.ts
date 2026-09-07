@@ -112,3 +112,18 @@ export function makeProgramFromStatement(statement: Statement, options: MakeProg
     },
   );
 }
+
+export function makeProgramFromTopLevelStatements(
+  statements: Statement[],
+  options: MakeProgramFromOptions = {},
+): Program {
+  return makeProgram(
+    SOURCE_FILE_NAME,
+    {
+      [SOURCE_FILE_NAME]: makeSourceFile(SOURCE_FILE_NAME, [
+        ...statements,
+        ...(options.topLevelStatements ?? []),
+      ], {}),
+    },
+  );
+}
