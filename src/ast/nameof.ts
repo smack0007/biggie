@@ -4,12 +4,12 @@ import { BindState, DiagnosticCategory, Operator, SyntaxKind } from "./syntaxTre
 
 export function nameofSymbolKind(kind: SymbolKind): string {
   switch (kind) {
-    case SymbolKind.Unknown:
-      return "Unknown";
     case SymbolKind.Enum:
       return "Enum";
     case SymbolKind.EnumMember:
       return "EnumMember";
+    case SymbolKind.ExternFunc:
+      return "ExternFunc";
     case SymbolKind.Func:
       return "Func";
     case SymbolKind.Import:

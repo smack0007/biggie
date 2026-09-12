@@ -185,14 +185,13 @@ function getSourceFileOrError(node: ast.SyntaxNode): ast.SourceFile {
   return sourceFile;
 }
 
-function getSourceFileFromSymbol(context: EmitContext, symbol: ast.Symbol): ast.SourceFile {
+function getSourceFileFromSymbol(
+  context: EmitContext,
+  symbol: ast.SymbolWithDeclaration<ast.Declaration<ast.Symbol>>,
+): ast.SourceFile {
   // TODO: It might make sense to have a <runtime> source file or something to that effect.
   if (hasFlag(symbol.flags, ast.SymbolFlags.Builtin)) {
     return context.sourceFiles[context.entryFileName];
-  }
-
-  if (!symbol.declaration) {
-    throw new Error(`Symbol has no declaration in ${nameof(getSourceFileFromSymbol)}`);
   }
 
   const sourceFile = ast.findSourceFileFromNode(symbol.declaration);
@@ -804,7 +803,7 @@ function emitCallExpression(context: EmitContext, callExpression: ast.CallExpres
     `Expected callExpression.symbol not to be null: ${ast.toString(callExpression)}`,
   );
 
-  if (!ast.isSymbolCallable(callExpression.symbol)) {
+  if (!ast.isCallableSymbol(callExpression.symbol)) {
     throw backendError(BackendErrorKind.Unexpected, "callExpression.symbol is not callable", callExpression);
   }
 
@@ -912,7 +911,7 @@ function emitPropertyAccessExpression(
   propertyAccessExpression: ast.PropertyAccessExpression,
 ): void {
   if (propertyAccessExpression.expression.symbol) {
-    if (propertyAccessExpression.expression.symbol.kind == ast.SymbolKind.Import) {
+    if (ast.isImportSymbol(propertyAccessExpression.expression.symbol)) {
       const module = getImportedModuleByAlias(context, propertyAccessExpression.expression.symbol.name);
 
       if (module != null) {
@@ -923,7 +922,7 @@ function emitPropertyAccessExpression(
           return;
         }
       }
-    } else if (propertyAccessExpression.expression.symbol.kind == ast.SymbolKind.Enum) {
+    } else if (ast.isEnumSymbol(propertyAccessExpression.expression.symbol)) {
       const module = getSourceFileFromSymbol(context, propertyAccessExpression.expression.symbol);
       const mappedTypeName = getMappedModuleTypeName(context, module, propertyAccessExpression.expression.symbol.name);
       if (mappedTypeName != null) {

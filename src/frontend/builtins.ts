@@ -1,3 +1,4 @@
+import { assert } from "node:console";
 import { generateId, IDType } from "../ast/ids.ts";
 import {
   FuncSymbol,
@@ -14,10 +15,11 @@ interface BuiltinSymbolOptionalArgs {
   beginVaradicArgsIndex?: uint;
 }
 
+// TODO: Make different function for different symbol kinds.
 function builtinSymbol<T extends Symbol>(
   kind: SymbolKind,
   name: string,
-  members: SymbolTable | null = null,
+  members: SymbolTable = {},
   optional: BuiltinSymbolOptionalArgs = {},
 ): T {
   const symbol: Symbol = {
@@ -28,7 +30,7 @@ function builtinSymbol<T extends Symbol>(
   };
 
   // TODO: Fix this hack
-  if (members) {
+  if (kind == SymbolKind.Type) {
     (<SymbolWithMembers> symbol).members = members;
   }
 

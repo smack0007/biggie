@@ -35,7 +35,8 @@ async function main(_argv: string[]): Promise<int> {
     .split(EOL)
     .map((x) => x.trim());
 
-  await writeAstTypeGuards(syntaxTreeContents);
+  await writeAstSyntaxTreeTypeGuards(syntaxTreeContents);
+  await writeAstSymbolTypeGuards(symbolsContents);
   await writeAstWalk(syntaxTreeContents);
   await writeAstNameof(symbolsContents, syntaxTreeContents);
   await writeAstSyntaxTreeFactories(syntaxTreeContents);
@@ -56,10 +57,12 @@ function createAstOutputWriter(): OutputWriter {
 }
 
 function filterExportInterfaceLine(line: string): string {
-  return line.replaceAll("<T extends Symbol>", "");
+  return line
+    .replaceAll("<T extends Symbol>", "")
+    .replaceAll("<T extends Declaration<Symbol>>", "");
 }
 
-async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
+async function writeAstSyntaxTreeTypeGuards(syntaxTreeContents: string[]): Promise<void> {
   const output = createAstOutputWriter();
 
   const typeGuardsToEmit: string[] = [];
@@ -144,7 +147,94 @@ async function writeAstTypeGuards(syntaxTreeContents: string[]): Promise<void> {
     output.appendLine();
   }
 
-  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "typeGuards.ts"), output);
+  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "syntaxTreeTypeGuards.ts"), output);
+}
+
+async function writeAstSymbolTypeGuards(symbolsContents: string[]): Promise<void> {
+  const output = createAstOutputWriter();
+
+  const typeGuardsToEmit: string[] = [];
+  const typeMap: Record<string, string[]> = {};
+  const baseNodeInterfaces: Record<string, string[]> = Object.fromEntries(BASE_NODES.map((x) => [x, []]));
+
+  for (const line of symbolsContents) {
+    if (line.startsWith("export interface ")) {
+      const parts = filterExportInterfaceLine(line).split(" ");
+
+      const interfaceName = parts[2];
+
+      if (!TYPE_GUARDS_NOT_TO_EMIT.includes(interfaceName)) {
+        typeGuardsToEmit.push(interfaceName);
+      }
+
+      if (parts[3] == "extends") {
+        const extendedInterfaces = parts.slice(4)
+          .filter((x) => x != "{")
+          .map((x) => x.endsWith(",") ? x.substring(0, x.length - 1) : x)
+          .map((x) => x.endsWith(">") ? x.substring(0, x.indexOf("<")) : x);
+
+        for (const extendedInterface of extendedInterfaces) {
+          const isBaseNode = BASE_NODES.includes(extendedInterface);
+          if (!isBaseNode) {
+            if (typeMap[extendedInterface] == undefined) {
+              typeMap[extendedInterface] = [];
+            }
+
+            typeMap[extendedInterface].push(interfaceName);
+          } else if (isBaseNode) {
+            baseNodeInterfaces[extendedInterface].push(interfaceName);
+          }
+        }
+      }
+    }
+  }
+
+  // typeMap["Expression"] = baseNodeInterfaces["Expression"];
+
+  for (const key of Object.keys(typeMap)) {
+    for (const baseNode of BASE_NODES) {
+      if (typeMap[key].includes(baseNode)) {
+        typeMap[key] = [...new Set([...typeMap[key].filter((x) => x != baseNode), ...baseNodeInterfaces[baseNode]])];
+      }
+    }
+  }
+
+  output.appendLine(`import { Symbol, SymbolKind, ${typeGuardsToEmit.join(", ")} } from "./symbols.ts";`);
+  output.appendLine(`import { Declaration } from "./syntaxTree.ts";`);
+  output.appendLine();
+
+  typeGuardsToEmit.sort();
+  for (const typeGuard of typeGuardsToEmit) {
+    const isType = typeGuard == "SymbolWithDeclaration" ? "SymbolWithDeclaration<Declaration<Symbol>>" : typeGuard;
+
+    output.appendLine(`export function is${typeGuard}(symbol: Symbol | null): symbol is ${isType} {`);
+    output.indent();
+
+    const kinds = typeMap[typeGuard]?.toSorted();
+    if (kinds) {
+      output.appendLine("return symbol != null && (");
+      output.indent();
+
+      for (let i = 0; i < kinds.length; i += 1) {
+        if (i != 0) {
+          output.append("|| ");
+        }
+
+        output.appendLine(`symbol.kind == SymbolKind.${kinds[i].replace("Symbol", "")}`);
+      }
+
+      output.unindent();
+      output.appendLine(");");
+    } else {
+      output.appendLine(`return symbol != null && symbol.kind == SymbolKind.${typeGuard.replace("Symbol", "")};`);
+    }
+
+    output.unindent();
+    output.appendLine("}");
+    output.appendLine();
+  }
+
+  await writeAndFormatFile(join(ROOT_PATH, "src", "ast", "symbolTypeGuards.ts"), output);
 }
 
 async function writeAstWalk(syntaxTreeContents: string[]): Promise<void> {
@@ -423,7 +513,7 @@ async function writeAstSyntaxTreeFactories(syntaxTreeContents: string[]): Promis
   }> = {};
 
   for (let line of syntaxTreeContents) {
-    line = line.trim();
+    line = filterExportInterfaceLine(line).trim();
 
     if (line.startsWith("//")) {
       continue;
@@ -614,9 +704,8 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
   const EXCLUDE_INTERFACES = [
     "Symbol",
     "CallableSymbol",
+    "SymbolWithDeclaration",
     "SymbolWithMembers",
-    "UnknownSymbol",
-    "UnknownTypeSymbol",
   ];
 
   const EXCLUDE_PROPS: string[] = ["kind"];
@@ -627,6 +716,7 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
   let collectedLine = "";
 
   const symbolsImports: string[] = ["Symbol", "SymbolKind", "SymbolFlags", "SymbolTable"];
+  const syntaxTreeImports: string[] = [];
   const factories: Record<string, {
     extends: string[];
     required: Record<string, string>;
@@ -641,7 +731,7 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
     }
 
     if (interfaceName == null && line.startsWith("export interface ")) {
-      const parts = line.split(" ");
+      const parts = filterExportInterfaceLine(line).split(" ");
 
       interfaceName = parts[2];
 
@@ -663,6 +753,26 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
             extended = extended.substring(0, extended.length - 1);
           }
           factories[interfaceName].extends.push(extended);
+
+          if (extended.indexOf("<") != -1) {
+            factories[interfaceName].extends.push(extended.substring(0, extended.indexOf("<")));
+          }
+
+          if (extended.startsWith("SymbolWithDeclaration<")) {
+            let syntaxTreeImport = extended.substring(
+              extended.indexOf("<") + 1,
+              extended.lastIndexOf(">"),
+            );
+
+            if (syntaxTreeImport.indexOf("<") > 0) {
+              syntaxTreeImport = syntaxTreeImport.substring(
+                0,
+                syntaxTreeImport.indexOf("<"),
+              );
+            }
+
+            syntaxTreeImports.push(syntaxTreeImport);
+          }
         }
       }
 
@@ -719,6 +829,7 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
   output.appendLine(`import { uint, uint32 } from "../shims.ts";`);
   output.appendLine(`import { generateId, IDType } from "./ids.ts";`);
   output.appendLine(`import { ${symbolsImports.toSorted().join(", ")} } from "./symbols.ts";`);
+  output.appendLine(`import { ${syntaxTreeImports.toSorted().join(", ")} } from "./syntaxTree.ts";`);
   output.appendLine();
 
   for (const [name, props] of Object.entries(factories)) {
@@ -752,6 +863,16 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
     for (const [propName, propType] of Object.entries(props.required)) {
       output.appendLine(`${propName}: ${propType},`);
     }
+
+    if (props.extends.includes("SymbolWithDeclaration")) {
+      let symbolWithDeclarationInterface = props.extends.find((x) => x.startsWith("SymbolWithDeclaration<")) ?? "";
+      symbolWithDeclarationInterface = symbolWithDeclarationInterface.substring(
+        symbolWithDeclarationInterface.indexOf("<") + 1,
+        symbolWithDeclarationInterface.lastIndexOf(">"),
+      );
+      output.appendLine(`declaration: ${symbolWithDeclarationInterface},`);
+    }
+
     output.appendLine(`optional: Make${name}OptionalProps = {},`);
     output.unindent();
 
@@ -770,6 +891,10 @@ async function writeAstSymbolFactories(symbolsContents: string[]): Promise<void>
     if (props.extends.includes("CallableSymbol")) {
       output.appendLine(`beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? 0,`);
       output.appendLine(`args: optional.args ?? [],`);
+    }
+
+    if (props.extends.includes("SymbolWithDeclaration")) {
+      output.appendLine(`declaration,`);
     }
 
     if (props.extends.includes("SymbolWithMembers")) {

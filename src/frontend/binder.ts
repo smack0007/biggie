@@ -96,10 +96,21 @@ function bindInitialize(program: ast.Program): void {
   }
 
   for (const [name, symbol] of Object.entries(builtins.globals)) {
-    setLocal(program, program, name, {
-      ...symbol,
-      declaration: program,
-    });
+    const programSymbol = { ...symbol };
+
+    if (ast.isSymbolWithDeclaration(programSymbol)) {
+      programSymbol.declaration = program;
+    }
+
+    setLocal(program, program, name, programSymbol);
+
+    if (ast.isSymbolWithMembers(programSymbol)) {
+      for (const [_, memberSymbol] of Object.entries(programSymbol.members)) {
+        if (ast.isSymbolWithDeclaration(memberSymbol)) {
+          memberSymbol.declaration = program;
+        }
+      }
+    }
   }
 }
 
@@ -334,8 +345,8 @@ function bindExternFuncDeclaration(externFuncDeclaration: ast.ExternFuncDeclarat
 
   bindTypeNode(externFuncDeclaration.returnType);
 
-  const symbol: ast.FuncSymbol = {
-    kind: ast.SymbolKind.Func,
+  const symbol: ast.ExternFuncSymbol = {
+    kind: ast.SymbolKind.ExternFunc,
     id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.Extern,
     declaration: externFuncDeclaration,
@@ -383,6 +394,7 @@ function bindEnumMember(enumMember: ast.EnumMember): void {
     id: ast.generateId(ast.IDType.Symbol),
     flags: ast.SymbolFlags.None,
     name: enumMember.name.value,
+    declaration: enumMember,
   };
 }
 
@@ -694,7 +706,7 @@ function bindCallExpression(callExpression: ast.CallExpression): void {
 
   assert.notNull(callExpression.expression.symbol, "Expected callExpress.expression.symbol not to be null");
 
-  if (!ast.isSymbolCallable(callExpression.expression.symbol)) {
+  if (!ast.isCallableSymbol(callExpression.expression.symbol)) {
     throw bindError(
       BindErrorKind.NotCallable,
       `Symbol "${callExpression.expression.symbol.name}" is not callable.`,
@@ -755,8 +767,16 @@ function bindIdentifier(identifier: ast.Identifier, parentSymbol: ast.Symbol | n
     }
   }
 
-  if (identifier.symbol.declaration && (identifier.symbol.declaration as unknown as { type: TypeSymbol | null }).type) {
-    identifier.type = (identifier.symbol.declaration as unknown as { type: TypeSymbol | null }).type;
+  try {
+    if (
+      ast.isSymbolWithDeclaration(identifier.symbol) &&
+      // TODO: Make isSyntaxNodeWithType type guard.
+      (identifier.symbol.declaration as unknown as { type: TypeSymbol | null }).type
+    ) {
+      identifier.type = (identifier.symbol.declaration as unknown as { type: TypeSymbol | null }).type;
+    }
+  } catch {
+    console.info(identifier.symbol);
   }
 }
 

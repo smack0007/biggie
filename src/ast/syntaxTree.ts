@@ -3,6 +3,7 @@ import { MethodReceiverSymbol, MethodSymbol, StructMemberSymbol, StructSymbol } 
 import {
   EnumMemberSymbol,
   EnumSymbol,
+  ExternFuncSymbol,
   FuncSymbol,
   ImportSymbol,
   Symbol,
@@ -272,7 +273,7 @@ export interface FuncDeclaration extends SyntaxNode, Declaration<FuncSymbol>, Ex
   body: StatementBlock;
 }
 
-export interface ExternFuncDeclaration extends SyntaxNode, Declaration<FuncSymbol> {
+export interface ExternFuncDeclaration extends SyntaxNode, Declaration<ExternFuncSymbol> {
   kind: SyntaxKind.ExternFuncDeclaration;
 
   name: Identifier;

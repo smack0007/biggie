@@ -4,6 +4,7 @@ import { generateId, IDType } from "./ids.ts";
 import {
   EnumMemberSymbol,
   EnumSymbol,
+  ExternFuncSymbol,
   FuncSymbol,
   ImportSymbol,
   MethodReceiverSymbol,
@@ -17,6 +18,19 @@ import {
   TypeSymbol,
   VarSymbol,
 } from "./symbols.ts";
+import {
+  Declaration,
+  EnumDeclaration,
+  EnumMember,
+  ExternFuncDeclaration,
+  FuncDeclaration,
+  ImportDeclaration,
+  MethodDeclaration,
+  MethodReceiver,
+  StructDeclaration,
+  StructMember,
+  VarDeclaration,
+} from "./syntaxTree.ts";
 
 export interface MakeEnumSymbolOptionalProps {
   id?: uint32;
@@ -26,6 +40,7 @@ export interface MakeEnumSymbolOptionalProps {
 
 export function makeEnumSymbol(
   name: string,
+  declaration: EnumDeclaration,
   optional: MakeEnumSymbolOptionalProps = {},
 ): EnumSymbol {
   return {
@@ -33,6 +48,7 @@ export function makeEnumSymbol(
     name,
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
+    declaration,
     members: optional.members ?? {},
   };
 }
@@ -44,6 +60,7 @@ export interface MakeEnumMemberSymbolOptionalProps {
 
 export function makeEnumMemberSymbol(
   name: string,
+  declaration: EnumMember,
   optional: MakeEnumMemberSymbolOptionalProps = {},
 ): EnumMemberSymbol {
   return {
@@ -51,6 +68,30 @@ export function makeEnumMemberSymbol(
     name,
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
+    declaration,
+  };
+}
+
+export interface MakeExternFuncSymbolOptionalProps {
+  id?: uint32;
+  flags?: uint;
+  beginVaradicArgsIndex?: uint;
+  args?: Symbol[];
+}
+
+export function makeExternFuncSymbol(
+  name: string,
+  declaration: ExternFuncDeclaration,
+  optional: MakeExternFuncSymbolOptionalProps = {},
+): ExternFuncSymbol {
+  return {
+    kind: SymbolKind.ExternFunc,
+    name,
+    id: optional.id ?? generateId(IDType.Symbol),
+    flags: optional.flags ?? SymbolFlags.None,
+    beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? 0,
+    args: optional.args ?? [],
+    declaration,
   };
 }
 
@@ -63,6 +104,7 @@ export interface MakeFuncSymbolOptionalProps {
 
 export function makeFuncSymbol(
   name: string,
+  declaration: FuncDeclaration,
   optional: MakeFuncSymbolOptionalProps = {},
 ): FuncSymbol {
   return {
@@ -72,6 +114,7 @@ export function makeFuncSymbol(
     flags: optional.flags ?? SymbolFlags.None,
     beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? 0,
     args: optional.args ?? [],
+    declaration,
   };
 }
 
@@ -83,6 +126,7 @@ export interface MakeImportSymbolOptionalProps {
 
 export function makeImportSymbol(
   name: string,
+  declaration: ImportDeclaration,
   optional: MakeImportSymbolOptionalProps = {},
 ): ImportSymbol {
   return {
@@ -90,6 +134,7 @@ export function makeImportSymbol(
     name,
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
+    declaration,
     members: optional.members ?? {},
   };
 }
@@ -103,6 +148,7 @@ export interface MakeMethodSymbolOptionalProps {
 
 export function makeMethodSymbol(
   name: string,
+  declaration: MethodDeclaration,
   optional: MakeMethodSymbolOptionalProps = {},
 ): MethodSymbol {
   return {
@@ -112,6 +158,7 @@ export function makeMethodSymbol(
     flags: optional.flags ?? SymbolFlags.None,
     beginVaradicArgsIndex: optional.beginVaradicArgsIndex ?? 0,
     args: optional.args ?? [],
+    declaration,
   };
 }
 
@@ -123,6 +170,7 @@ export interface MakeMethodReceiverSymbolOptionalProps {
 
 export function makeMethodReceiverSymbol(
   name: string,
+  declaration: MethodReceiver,
   optional: MakeMethodReceiverSymbolOptionalProps = {},
 ): MethodReceiverSymbol {
   return {
@@ -130,6 +178,7 @@ export function makeMethodReceiverSymbol(
     name,
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
+    declaration,
     members: optional.members ?? {},
   };
 }
@@ -142,6 +191,7 @@ export interface MakeStructSymbolOptionalProps {
 
 export function makeStructSymbol(
   name: string,
+  declaration: StructDeclaration,
   optional: MakeStructSymbolOptionalProps = {},
 ): StructSymbol {
   return {
@@ -149,6 +199,7 @@ export function makeStructSymbol(
     name,
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
+    declaration,
     members: optional.members ?? {},
   };
 }
@@ -161,6 +212,7 @@ export interface MakeStructMemberSymbolOptionalProps {
 
 export function makeStructMemberSymbol(
   name: string,
+  declaration: StructMember,
   optional: MakeStructMemberSymbolOptionalProps = {},
 ): StructMemberSymbol {
   return {
@@ -168,6 +220,7 @@ export function makeStructMemberSymbol(
     name,
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
+    declaration,
     members: optional.members ?? {},
   };
 }
@@ -180,6 +233,7 @@ export interface MakeTypeSymbolOptionalProps {
 
 export function makeTypeSymbol(
   name: string,
+  declaration: Declaration<Symbol>,
   optional: MakeTypeSymbolOptionalProps = {},
 ): TypeSymbol {
   return {
@@ -187,6 +241,7 @@ export function makeTypeSymbol(
     name,
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
+    declaration,
     members: optional.members ?? {},
   };
 }
@@ -198,6 +253,7 @@ export interface MakeVarSymbolOptionalProps {
 
 export function makeVarSymbol(
   name: string,
+  declaration: VarDeclaration,
   optional: MakeVarSymbolOptionalProps = {},
 ): VarSymbol {
   return {
@@ -205,5 +261,6 @@ export function makeVarSymbol(
     name,
     id: optional.id ?? generateId(IDType.Symbol),
     flags: optional.flags ?? SymbolFlags.None,
+    declaration,
   };
 }

@@ -1,12 +1,25 @@
 import { uint, uint32 } from "../shims.ts";
-import { SyntaxNode } from "./syntaxTree.ts";
+import {
+  Declaration,
+  EnumDeclaration,
+  EnumMember,
+  ExternFuncDeclaration,
+  FuncDeclaration,
+  ImportDeclaration,
+  MethodDeclaration,
+  MethodReceiver,
+  Program,
+  StructDeclaration,
+  StructMember,
+  VarDeclaration,
+} from "./syntaxTree.ts";
 
 export enum SymbolKind {
-  Unknown = 0,
-
   Enum,
 
   EnumMember,
+
+  ExternFunc,
 
   Func,
 
@@ -44,8 +57,6 @@ export interface Symbol {
 
   flags: SymbolFlags;
 
-  declaration?: SyntaxNode;
-
   parent?: Symbol;
 
   name: string;
@@ -57,51 +68,55 @@ export interface CallableSymbol extends Symbol {
   args: Symbol[];
 }
 
+export interface SymbolWithDeclaration<T extends Declaration<Symbol>> extends Symbol {
+  declaration: T | Program;
+}
+
 export interface SymbolWithMembers extends Symbol {
   members: SymbolTable;
 }
 
-export interface UnknownSymbol extends Symbol {
-  kind: SymbolKind.Unknown;
-}
-
-export interface EnumSymbol extends SymbolWithMembers {
+export interface EnumSymbol extends SymbolWithMembers, SymbolWithDeclaration<EnumDeclaration> {
   kind: SymbolKind.Enum;
 }
 
-export interface EnumMemberSymbol extends Symbol {
+export interface EnumMemberSymbol extends Symbol, SymbolWithDeclaration<EnumMember> {
   kind: SymbolKind.EnumMember;
 }
 
-export interface FuncSymbol extends CallableSymbol {
+export interface ExternFuncSymbol extends CallableSymbol, SymbolWithDeclaration<ExternFuncDeclaration> {
+  kind: SymbolKind.ExternFunc;
+}
+
+export interface FuncSymbol extends CallableSymbol, SymbolWithDeclaration<FuncDeclaration> {
   kind: SymbolKind.Func;
 }
 
-export interface ImportSymbol extends SymbolWithMembers {
+export interface ImportSymbol extends SymbolWithMembers, SymbolWithDeclaration<ImportDeclaration> {
   kind: SymbolKind.Import;
 }
 
-export interface MethodSymbol extends CallableSymbol {
+export interface MethodSymbol extends CallableSymbol, SymbolWithDeclaration<MethodDeclaration> {
   kind: SymbolKind.Method;
 }
 
-export interface MethodReceiverSymbol extends SymbolWithMembers {
+export interface MethodReceiverSymbol extends SymbolWithMembers, SymbolWithDeclaration<MethodReceiver> {
   kind: SymbolKind.MethodReceiver;
 }
 
-export interface StructSymbol extends SymbolWithMembers {
+export interface StructSymbol extends SymbolWithMembers, SymbolWithDeclaration<StructDeclaration> {
   kind: SymbolKind.Struct;
 }
 
-export interface StructMemberSymbol extends SymbolWithMembers {
+export interface StructMemberSymbol extends SymbolWithMembers, SymbolWithDeclaration<StructMember> {
   kind: SymbolKind.StructMember;
 }
 
-export interface TypeSymbol extends SymbolWithMembers {
+export interface TypeSymbol extends SymbolWithMembers, SymbolWithDeclaration<Declaration<Symbol>> {
   kind: SymbolKind.Type;
 }
 
-export interface VarSymbol extends Symbol {
+export interface VarSymbol extends Symbol, SymbolWithDeclaration<VarDeclaration> {
   kind: SymbolKind.Var;
 }
 
@@ -116,29 +131,4 @@ export function getQualifiedNameForSymbol(symbol: Symbol | null): string {
     name = symbol.name + "." + name;
   }
   return name;
-}
-
-export function isSymbolCallable(symbol: Symbol | null): symbol is CallableSymbol {
-  return symbol != null && (symbol.kind == SymbolKind.Func || symbol.kind == SymbolKind.Method);
-}
-
-export function isSymbolWithMembers(symbol: Symbol | null): symbol is SymbolWithMembers {
-  return symbol != null && (
-    symbol.kind == SymbolKind.Enum ||
-    symbol.kind == SymbolKind.Import ||
-    symbol.kind == SymbolKind.Struct ||
-    symbol.kind == SymbolKind.Type
-  );
-}
-
-export function isEnumSymbol(symbol: Symbol | null): symbol is EnumSymbol {
-  return symbol != null && symbol.kind == SymbolKind.Enum;
-}
-
-export function isFuncSymbol(symbol: Symbol | null): symbol is FuncSymbol {
-  return symbol != null && symbol.kind == SymbolKind.Func;
-}
-
-export function isStructSymbol(symbol: Symbol | null): symbol is StructSymbol {
-  return symbol != null && symbol.kind == SymbolKind.Struct;
 }

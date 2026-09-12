@@ -11,7 +11,7 @@ import {
   Statement,
   SyntaxNode,
 } from "./syntaxTree.ts";
-import { isProgram, isScope, isSourceFile } from "./typeGuards.ts";
+import { isProgram, isScope, isSourceFile } from "./syntaxTreeTypeGuards.ts";
 import { nameofSymbolKind, nameofSyntaxKind } from "./nameof.ts";
 import {
   makeExpressionStatement,
